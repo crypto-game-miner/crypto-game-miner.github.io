@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
         const { email, points } = req.body;
 
-        // Конвертация: 100 монет = 0.001 USDT (можешь поправить под себя)
+        // Конвертация: 100 монет = 0.0001 USDT (можешь поправить под себя)
         const amount = (points / 100000).toFixed(8); 
 
         try {
