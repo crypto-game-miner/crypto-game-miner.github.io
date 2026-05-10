@@ -6,7 +6,6 @@
     <title>Crypto Miner</title>
     
     <style>
-        /* ОБЩИЕ СТИЛИ */
         html, body {
             height: 100%;
             margin: 0;
@@ -18,7 +17,6 @@
             font-family: 'Courier New', Courier, monospace; 
         }
 
-        /* СТИЛИ ЗАГРУЗКИ (LOADING) */
         #loading-screen {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -39,7 +37,6 @@
         .progress-bar { width: 0%; height: 100%; background: #facc15; box-shadow: 0 0 15px #facc15; transition: width 0.03s linear; }
         .percent-text { margin-top: 10px; font-size: 14px; color: #8b949e; }
 
-        /* ГЛАВНЫЙ КОНТЕНТ */
         #main-content {
             display: none;
             flex-direction: column;
@@ -58,11 +55,9 @@
         }
         .amount { color: #ffffff; font-size: 20px; font-weight: bold; }
 
-        /* ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ */
         .page { display: none; flex: 1; flex-direction: column; }
         .active-page { display: flex; }
 
-        /* ИГРОВАЯ ЗОНА */
         .game-area { 
             flex: 1;
             display: flex; 
@@ -80,11 +75,11 @@
             box-shadow: 0 4px 0 #a16207; transition: transform 0.1s;
         }
 
-        /* КОШЕЛЕК */
         .wallet-area { padding: 15px; text-align: left; overflow-y: auto; padding-bottom: 200px; }
         .wallet-card {
             background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px;
             padding: 10px; margin-bottom: 8px; display: flex; align-items: center;
+            cursor: pointer;
         }
         .card-icon { width: 35px; height: 35px; border-radius: 50%; margin-right: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
         .usdt-icon { background: #26a17b; color: white; }
@@ -105,7 +100,6 @@
             width: 100%; padding: 10px; font-size: 16px; box-shadow: none;
         }
 
-        /* БАННЕР И НАВИГАЦИЯ */
         .banner-area {
             position: fixed; bottom: 80px; left: 0; width: 100%; height: 100px;
             display: flex; justify-content: center; align-items: center; z-index: 100;
@@ -178,14 +172,15 @@
                     <div class="card-icon usdt-icon">₮</div>
                     <div class="card-info">
                         <h3>USDT</h3>
-                        <p>via faucetpay</p>
+                        <p>via FaucetPay</p>
                         <span style="font-size:10px; color:#8b949e">Min: 200 | Max: 10000</span>
                     </div>
                 </div>
 
                 <div id="wd-box" class="withdraw-box" style="display:none;">
                     <label>Points to Convert</label>
-                    <input type="number" id="wd-points" placeholder="Min 200">
+                    <input type="number" id="wd-points" placeholder="Min 200" >
+
                     <label>FaucetPay Email</label>
                     <input type="email" id="wd-email" placeholder="example@mail.com">
                     <button id="wd-button" class="collect-btn" style="width:100%; box-shadow:none;" onclick="handleWithdraw()">Withdraw USDT</button>
@@ -230,11 +225,12 @@
             percentText.innerText = progress + "%";
         }, 30);
 
-        // БАЛАНС И НАВИГАЦИЯ
+        // БАЛАНС
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         const balanceDisplay = document.getElementById('balance');
         balanceDisplay.innerText = coins + " Coins";
 
+        // НАВИГАЦИЯ
         function showPage(page) {
             document.getElementById('home-page').classList.toggle('active-page', page === 'home');
             document.getElementById('wallet-page').classList.toggle('active-page', page === 'wallet');
@@ -242,22 +238,23 @@
             document.getElementById('nav-wallet').classList.toggle('active', page === 'wallet');
         }
 
-        // ЛОГИКА КЛАВИАТУРЫ
+        // КЛАВИАТУРА
         const inputs = document.querySelectorAll('input');
         inputs.forEach(input => {
             input.addEventListener('focus', () => document.body.classList.add('keyboard-open'));
             input.addEventListener('blur', () => document.body.classList.remove('keyboard-open'));
         });
 
-        // ВЫВОД ЧЕРЕЗ VERCEL
+        // ВЫВОД СРЕДСТВ
         async function handleWithdraw() {
-            const p = document.getElementById('wd-points').value;
-            const m = document.getElementById('wd-email').value;
-            const btn = document.getElementById('wd-button');
+            const points = Number(document.getElementById('wd-points').value);
+            const email  = document.getElementById('wd-email').value.trim();
+            const btn    = document.getElementById('wd-button');
 
-            if(p < 200) return alert("Min 200!");
-            if(p > coins) return alert("Not enough coins!");
-            if(!m.includes('@')) return alert("Invalid Email!");
+            // Проверки на клиенте
+            if (!points || points < 200)   return alert("Minimum 200 coins!");
+            if (points > coins)            return alert("Not enough coins!");
+            if (!email.includes('@'))      return alert("Invalid email!");
 
             btn.disabled = true;
             btn.innerText = "Processing...";
@@ -266,21 +263,33 @@
                 const response = await fetch('https://crypto-game-miner-github-io.vercel.app/api/withdraw', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: m, points: p })
+                    body: JSON.stringify({ email: email, points: points })
                 });
-                
-                const result = await response.json();
-                
-                if (result.status === 200) {
-                    coins -= p;
-                    balanceDisplay.innerText = coins + " Coins";
-                    localStorage.setItem('miner_balance', coins);
-                    alert("Success! Check your FaucetPay.");
-                } else {
-                    alert("Error: " + (result.message || "Failed to pay. Check faucet balance."));
+
+                // Пробуем распарсить ответ сервера
+                let result;
+                try {
+                    result = await response.json();
+                } catch {
+                    // Сервер вернул не-JSON — показываем статус
+                    alert("Server returned unexpected response. HTTP " + response.status);
+                    return;
                 }
+
+                // FaucetPay возвращает status: 200 при успехе
+                if (result.status === 200) {
+                    coins -= points;
+                    localStorage.setItem('miner_balance', coins);
+                    balanceDisplay.innerText = coins + " Coins";
+                    alert("✅ Success! Funds sent to your FaucetPay!");
+                } else {
+                    // Показываем реальную ошибку от FaucetPay
+                    alert("❌ FaucetPay error: " + (result.message || JSON.stringify(result)));
+                }
+
             } catch (e) {
-                alert("Server error. Try again later.");
+                // Сюда попадаем только если сам fetch упал (нет сети, CORS и т.д.)
+                alert("❌ Network error: " + e.message + "\n\nCheck your internet connection.");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "Withdraw USDT";
@@ -299,11 +308,11 @@
             const btn = document.getElementById('collect-btn');
             btn.disabled = true;
             const overlay = document.getElementById('ad-overlay');
-            const status = document.getElementById('ad-status');
+            const status  = document.getElementById('ad-status');
             overlay.style.display = 'flex';
             
             const ok = await verifyAd();
-            status.innerText = ok ? "AD LOADED ✅" : "ADBLOCK DETECTED! ❌";
+            status.innerText  = ok ? "AD LOADED ✅" : "ADBLOCK DETECTED! ❌";
             status.style.color = ok ? "#00ff00" : "#ff4444";
 
             let timeLeft = 10;
@@ -325,3 +334,4 @@
     </script>
 </body>
 </html>
+
