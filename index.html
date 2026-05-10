@@ -39,9 +39,9 @@
         .progress-bar { width: 0%; height: 100%; background: #facc15; box-shadow: 0 0 15px #facc15; transition: width 0.03s linear; }
         .percent-text { margin-top: 10px; font-size: 14px; color: #8b949e; }
 
-        /* СТИЛИ ИГРЫ (MENU) */
+        /* ГЛАВНЫЙ КОНТЕНТ */
         #main-content {
-            display: none; /* Скрыто по умолчанию */
+            display: none;
             flex-direction: column;
             height: 100vh;
             height: 100dvh;
@@ -58,6 +58,11 @@
         }
         .amount { color: #ffffff; font-size: 20px; font-weight: bold; }
 
+        /* ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ */
+        .page { display: none; flex: 1; flex-direction: column; }
+        .active-page { display: flex; }
+
+        /* ИГРОВАЯ ЗОНА */
         .game-area { 
             flex: 1;
             display: flex; 
@@ -75,17 +80,35 @@
             box-shadow: 0 4px 0 #a16207; transition: transform 0.1s;
         }
 
+        /* КОШЕЛЕК */
+        .wallet-area { padding: 15px; text-align: left; overflow-y: auto; padding-bottom: 200px; }
+        .wallet-card {
+            background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px;
+            padding: 10px; margin-bottom: 8px; display: flex; align-items: center;
+        }
+        .card-icon { width: 35px; height: 35px; border-radius: 50%; margin-right: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .usdt-icon { background: #26a17b; color: white; }
+        .card-info h3 { margin: 0; font-size: 15px; }
+        .card-info p { margin: 2px 0; font-size: 10px; color: #facc15; }
+        
+        .withdraw-box {
+            background: #261e19; border: 1px solid #facc15; border-radius: 12px;
+            padding: 12px; margin-top: 5px;
+        }
+        .withdraw-box label { display: block; color: #facc15; font-size: 11px; margin-bottom: 4px; }
+        .withdraw-box input { 
+            width: 100%; background: #1a1613; border: 1px solid #3d2b1f; padding: 8px; 
+            color: white; border-radius: 5px; margin-bottom: 10px; box-sizing: border-box;
+            font-family: monospace; outline: none; font-size: 13px;
+        }
+        .withdraw-box .collect-btn { 
+            width: 100%; padding: 10px; font-size: 16px; box-shadow: none;
+        }
+
+        /* БАННЕР И НАВИГАЦИЯ */
         .banner-area {
-            position: fixed;
-            bottom: 80px;
-            left: 0;
-            width: 100%;
-            height: 100px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            background: rgba(0,0,0,0.1);
+            position: fixed; bottom: 80px; left: 0; width: 100%; height: 100px;
+            display: flex; justify-content: center; align-items: center; z-index: 100;
         }
 
         .nav-bar { 
@@ -98,6 +121,11 @@
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
 
+        .keyboard-open .banner-area, 
+        .keyboard-open .nav-bar {
+            display: none !important;
+        }
+
         #ad-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.98); z-index: 2000;
@@ -108,15 +136,10 @@
 <body>
 
     <div id="loading-screen">
-        <div class="logo-container">
-            <div class="logo"><span>₿</span></div>
-        </div>
+        <div class="logo-container"><div class="logo"><span>₿</span></div></div>
         <div class="loading-text">Loading Game...</div>
-        <div class="progress-container">
-            <div class="progress-bar" id="bar"></div>
-        </div>
+        <div class="progress-container"><div class="progress-bar" id="bar"></div></div>
         <div class="percent-text" id="percent">0%</div>
-        
         <div style="margin-top: 30px;">
             <iframe data-aa='2437151' src='https://acceptable.a-ads.com/2437151/?size=320x100' 
                     style='border:0; padding:0; width:320px; height:100px; overflow:hidden; background-color: transparent;'></iframe>
@@ -141,9 +164,33 @@
             <span class="amount" id="balance">0 Coins</span>
         </div>
 
-        <div class="game-area">
-            <div class="pickaxe">⛏️</div>
-            <button id="collect-btn" class="collect-btn" onclick="showAd()">Collect 25 Coins</button>
+        <div id="home-page" class="page active-page">
+            <div class="game-area">
+                <div class="pickaxe">⛏️</div>
+                <button id="collect-btn" class="collect-btn" onclick="showAd()">Collect 25 Coins</button>
+            </div>
+        </div>
+
+        <div id="wallet-page" class="page">
+            <div class="wallet-area">
+                <h3 style="color:#facc15; margin-bottom:12px; font-size: 16px;">Select Payment Platform</h3>
+                <div class="wallet-card" onclick="document.getElementById('wd-box').style.display='block'">
+                    <div class="card-icon usdt-icon">₮</div>
+                    <div class="card-info">
+                        <h3>USDT</h3>
+                        <p>via faucetpay</p>
+                        <span style="font-size:10px; color:#8b949e">Min: 200 | Max: 10000</span>
+                    </div>
+                </div>
+
+                <div id="wd-box" class="withdraw-box" style="display:none;">
+                    <label>Points to Convert</label>
+                    <input type="number" id="wd-points" placeholder="Min 200">
+                    <label>FaucetPay Email</label>
+                    <input type="email" id="wd-email" placeholder="example@mail.com">
+                    <button id="wd-button" class="collect-btn" style="width:100%; box-shadow:none;" onclick="handleWithdraw()">Withdraw USDT</button>
+                </div>
+            </div>
         </div>
 
         <div class="banner-area">
@@ -152,17 +199,17 @@
         </div>
 
         <div class="nav-bar">
-            <div class="nav-item active" onclick="location.reload()">
+            <div class="nav-item active" id="nav-home" onclick="showPage('home')">
                 <span class="nav-icon">🏠</span>Home
             </div>
-            <div class="nav-item" onclick="alert('Wallet coming soon!')">
+            <div class="nav-item" id="nav-wallet" onclick="showPage('wallet')">
                 <span class="nav-icon">👛</span>Wallet
             </div>
         </div>
     </div>
 
     <script>
-        // ЛОГИКА ЗАГРУЗКИ
+        // ЗАГРУЗКА
         const bar = document.getElementById('bar');
         const percentText = document.getElementById('percent');
         const loadingScreen = document.getElementById('loading-screen');
@@ -183,11 +230,64 @@
             percentText.innerText = progress + "%";
         }, 30);
 
-        // ЛОГИКА ИГРЫ
+        // БАЛАНС И НАВИГАЦИЯ
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         const balanceDisplay = document.getElementById('balance');
         balanceDisplay.innerText = coins + " Coins";
 
+        function showPage(page) {
+            document.getElementById('home-page').classList.toggle('active-page', page === 'home');
+            document.getElementById('wallet-page').classList.toggle('active-page', page === 'wallet');
+            document.getElementById('nav-home').classList.toggle('active', page === 'home');
+            document.getElementById('nav-wallet').classList.toggle('active', page === 'wallet');
+        }
+
+        // ЛОГИКА КЛАВИАТУРЫ
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => document.body.classList.add('keyboard-open'));
+            input.addEventListener('blur', () => document.body.classList.remove('keyboard-open'));
+        });
+
+        // ВЫВОД ЧЕРЕЗ VERCEL
+        async function handleWithdraw() {
+            const p = document.getElementById('wd-points').value;
+            const m = document.getElementById('wd-email').value;
+            const btn = document.getElementById('wd-button');
+
+            if(p < 200) return alert("Min 200!");
+            if(p > coins) return alert("Not enough coins!");
+            if(!m.includes('@')) return alert("Invalid Email!");
+
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+
+            try {
+                const response = await fetch('https://crypto-game-miner-github-io.vercel.app/api/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: m, points: p })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 200) {
+                    coins -= p;
+                    balanceDisplay.innerText = coins + " Coins";
+                    localStorage.setItem('miner_balance', coins);
+                    alert("Success! Check your FaucetPay.");
+                } else {
+                    alert("Error: " + (result.message || "Failed to pay. Check faucet balance."));
+                }
+            } catch (e) {
+                alert("Server error. Try again later.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Withdraw USDT";
+            }
+        }
+
+        // РЕКЛАМА
         async function verifyAd() {
             try {
                 await fetch('https://acceptable.a-ads.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
@@ -217,8 +317,6 @@
                         coins += 25;
                         balanceDisplay.innerText = coins + " Coins";
                         localStorage.setItem('miner_balance', coins);
-                    } else {
-                        alert("No coins for adblock users!");
                     }
                     btn.disabled = false;
                 }
