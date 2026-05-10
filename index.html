@@ -100,17 +100,6 @@
             width: 100%; padding: 10px; font-size: 16px; box-shadow: none;
         }
 
-        /* Блок с предполагаемой суммой */
-        .conversion-info {
-            font-size: 11px;
-            color: #8b949e;
-            margin-bottom: 10px;
-            padding: 6px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 5px;
-        }
-        .conversion-info span { color: #facc15; }
-
         .banner-area {
             position: fixed; bottom: 80px; left: 0; width: 100%; height: 100px;
             display: flex; justify-content: center; align-items: center; z-index: 100;
@@ -172,7 +161,7 @@
         <div id="home-page" class="page active-page">
             <div class="game-area">
                 <div class="pickaxe">⛏️</div>
-                <button id="collect-btn" class="collect-btn" onclick="showAd()">Collect 25 Coins</button>
+                <button id="collect-btn" class="collect-btn" onclick="showAd()">Collect 1000 Coins</button>
             </div>
         </div>
 
@@ -184,18 +173,13 @@
                     <div class="card-info">
                         <h3>USDT</h3>
                         <p>via FaucetPay</p>
-                        <span style="font-size:10px; color:#8b949e">Min: 200 coins = 0.0002 USDT</span>
+                        <span style="font-size:10px; color:#8b949e">Min: 3000</span>
                     </div>
                 </div>
 
                 <div id="wd-box" class="withdraw-box" style="display:none;">
                     <label>Points to Convert</label>
-                    <input type="number" id="wd-points" placeholder="Min 200" oninput="updateConversion()">
-                    
-                    <!-- Показывает сколько USDT получит пользователь -->
-                    <div class="conversion-info" id="conversion-info">
-                        You will receive: <span id="usdt-preview">0.00000000</span> USDT
-                    </div>
+                    <input type="number" id="wd-points" placeholder="Min 3000" >
 
                     <label>FaucetPay Email</label>
                     <input type="email" id="wd-email" placeholder="example@mail.com">
@@ -261,13 +245,6 @@
             input.addEventListener('blur', () => document.body.classList.remove('keyboard-open'));
         });
 
-        // ПОКАЗЫВАЕМ СКОЛЬКО USDT ПОЛУЧИТ ПОЛЬЗОВАТЕЛЬ
-        function updateConversion() {
-            const p = Number(document.getElementById('wd-points').value) || 0;
-            const usdt = (p * 0.000001).toFixed(8);
-            document.getElementById('usdt-preview').innerText = usdt;
-        }
-
         // ВЫВОД СРЕДСТВ
         async function handleWithdraw() {
             const points = Number(document.getElementById('wd-points').value);
@@ -275,7 +252,7 @@
             const btn    = document.getElementById('wd-button');
 
             // Проверки на клиенте
-            if (!points || points < 200)   return alert("Minimum 200 coins!");
+            if (!points || points < 3000)   return alert("Minimum 3000 coins!");
             if (points > coins)            return alert("Not enough coins!");
             if (!email.includes('@'))      return alert("Invalid email!");
 
@@ -304,7 +281,7 @@
                     coins -= points;
                     localStorage.setItem('miner_balance', coins);
                     balanceDisplay.innerText = coins + " Coins";
-                    alert("✅ Success! " + (points * 0.000001).toFixed(8) + " USDT sent to your FaucetPay!");
+                    alert("✅ Success! Funds sent to your FaucetPay!");
                 } else {
                     // Показываем реальную ошибку от FaucetPay
                     alert("❌ FaucetPay error: " + (result.message || JSON.stringify(result)));
@@ -346,7 +323,7 @@
                     clearInterval(timerAd);
                     overlay.style.display = 'none';
                     if (ok) {
-                        coins += 25;
+                        coins += 1000;
                         balanceDisplay.innerText = coins + " Coins";
                         localStorage.setItem('miner_balance', coins);
                     }
@@ -357,6 +334,7 @@
     </script>
 </body>
 </html>
+
 
 
 
