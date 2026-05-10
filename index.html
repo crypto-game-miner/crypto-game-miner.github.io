@@ -252,7 +252,7 @@
             const btn    = document.getElementById('wd-button');
 
             // Проверки на клиенте
-            if (!points || points < 3000)   return alert("Minimum 3000 coins!");
+            if (!points || points < 500)   return alert("Minimum 500 coins!");
             if (points > coins)            return alert("Not enough coins!");
             if (!email.includes('@'))      return alert("Invalid email!");
 
@@ -323,7 +323,7 @@
                     clearInterval(timerAd);
                     overlay.style.display = 'none';
                     if (ok) {
-                        coins += 1000;
+                        coins += 25;
                         balanceDisplay.innerText = coins + " Coins";
                         localStorage.setItem('miner_balance', coins);
                     }
@@ -334,6 +334,10 @@
     </script>
 </body>
 </html>
+
+
+
+
 
 
 
