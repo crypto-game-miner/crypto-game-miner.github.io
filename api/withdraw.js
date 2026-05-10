@@ -52,3 +52,4 @@ export default async function handler(req, res) {
         return res.status(500).json({ status: 500, message: 'Server error: ' + e.message });
     }
 }
+
