@@ -25,7 +25,7 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
-                api_key:  '59baea89fcbe1e709ae5e6a47ef22f47b2ca56f195b0cf25308733979f02b969',
+                api_key: process.env.FAUCETPAY_API_KEY,
                 currency: 'USDT',
                 amount:   amount,
                 to:       email,
