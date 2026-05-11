@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     }
 
     // 10 000 монет = 0.01 USDT
-    const amount = (points * 1).toFixed(8);
+    const amount = Math.round(points * 100);
 
     try {
         const fpResponse = await fetch('https://faucetpay.io/api/v1/send', {
