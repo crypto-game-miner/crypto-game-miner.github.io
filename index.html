@@ -162,6 +162,7 @@
             <div class="game-area">
                 <div class="pickaxe">⛏️</div>
                 <button id="collect-btn" class="collect-btn" onclick="showAd()">Collect 25 Coins</button>
+                <p id="claims-left" style="color:#8b949e; font-size:12px; margin-top:10px;"></p>
             </div>
         </div>
 
@@ -179,8 +180,7 @@
 
                 <div id="wd-box" class="withdraw-box" style="display:none;">
                     <label>Points to Convert</label>
-                    <input type="number" id="wd-points" placeholder="Min 500" >
-
+                    <input type="number" id="wd-points" placeholder="Min 500">
                     <label>FaucetPay Email</label>
                     <input type="email" id="wd-email" placeholder="example@mail.com">
                     <button id="wd-button" class="collect-btn" style="width:100%; box-shadow:none;" onclick="handleWithdraw()">Withdraw USDT</button>
@@ -219,6 +219,7 @@
                 setTimeout(() => {
                     loadingScreen.style.display = 'none';
                     mainContent.style.display = 'flex';
+                    updateClaimsLeft();
                 }, 200);
             }
             bar.style.width = progress + "%";
@@ -245,13 +246,31 @@
             input.addEventListener('blur', () => document.body.classList.remove('keyboard-open'));
         });
 
+        // СЧЁТЧИК ОСТАВШИХСЯ КЛИКОВ
+        function getClaimsToday() {
+            const today = new Date().toDateString();
+            const lastDay = localStorage.getItem('lastClaimDay');
+            if (lastDay !== today) {
+                localStorage.setItem('lastClaimDay', today);
+                localStorage.setItem('claimsToday', '0');
+                return 0;
+            }
+            return Number(localStorage.getItem('claimsToday')) || 0;
+        }
+
+        function updateClaimsLeft() {
+            const claimsToday = getClaimsToday();
+            const left = 20 - claimsToday;
+            const el = document.getElementById('claims-left');
+            if (el) el.innerText = left > 0 ? `Claims today: ${claimsToday}/20` : "Daily limit reached! Come back tomorrow.";
+        }
+
         // ВЫВОД СРЕДСТВ
         async function handleWithdraw() {
             const points = Number(document.getElementById('wd-points').value);
             const email  = document.getElementById('wd-email').value.trim();
             const btn    = document.getElementById('wd-button');
 
-            // Проверки на клиенте
             if (!points || points < 500)   return alert("Minimum 500 coins!");
             if (points > coins)            return alert("Not enough coins!");
             if (!email.includes('@'))      return alert("Invalid email!");
@@ -266,29 +285,24 @@
                     body: JSON.stringify({ email: email, points: points })
                 });
 
-                // Пробуем распарсить ответ сервера
                 let result;
                 try {
                     result = await response.json();
                 } catch {
-                    // Сервер вернул не-JSON — показываем статус
                     alert("Server returned unexpected response. HTTP " + response.status);
                     return;
                 }
 
-                // FaucetPay возвращает status: 200 при успехе
                 if (result.status === 200) {
                     coins -= points;
                     localStorage.setItem('miner_balance', coins);
                     balanceDisplay.innerText = coins + " Coins";
                     alert("✅ Success! Funds sent to your FaucetPay!");
                 } else {
-                    // Показываем реальную ошибку от FaucetPay
                     alert("❌ FaucetPay error: " + (result.message || JSON.stringify(result)));
                 }
 
             } catch (e) {
-                // Сюда попадаем только если сам fetch упал (нет сети, CORS и т.д.)
                 alert("❌ Network error: " + e.message + "\n\nCheck your internet connection.");
             } finally {
                 btn.disabled = false;
@@ -306,11 +320,26 @@
 
         async function showAd() {
             const btn = document.getElementById('collect-btn');
+
+            // ПРОВЕРКА ДНЕВНОГО ЛИМИТА
+            const today = new Date().toDateString();
+            const lastDay = localStorage.getItem('lastClaimDay');
+            const claimsToday = Number(localStorage.getItem('claimsToday')) || 0;
+
+            if (lastDay !== today) {
+                localStorage.setItem('lastClaimDay', today);
+                localStorage.setItem('claimsToday', '0');
+            }
+
+            if (claimsToday >= 20) {
+                return alert("Daily limit (20 claims) reached! Come back tomorrow.");
+            }
+
             btn.disabled = true;
             const overlay = document.getElementById('ad-overlay');
             const status  = document.getElementById('ad-status');
             overlay.style.display = 'flex';
-            
+
             const ok = await verifyAd();
             status.innerText  = ok ? "AD LOADED ✅" : "ADBLOCK DETECTED! ❌";
             status.style.color = ok ? "#00ff00" : "#ff4444";
@@ -326,6 +355,8 @@
                         coins += 25;
                         balanceDisplay.innerText = coins + " Coins";
                         localStorage.setItem('miner_balance', coins);
+                        localStorage.setItem('claimsToday', String(claimsToday + 1));
+                        updateClaimsLeft();
                     }
                     btn.disabled = false;
                 }
@@ -334,6 +365,7 @@
     </script>
 </body>
 </html>
+
 
 
 
