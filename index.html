@@ -145,8 +145,27 @@
             <div style="font-size: 40px;">💎</div>
             <h2 id="ad-status" style="color: #facc15;">VERIFYING...</h2>
             <div style="width: 300px; height: 250px; background: #000; margin: 10px 0; overflow: hidden; border: 1px solid #333;">
-                <iframe id="ad-frame" data-aa='2437151' src='https://acceptable.a-ads.com/2437151/?size=300x250'
-                        style='border:0; padding:0; width:300px; height:250px; display: block;'></iframe>
+                <div id="highpay-ad-CRYPTO-GAME-MINER-GITHUB-IO_GAME-AD_300X250" style="width:300px;height:250px;"></div>
+                <script>
+                (function() {
+                  var zone = 'CRYPTO-GAME-MINER-GITHUB-IO_GAME-AD_300X250';
+                  var container = document.getElementById('highpay-ad-' + zone);
+                  if (!container) return;
+                  function mountAdHtml(el, html) {
+                    el.innerHTML = html;
+                    el.querySelectorAll('script').forEach(function(oldScript) {
+                      var s = document.createElement('script');
+                      Array.from(oldScript.attributes).forEach(function(attr) { s.setAttribute(attr.name, attr.value); });
+                      s.textContent = oldScript.textContent;
+                      oldScript.parentNode.replaceChild(s, oldScript);
+                    });
+                  }
+                  fetch('https://highpay-ads.com/serve/' + zone)
+                    .then(function(r) { return r.text(); })
+                    .then(function(html) { if (html) mountAdHtml(container, html); })
+                    .catch(function() {});
+                })();
+                </script>
             </div>
             <p>Wait <span id="ad-timer" style="font-size: 20px; color: #facc15;">10</span>s</p>
         </div>
@@ -365,6 +384,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
