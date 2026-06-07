@@ -4,131 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Crypto Miner</title>
-    
     <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #1a1613;
-            -webkit-user-select: none;
-            color: white; 
-            font-family: 'Courier New', Courier, monospace; 
-        }
-
-        #loading-screen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: #0d1117;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-        
-        .logo-container { margin-bottom: 30px; position: relative; }
-        .logo { width: 100px; height: 100px; border: 4px double #facc15; display: flex; align-items: center; justify-content: center; transform: rotate(45deg); box-shadow: 0 0 20px rgba(250, 204, 21, 0.2); }
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #0d1117; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+        .logo-container { margin-bottom: 30px; }
+        .logo { width: 100px; height: 100px; border: 4px double #facc15; display: flex; align-items: center; justify-content: center; transform: rotate(45deg); box-shadow: 0 0 20px rgba(250,204,21,0.2); }
         .logo span { transform: rotate(-45deg); font-size: 40px; font-weight: bold; color: #facc15; }
-
         .loading-text { font-size: 22px; margin-bottom: 20px; letter-spacing: 1px; color: #facc15; }
-        .progress-container { width: 80%; max-width: 300px; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 10px; overflow: hidden; }
+        .progress-container { width: 80%; max-width: 300px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
         .progress-bar { width: 0%; height: 100%; background: #facc15; box-shadow: 0 0 15px #facc15; transition: width 0.03s linear; }
         .percent-text { margin-top: 10px; font-size: 14px; color: #8b949e; }
-
-        #main-content {
-            display: none;
-            flex-direction: column;
-            height: 100vh;
-            height: 100dvh;
-            text-align: center;
-        }
-
+        #main-content { display: none; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
-        
-        .balance-container { 
-            background: rgba(0, 0, 0, 0.4); margin: 5px 20px; padding: 12px; 
-            border-radius: 10px; border: 2px solid #3d2b1f; 
-            display: flex; justify-content: space-between; align-items: center;
-            flex-shrink: 0;
-        }
+        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .amount { color: #ffffff; font-size: 20px; font-weight: bold; }
-
-        .page { display: none; flex: 1; flex-direction: column; }
-        .active-page { display: flex; }
-
-        .game-area { 
-            flex: 1;
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center;
-            padding-bottom: 200px; 
-        }
-        
-        .pickaxe { font-size: 90px; margin-bottom: 10px; filter: drop-shadow(0 0 15px rgba(250,204,21,0.2)); }
-
-        .collect-btn { 
-            background: #facc15; color: #1a1613; border: none; padding: 15px 40px; 
-            border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; 
-            box-shadow: 0 4px 0 #a16207; transition: transform 0.1s;
-        }
-
-        .wallet-area { padding: 15px; text-align: left; overflow-y: auto; padding-bottom: 200px; }
-        .wallet-card {
-            background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px;
-            padding: 10px; margin-bottom: 8px; display: flex; align-items: center;
-            cursor: pointer;
-        }
-        .card-icon { width: 35px; height: 35px; border-radius: 50%; margin-right: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-        .usdt-icon { background: #26a17b; color: white; }
-        .card-info h3 { margin: 0; font-size: 15px; }
-        .card-info p { margin: 2px 0; font-size: 10px; color: #facc15; }
-        
-        .withdraw-box {
-            background: #261e19; border: 1px solid #facc15; border-radius: 12px;
-            padding: 12px; margin-top: 5px;
-        }
-        .withdraw-box label { display: block; color: #facc15; font-size: 11px; margin-bottom: 4px; }
-        .withdraw-box input { 
-            width: 100%; background: #1a1613; border: 1px solid #3d2b1f; padding: 8px; 
-            color: white; border-radius: 5px; margin-bottom: 10px; box-sizing: border-box;
-            font-family: monospace; outline: none; font-size: 13px;
-        }
-        .withdraw-box .collect-btn { 
-            width: 100%; padding: 10px; font-size: 16px; box-shadow: none;
-        }
-
-        .banner-area {
-            position: fixed; bottom: 80px; left: 0; width: 100%; height: 100px;
-            display: flex; justify-content: center; align-items: center; z-index: 100;
-        }
-
-        .nav-bar { 
-            position: fixed; bottom: 0; left: 0; right: 0; height: 70px;
-            background: #000; display: flex; justify-content: space-around; 
-            align-items: center; border-top: 1px solid #333; z-index: 999;
-            padding-bottom: env(safe-area-inset-bottom);
-        }
+        .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 200px; }
+        .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 15px 40px; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 #a16207; transition: transform 0.1s; }
+        .banner-area { position: fixed; bottom: 80px; left: 0; width: 100%; height: 100px; display: flex; justify-content: center; align-items: center; z-index: 100; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 50%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
-
-        .keyboard-open .banner-area, 
-        .keyboard-open .nav-bar {
-            display: none !important;
-        }
-
-        #ad-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.98); z-index: 2000;
-            flex-direction: column; align-items: center; justify-content: center;
-        }
+        #ad-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
-
     <div id="loading-screen">
         <div class="logo-container"><div class="logo"><span>₿</span></div></div>
         <div class="loading-text">Loading Game...</div>
@@ -136,9 +36,8 @@
         <div class="percent-text" id="percent">0%</div>
         <div style="margin-top: 30px;">
             <!-- BEGIN AADS AD UNIT 2442138 -->
-            <div id="frame" style="width: 100%;margin: auto;position: relative; z-index: 99998;">
-                <iframe data-aa='2442138' src='//acceptable.a-ads.com/2442138/?size=Adaptive'
-                    style='border:0; padding:0; width:70%; height:auto; overflow:hidden;display: block;margin: auto'></iframe>
+            <div id="frame" style="width:100%;margin:auto;position:relative;z-index:99998;">
+                <iframe data-aa='2442138' src='//acceptable.a-ads.com/2442138/?size=Adaptive' style='border:0;padding:0;width:70%;height:auto;overflow:hidden;display:block;margin:auto'></iframe>
             </div>
             <!-- END AADS AD UNIT 2442138 -->
         </div>
@@ -175,64 +74,37 @@
         </div>
 
         <div class="header">Crypto Miner</div>
-
         <div class="balance-container">
             <span style="color: #facc15;">Balance</span>
             <span class="amount" id="balance">0 Coins</span>
         </div>
 
-        <div id="home-page" class="page active-page">
-            <div class="game-area">
-                <div class="pickaxe">⛏️</div>
-                <button id="collect-btn" class="collect-btn" onclick="showAd()">Collect 25 Coins</button>
-                <p id="claims-left" style="color:#8b949e; font-size:12px; margin-top:10px;"></p>
-            </div>
+        <div class="game-area">
+            <div style="font-size: 90px; margin-bottom: 10px; filter: drop-shadow(0 0 15px rgba(250,204,21,0.2));">⛏️</div>
+            <button id="collect-btn" class="collect-btn" onclick="showAd()">Collect 25 Coins</button>
+            <p id="claims-left" style="color:#8b949e; font-size:12px; margin-top:10px;"></p>
         </div>
 
-        <div id="wallet-page" class="page">
-            <div class="wallet-area">
-                <h3 style="color:#facc15; margin-bottom:12px; font-size: 16px;">Select Payment Platform</h3>
-                <div class="wallet-card" onclick="document.getElementById('wd-box').style.display='block'">
-                    <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" style="width:35px;height:35px;margin-right:12px;">
-                    <div class="card-info">
-                        <h3>USDT</h3>
-                        <p>via FaucetPay</p>
-                        <span style="font-size:10px; color:#8b949e">Min: 500</span>
-                    </div>
-                </div>
-
-                <div id="wd-box" class="withdraw-box" style="display:none;">
-                    <label>Points to Convert</label>
-                    <input type="number" id="wd-points" placeholder="Min 500">
-                    <label>FaucetPay Email</label>
-                    <input type="email" id="wd-email" placeholder="example@mail.com">
-                    <button id="wd-button" class="collect-btn" style="width:100%; box-shadow:none;" onclick="handleWithdraw()">Withdraw USDT</button>
-                </div>
-            </div>
-        </div>
-
+        <!-- БАННЕР #2437151 — только на Home -->
         <div class="banner-area">
-            <iframe data-aa='2437151' src='https://acceptable.a-ads.com/2437151/?size=Adaptive' 
-                    style='border:0; padding:0; width:100%; height:100px; overflow:hidden; background-color: transparent;'></iframe>
+            <iframe data-aa='2437151' src='https://acceptable.a-ads.com/2437151/?size=Adaptive' style='border:0;padding:0;width:100%;height:100px;overflow:hidden;background-color:transparent;'></iframe>
         </div>
 
         <div class="nav-bar">
-            <div class="nav-item active" id="nav-home" onclick="showPage('home')">
+            <div class="nav-item active">
                 <span class="nav-icon">🏠</span>Home
             </div>
-            <div class="nav-item" id="nav-wallet" onclick="showPage('wallet')">
+            <a href="wallet.html" class="nav-item">
                 <span class="nav-icon">👛</span>Wallet
-            </div>
+            </a>
         </div>
     </div>
 
     <script>
-        // ЗАГРУЗКА
         const bar = document.getElementById('bar');
         const percentText = document.getElementById('percent');
         const loadingScreen = document.getElementById('loading-screen');
         const mainContent = document.getElementById('main-content');
-        
         let progress = 0;
         const timer = setInterval(() => {
             progress++;
@@ -249,27 +121,10 @@
             percentText.innerText = progress + "%";
         }, 30);
 
-        // БАЛАНС
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         const balanceDisplay = document.getElementById('balance');
         balanceDisplay.innerText = coins + " Coins";
 
-        // НАВИГАЦИЯ
-        function showPage(page) {
-            document.getElementById('home-page').classList.toggle('active-page', page === 'home');
-            document.getElementById('wallet-page').classList.toggle('active-page', page === 'wallet');
-            document.getElementById('nav-home').classList.toggle('active', page === 'home');
-            document.getElementById('nav-wallet').classList.toggle('active', page === 'wallet');
-        }
-
-        // КЛАВИАТУРА
-        const inputs = document.querySelectorAll('input');
-        inputs.forEach(input => {
-            input.addEventListener('focus', () => document.body.classList.add('keyboard-open'));
-            input.addEventListener('blur', () => document.body.classList.remove('keyboard-open'));
-        });
-
-        // СЧЁТЧИК ОСТАВШИХСЯ КЛИКОВ
         function getClaimsToday() {
             const today = new Date().toDateString();
             const lastDay = localStorage.getItem('lastClaimDay');
@@ -283,57 +138,10 @@
 
         function updateClaimsLeft() {
             const claimsToday = getClaimsToday();
-            const left = 20 - claimsToday;
             const el = document.getElementById('claims-left');
-            if (el) el.innerText = left > 0 ? `Claims today: ${claimsToday}/20` : "Daily limit reached! Come back tomorrow.";
+            if (el) el.innerText = claimsToday < 20 ? `Claims today: ${claimsToday}/20` : "Daily limit reached! Come back tomorrow.";
         }
 
-        // ВЫВОД СРЕДСТВ
-        async function handleWithdraw() {
-            const points = Number(document.getElementById('wd-points').value);
-            const email  = document.getElementById('wd-email').value.trim();
-            const btn    = document.getElementById('wd-button');
-
-            if (!points || points < 500)   return alert("Minimum 500 coins!");
-            if (points > coins)            return alert("Not enough coins!");
-            if (!email.includes('@'))      return alert("Invalid email!");
-
-            btn.disabled = true;
-            btn.innerText = "Processing...";
-
-            try {
-                const response = await fetch('https://crypto-game-miner-github-io.vercel.app/api/withdraw', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email, points: points })
-                });
-
-                let result;
-                try {
-                    result = await response.json();
-                } catch {
-                    alert("Server returned unexpected response. HTTP " + response.status);
-                    return;
-                }
-
-                if (result.status === 200) {
-                    coins -= points;
-                    localStorage.setItem('miner_balance', coins);
-                    balanceDisplay.innerText = coins + " Coins";
-                    alert("✅ Success! Funds sent to your FaucetPay!");
-                } else {
-                    alert("❌ FaucetPay error: " + (result.message || JSON.stringify(result)));
-                }
-
-            } catch (e) {
-                alert("❌ Network error: " + e.message + "\n\nCheck your internet connection.");
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Withdraw USDT";
-            }
-        }
-
-        // РЕКЛАМА
         async function verifyAd() {
             try {
                 await fetch('https://acceptable.a-ads.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
@@ -343,30 +151,21 @@
 
         async function showAd() {
             const btn = document.getElementById('collect-btn');
-
-            // ПРОВЕРКА ДНЕВНОГО ЛИМИТА
             const today = new Date().toDateString();
             const lastDay = localStorage.getItem('lastClaimDay');
             const claimsToday = Number(localStorage.getItem('claimsToday')) || 0;
-
             if (lastDay !== today) {
                 localStorage.setItem('lastClaimDay', today);
                 localStorage.setItem('claimsToday', '0');
             }
-
-            if (claimsToday >= 20) {
-                return alert("Daily limit (20 claims) reached! Come back tomorrow.");
-            }
-
+            if (claimsToday >= 20) return alert("Daily limit (20 claims) reached! Come back tomorrow.");
             btn.disabled = true;
             const overlay = document.getElementById('ad-overlay');
-            const status  = document.getElementById('ad-status');
+            const status = document.getElementById('ad-status');
             overlay.style.display = 'flex';
-
             const ok = await verifyAd();
-            status.innerText  = ok ? "AD LOADED ✅" : "ADBLOCK DETECTED! ❌";
+            status.innerText = ok ? "AD LOADED ✅" : "ADBLOCK DETECTED! ❌";
             status.style.color = ok ? "#00ff00" : "#ff4444";
-
             let timeLeft = 10;
             const timerAd = setInterval(() => {
                 timeLeft--;
@@ -388,6 +187,7 @@
     </script>
 </body>
 </html>
+>
 
 
 
