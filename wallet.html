@@ -9,8 +9,8 @@
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
         .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
-        .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
-        .balance-row:first-child { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 8px; }
+        .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+        .balance-row:first-child { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
         .wallet-area { padding: 15px; text-align: left; overflow-y: auto; padding-bottom: 350px; flex: 1; }
         .wallet-card { background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px; padding: 10px; margin-bottom: 8px; display: flex; align-items: center; cursor: pointer; }
         .card-info h3 { margin: 0; font-size: 15px; }
@@ -19,7 +19,7 @@
         .withdraw-box label { display: block; color: #facc15; font-size: 11px; margin-bottom: 4px; }
         .withdraw-box input { width: 100%; background: #1a1613; border: 1px solid #3d2b1f; padding: 8px; color: white; border-radius: 5px; margin-bottom: 10px; box-sizing: border-box; font-family: monospace; outline: none; font-size: 13px; }
         .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 15px 40px; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 #a16207; }
-        .banner-area { position: fixed; bottom: 70px; left: 0; width: 100%; height: 250px; display: flex; justify-content: center; align-items: center; z-index: 100; }
+        .banner-area { position: fixed; bottom: 70px; left: 0; width: 100%; height: 100px; display: flex; justify-content: center; align-items: center; z-index: 100; }
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 33%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
@@ -33,11 +33,11 @@
         <div class="header">Wallet</div>
         <div class="balance-container">
             <div class="balance-row">
-                <span style="color:#facc15;">🪙 Coins</span>
+                <span style="color:#facc15;">Coins</span>
                 <span style="font-weight:bold;" id="balance">0</span>
             </div>
             <div class="balance-row">
-                <span style="color:#a78bfa;">Ł LTC Coins</span>
+                <span style="color:#a78bfa;">LTC Coins</span>
                 <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0</span>
             </div>
         </div>
@@ -45,7 +45,6 @@
         <div class="wallet-area">
             <h3 style="color:#facc15; margin-bottom:12px; font-size: 16px;">Select Payment Platform</h3>
 
-            <!-- USDT -->
             <div class="wallet-card" onclick="toggleBox('usdt-box', 'ltc-box')">
                 <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" style="width:35px;height:35px;margin-right:12px;">
                 <div class="card-info">
@@ -62,7 +61,6 @@
                 <button class="collect-btn" style="width:100%;box-shadow:none;padding:10px;font-size:16px;" onclick="handleWithdraw('usdt')">Withdraw USDT</button>
             </div>
 
-            <!-- LTC -->
             <div class="wallet-card" style="margin-top:8px;" onclick="toggleBox('ltc-box', 'usdt-box')">
                 <img src="https://cryptologos.cc/logos/litecoin-ltc-logo.svg" style="width:35px;height:35px;margin-right:12px;">
                 <div class="card-info">
@@ -80,8 +78,9 @@
             </div>
         </div>
 
+        <!-- AADS баннер -->
         <div class="banner-area">
-            <iframe src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
+            <iframe data-aa='2442402' src='https://acceptable.a-ads.com/2442402/?size=Adaptive' style='border:0;padding:0;width:100%;height:100px;overflow:hidden;background-color:transparent;'></iframe>
         </div>
 
         <div class="nav-bar">
