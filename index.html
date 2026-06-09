@@ -21,10 +21,6 @@
     </style>
 </head>
 <body>
-
-    <!-- ZerAds Popup -->
-    <iframe src="https://zerads.com/ad/pop.php?ref=11364" marginwidth="0" marginheight="0" width="0" height="0" scrolling="no" border="0" frameborder="0"></iframe>
-
     <div id="main-content">
         <div id="ad-overlay">
             <div style="font-size: 40px;">💎</div>
@@ -124,6 +120,7 @@
             }
             if (claimsToday >= 20) return alert("Daily limit (20 claims) reached! Come back tomorrow.");
             btn.disabled = true;
+            window.open('https://zerads.com/ad/pop.php?ref=11364', '_blank');
             const overlay = document.getElementById('ad-overlay');
             const status = document.getElementById('ad-status');
             overlay.style.display = 'flex';
