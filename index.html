@@ -63,7 +63,6 @@
             <p id="claims-left" style="color:#8b949e; font-size:12px; margin-top:10px;"></p>
         </div>
 
-        <!-- БАННЕР ZerAds -->
         <div class="banner-area">
             <iframe src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
         </div>
@@ -80,6 +79,8 @@
 
     <script>
         updateClaimsLeft();
+
+        const POPUP_ON = [1, 5, 10, 15, 20];
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         const balanceDisplay = document.getElementById('balance');
@@ -113,14 +114,20 @@
             const btn = document.getElementById('collect-btn');
             const today = new Date().toDateString();
             const lastDay = localStorage.getItem('lastClaimDay');
-            const claimsToday = Number(localStorage.getItem('claimsToday')) || 0;
+            let claimsToday = Number(localStorage.getItem('claimsToday')) || 0;
             if (lastDay !== today) {
                 localStorage.setItem('lastClaimDay', today);
                 localStorage.setItem('claimsToday', '0');
+                claimsToday = 0;
             }
             if (claimsToday >= 20) return alert("Daily limit (20 claims) reached! Come back tomorrow.");
             btn.disabled = true;
-            window.open('https://zerads.com/ad/pop.php?ref=11364', '_blank');
+
+            const nextClaim = claimsToday + 1;
+            if (POPUP_ON.includes(nextClaim)) {
+                window.open('https://zerads.com/ad/pop.php?ref=11364', '_blank');
+            }
+
             const overlay = document.getElementById('ad-overlay');
             const status = document.getElementById('ad-status');
             overlay.style.display = 'flex';
@@ -138,7 +145,7 @@
                         coins += 25;
                         balanceDisplay.innerText = coins + " Coins";
                         localStorage.setItem('miner_balance', coins);
-                        localStorage.setItem('claimsToday', String(claimsToday + 1));
+                        localStorage.setItem('claimsToday', String(nextClaim));
                         updateClaimsLeft();
                     }
                     btn.disabled = false;
