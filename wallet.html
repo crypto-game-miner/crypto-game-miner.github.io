@@ -8,9 +8,9 @@
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
-        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .balance-coins { display: flex; align-items: center; gap: 12px; }
-        .balance-item { display: flex; align-items: center; gap: 5px; font-size: 18px; font-weight: bold; }
+        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
+        .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+        .balance-row:first-child { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 8px; }
         .wallet-area { padding: 15px; text-align: left; overflow-y: auto; padding-bottom: 350px; flex: 1; }
         .wallet-card { background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px; padding: 10px; margin-bottom: 8px; display: flex; align-items: center; cursor: pointer; }
         .card-info h3 { margin: 0; font-size: 15px; }
@@ -32,10 +32,13 @@
     <div id="main-content">
         <div class="header">Wallet</div>
         <div class="balance-container">
-            <span style="color: #facc15;">Balance</span>
-            <div class="balance-coins">
-                <div class="balance-item">🪙 <span id="balance">0</span></div>
-                <div class="balance-item" style="color: #a78bfa;">Ł <span id="ltc-balance">0.00000000</span></div>
+            <div class="balance-row">
+                <span style="color:#facc15;">🪙 Coins</span>
+                <span style="font-weight:bold;" id="balance">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#a78bfa;">Ł LTC Coins</span>
+                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0</span>
             </div>
         </div>
 
@@ -48,11 +51,11 @@
                 <div class="card-info">
                     <h3>USDT</h3>
                     <p>via FaucetPay</p>
-                    <span style="font-size:10px; color:#8b949e">Min: 500 coins</span>
+                    <span style="font-size:10px; color:#8b949e">Min: 500 Coins</span>
                 </div>
             </div>
             <div id="usdt-box" class="withdraw-box">
-                <label>Points to Convert</label>
+                <label>Coins to Convert</label>
                 <input type="number" id="wd-points-usdt" placeholder="Min 500">
                 <label>FaucetPay Email</label>
                 <input type="email" id="wd-email-usdt" placeholder="example@mail.com">
@@ -65,11 +68,11 @@
                 <div class="card-info">
                     <h3>Litecoin (LTC)</h3>
                     <p>via FaucetPay</p>
-                    <span style="font-size:10px; color:#8b949e">Min: 1000 coins = 0.00001 LTC</span>
+                    <span style="font-size:10px; color:#8b949e">Min: 1000 LTC Coins</span>
                 </div>
             </div>
             <div id="ltc-box" class="withdraw-box">
-                <label>Points to Convert</label>
+                <label>LTC Coins to Withdraw</label>
                 <input type="number" id="wd-points-ltc" placeholder="Min 1000">
                 <label>FaucetPay Email</label>
                 <input type="email" id="wd-email-ltc" placeholder="example@mail.com">
@@ -96,8 +99,9 @@
 
     <script>
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let ltcCoins = Number(localStorage.getItem('ltc_balance')) || 0;
         document.getElementById('balance').innerText = coins;
-        document.getElementById('ltc-balance').innerText = (coins * 0.00000001).toFixed(8);
+        document.getElementById('ltc-balance').innerText = ltcCoins;
 
         function toggleBox(showId, hideId) {
             const show = document.getElementById(showId);
@@ -119,10 +123,11 @@
             const points   = Number(pointsEl.value);
             const email    = emailEl.value.trim();
             const minCoins = type === 'usdt' ? 500 : 1000;
+            const balance  = type === 'usdt' ? coins : ltcCoins;
 
-            if (!points || points < minCoins) return alert("Minimum " + minCoins + " coins!");
-            if (points > coins)              return alert("Not enough coins!");
-            if (!email.includes('@'))        return alert("Invalid email!");
+            if (!points || points < minCoins) return alert("Minimum " + minCoins + (type === 'usdt' ? " Coins!" : " LTC Coins!"));
+            if (points > balance)             return alert("Not enough " + (type === 'usdt' ? "Coins!" : "LTC Coins!"));
+            if (!email.includes('@'))         return alert("Invalid email!");
 
             btn.disabled = true;
             btn.innerText = "Processing...";
@@ -138,10 +143,15 @@
                 catch { alert("Server returned unexpected response. HTTP " + response.status); return; }
 
                 if (result.status === 200) {
-                    coins -= points;
-                    localStorage.setItem('miner_balance', coins);
-                    document.getElementById('balance').innerText = coins;
-                    document.getElementById('ltc-balance').innerText = (coins * 0.00000001).toFixed(8);
+                    if (type === 'usdt') {
+                        coins -= points;
+                        localStorage.setItem('miner_balance', coins);
+                        document.getElementById('balance').innerText = coins;
+                    } else {
+                        ltcCoins -= points;
+                        localStorage.setItem('ltc_balance', ltcCoins);
+                        document.getElementById('ltc-balance').innerText = ltcCoins;
+                    }
                     alert("✅ Success! Funds sent to your FaucetPay!");
                 } else {
                     alert("❌ FaucetPay error: " + (result.message || JSON.stringify(result)));
