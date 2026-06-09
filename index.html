@@ -27,7 +27,27 @@
             <div style="font-size: 40px;">💎</div>
             <h2 id="ad-status" style="color: #facc15;">VERIFYING...</h2>
             <div style="margin: 10px 0;">
-                <iframe src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
+                <div id="highpay-ad-CRYPTO-GAME-MINER-GITHUB-IO_GAME-AD_300X250" style="width:300px;height:250px;"></div>
+                <script>
+                (function() {
+                  var zone = 'CRYPTO-GAME-MINER-GITHUB-IO_GAME-AD_300X250';
+                  var container = document.getElementById('highpay-ad-' + zone);
+                  if (!container) return;
+                  function mountAdHtml(el, html) {
+                    el.innerHTML = html;
+                    el.querySelectorAll('script').forEach(function(oldScript) {
+                      var s = document.createElement('script');
+                      Array.from(oldScript.attributes).forEach(function(attr) { s.setAttribute(attr.name, attr.value); });
+                      s.textContent = oldScript.textContent;
+                      oldScript.parentNode.replaceChild(s, oldScript);
+                    });
+                  }
+                  fetch('https://highpay-ads.com/serve/' + zone)
+                    .then(function(r) { return r.text(); })
+                    .then(function(html) { if (html) mountAdHtml(container, html); })
+                    .catch(function() {});
+                })();
+                </script>
             </div>
             <p>Wait <span id="ad-timer" style="font-size: 20px; color: #facc15;">10</span>s</p>
         </div>
