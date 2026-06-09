@@ -15,7 +15,7 @@
         .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 15px 40px; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 #a16207; transition: transform 0.1s; }
         .banner-area { position: fixed; bottom: 70px; left: 0; width: 100%; height: 250px; display: flex; justify-content: center; align-items: center; z-index: 100; }
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
-        .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 33%; cursor: pointer; }
+        .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
         .nav-item.disabled { color: #3d3d3d; cursor: not-allowed; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
@@ -81,6 +81,9 @@
             </div>
             <div class="nav-item active">
                 <span class="nav-icon">🚰</span>Faucet
+            </div>
+            <div class="nav-item disabled" onclick="alert('Coming soon!')">
+                <span class="nav-icon">📋</span>Tasks
             </div>
             <a href="wallet.html" class="nav-item">
                 <span class="nav-icon">👛</span>Wallet
