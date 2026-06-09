@@ -11,9 +11,9 @@
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
         .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .amount { color: #ffffff; font-size: 20px; font-weight: bold; }
-        .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 200px; }
+        .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 330px; }
         .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 15px 40px; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 #a16207; transition: transform 0.1s; }
-        .banner-area { position: fixed; bottom: 80px; left: 0; width: 100%; height: 100px; display: flex; justify-content: center; align-items: center; z-index: 100; }
+        .banner-area { position: fixed; bottom: 70px; left: 0; width: 100%; height: 250px; display: flex; justify-content: center; align-items: center; z-index: 100; }
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 50%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
@@ -22,34 +22,12 @@
     </style>
 </head>
 <body>
-
-
     <div id="main-content">
         <div id="ad-overlay">
             <div style="font-size: 40px;">💎</div>
             <h2 id="ad-status" style="color: #facc15;">VERIFYING...</h2>
             <div style="margin: 10px 0;">
-                <div id="highpay-ad-CRYPTO-GAME-MINER-GITHUB-IO_GAME-AD_300X250" style="width:300px;height:250px;"></div>
-                <script>
-                (function() {
-                  var zone = 'CRYPTO-GAME-MINER-GITHUB-IO_GAME-AD_300X250';
-                  var container = document.getElementById('highpay-ad-' + zone);
-                  if (!container) return;
-                  function mountAdHtml(el, html) {
-                    el.innerHTML = html;
-                    el.querySelectorAll('script').forEach(function(oldScript) {
-                      var s = document.createElement('script');
-                      Array.from(oldScript.attributes).forEach(function(attr) { s.setAttribute(attr.name, attr.value); });
-                      s.textContent = oldScript.textContent;
-                      oldScript.parentNode.replaceChild(s, oldScript);
-                    });
-                  }
-                  fetch('https://highpay-ads.com/serve/' + zone)
-                    .then(function(r) { return r.text(); })
-                    .then(function(html) { if (html) mountAdHtml(container, html); })
-                    .catch(function() {});
-                })();
-                </script>
+                <iframe src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
             </div>
             <p>Wait <span id="ad-timer" style="font-size: 20px; color: #facc15;">10</span>s</p>
         </div>
@@ -66,9 +44,9 @@
             <p id="claims-left" style="color:#8b949e; font-size:12px; margin-top:10px;"></p>
         </div>
 
-        <!-- БАННЕР #2442400 — только на Home -->
+        <!-- БАННЕР ZerAds — только на Home -->
         <div class="banner-area">
-            <iframe data-aa='2442400' src='https://acceptable.a-ads.com/2442400/?size=Adaptive' style='border:0;padding:0;width:100%;height:100px;overflow:hidden;background-color:transparent;'></iframe>
+            <iframe src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
         </div>
 
         <div class="nav-bar">
@@ -82,7 +60,7 @@
     </div>
 
     <script>
-updateClaimsLeft();
+        updateClaimsLeft();
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         const balanceDisplay = document.getElementById('balance');
@@ -107,7 +85,7 @@ updateClaimsLeft();
 
         async function verifyAd() {
             try {
-                await fetch('https://acceptable.a-ads.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
+                await fetch('https://zerads.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
                 return true;
             } catch { return false; }
         }
