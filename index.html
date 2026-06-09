@@ -8,8 +8,9 @@
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
-        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .amount { color: #ffffff; font-size: 20px; font-weight: bold; }
+        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
+        .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+        .balance-row:first-child { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
         .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 330px; }
         .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 15px 40px; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 #a16207; transition: transform 0.1s; }
         .banner-area { position: fixed; bottom: 70px; left: 0; width: 100%; height: 250px; display: flex; justify-content: center; align-items: center; z-index: 100; }
@@ -54,8 +55,14 @@
 
         <div class="header">Faucet</div>
         <div class="balance-container">
-            <span style="color: #facc15;">Balance</span>
-            <span class="amount" id="balance">0 Coins</span>
+            <div class="balance-row">
+                <span style="color:#facc15;">Coins</span>
+                <span style="font-weight:bold;" id="balance">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#a78bfa;">LTC Coins</span>
+                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0</span>
+            </div>
         </div>
 
         <div class="game-area">
@@ -87,8 +94,9 @@
         const POPUP_ON = [1];
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
-        const balanceDisplay = document.getElementById('balance');
-        balanceDisplay.innerText = coins + " Coins";
+        let ltcCoins = Number(localStorage.getItem('ltc_balance')) || 0;
+        document.getElementById('balance').innerText = coins;
+        document.getElementById('ltc-balance').innerText = ltcCoins;
 
         function getClaimsToday() {
             const today = new Date().toDateString();
@@ -147,7 +155,7 @@
                     overlay.style.display = 'none';
                     if (ok) {
                         coins += 25;
-                        balanceDisplay.innerText = coins + " Coins";
+                        document.getElementById('balance').innerText = coins;
                         localStorage.setItem('miner_balance', coins);
                         localStorage.setItem('claimsToday', String(nextClaim));
                         updateClaimsLeft();
