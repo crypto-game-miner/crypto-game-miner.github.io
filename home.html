@@ -24,6 +24,9 @@
         .mining-stat:last-child { border-bottom: none; }
         .mining-label { color: #8b949e; font-size: 12px; }
         .mining-value { color: #a78bfa; font-size: 14px; font-weight: bold; }
+        .warning-card { background: rgba(239,68,68,0.15); border: 2px solid #ef4444; border-radius: 12px; padding: 12px 15px; margin-bottom: 15px; display: none; }
+        .warning-text { color: #ef4444; font-size: 13px; font-weight: bold; }
+        .warning-sub { color: #8b949e; font-size: 11px; margin-top: 4px; }
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
@@ -46,6 +49,11 @@
         </div>
 
         <div class="main-area">
+            <div class="warning-card" id="warning-card">
+                <div class="warning-text">⚠️ Mining Paused!</div>
+                <div class="warning-sub">You haven't collected in 24h. Go to Faucet to resume mining.</div>
+            </div>
+
             <div class="level-card">
                 <div class="level-title">⚡ Level <span id="level-num">1</span></div>
                 <div class="level-subtitle">Complete tasks and collect to level up!</div>
@@ -94,20 +102,16 @@
 
     <script>
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
-        const LTC_PER_SEC_PER_GH = 1 / 3600; // 1 LTC coin per hour per 0.5 GH/s... = 2/3600 per GH
-        
+
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         let exp = Number(localStorage.getItem('player_exp')) || 0;
-        let hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
         let sessionMined = 0;
 
         document.getElementById('balance').innerText = coins;
-        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
 
         function getLevel(exp) {
-            let level = 1;
-            let totalExp = 0;
+            let level = 1, totalExp = 0;
             for (let i = 0; i < EXP_PER_LEVEL.length; i++) {
                 if (exp >= totalExp + EXP_PER_LEVEL[i]) {
                     totalExp += EXP_PER_LEVEL[i];
@@ -119,31 +123,46 @@
             return { level, currentExp: exp, needed: 'MAX' };
         }
 
-        function updateLevel() {
-            const { level, currentExp, needed } = getLevel(exp);
-            // Даём 0.5 GH/s на уровне 2
-            const newHashrate = level >= 2 ? 0.5 : 0;
-            if (newHashrate !== hashrate) {
-                hashrate = newHashrate;
-                localStorage.setItem('hashrate', hashrate);
-            }
-            document.getElementById('level-num').innerText = level;
-            document.getElementById('exp-current').innerText = currentExp;
-            document.getElementById('exp-needed').innerText = needed;
-            document.getElementById('hashrate').innerText = hashrate + ' GH/s';
-            document.getElementById('ltc-per-hour').innerText = hashrate > 0 ? (hashrate * 2).toFixed(1) : 0;
-            document.getElementById('mining-status').innerText = hashrate > 0 ? 'Active ✅' : 'Inactive';
-            document.getElementById('mining-status').style.color = hashrate > 0 ? '#22c55e' : '#ef4444';
-            const pct = needed === 'MAX' ? 100 : (currentExp / needed * 100);
-            document.getElementById('exp-bar').style.width = pct + '%';
+        const { level, currentExp, needed } = getLevel(exp);
+        const hashrate = level >= 2 ? 0.5 : 0;
+        localStorage.setItem('hashrate', hashrate);
+
+        document.getElementById('level-num').innerText = level;
+        document.getElementById('exp-current').innerText = currentExp;
+        document.getElementById('exp-needed').innerText = needed;
+        document.getElementById('hashrate').innerText = hashrate + ' GH/s';
+        document.getElementById('ltc-per-hour').innerText = hashrate > 0 ? (hashrate * 2).toFixed(1) : 0;
+        const pct = needed === 'MAX' ? 100 : (currentExp / needed * 100);
+        document.getElementById('exp-bar').style.width = pct + '%';
+
+        const lastClaim = Number(localStorage.getItem('lastClaimTime')) || 0;
+        const now = Date.now();
+        const hoursSinceClaim = (now - lastClaim) / 1000 / 3600;
+        const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
+
+        if (miningPaused && hashrate > 0) {
+            document.getElementById('warning-card').style.display = 'block';
         }
 
-        updateLevel();
+        if (hashrate > 0 && !miningPaused) {
+            const lastVisit = Number(localStorage.getItem('lastVisitTime')) || now;
+            const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
+            const offlineEarned = hashrate * 2 / 3600 * secondsAway;
+            if (offlineEarned > 0) {
+                ltcCoins += offlineEarned;
+                localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
+            }
+        }
 
-        // Майнинг каждую секунду
-        if (hashrate > 0) {
+        localStorage.setItem('lastVisitTime', now);
+        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
+
+        const active = hashrate > 0 && !miningPaused;
+        document.getElementById('mining-status').innerText = active ? 'Active ✅' : (hashrate === 0 ? 'Inactive' : 'Paused ⚠️');
+        document.getElementById('mining-status').style.color = active ? '#22c55e' : '#ef4444';
+
+        if (active) {
             setInterval(() => {
-                // 0.5 GH/s = 1 LTC coin/hour = 1/3600 per second
                 const earned = hashrate * 2 / 3600;
                 ltcCoins += earned;
                 sessionMined += earned;
