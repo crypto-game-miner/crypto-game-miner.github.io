@@ -41,7 +41,7 @@
             </div>
             <div class="balance-row">
                 <span style="color:#a78bfa;">LTC Coins</span>
-                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0</span>
+                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0.000000</span>
             </div>
         </div>
 
@@ -66,8 +66,12 @@
                     <span class="mining-value" id="ltc-per-hour">0</span>
                 </div>
                 <div class="mining-stat">
+                    <span class="mining-label">Mined this session</span>
+                    <span class="mining-value" id="mined-session" style="color:#22c55e;">+0.000000</span>
+                </div>
+                <div class="mining-stat">
                     <span class="mining-label">Status</span>
-                    <span class="mining-value" style="color:#ef4444;">Inactive</span>
+                    <span class="mining-value" id="mining-status" style="color:#ef4444;">Inactive</span>
                 </div>
             </div>
         </div>
@@ -90,16 +94,16 @@
 
     <script>
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
-
+        const LTC_PER_SEC_PER_GH = 1 / 3600; // 1 LTC coin per hour per 0.5 GH/s... = 2/3600 per GH
+        
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
-        let ltcCoins = Number(localStorage.getItem('ltc_balance')) || 0;
+        let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         let exp = Number(localStorage.getItem('player_exp')) || 0;
-        let hashrate = Number(localStorage.getItem('hashrate')) || 0;
+        let hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+        let sessionMined = 0;
 
         document.getElementById('balance').innerText = coins;
-        document.getElementById('ltc-balance').innerText = ltcCoins;
-        document.getElementById('hashrate').innerText = hashrate + ' GH/s';
-        document.getElementById('ltc-per-hour').innerText = hashrate > 0 ? hashrate : 0;
+        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
 
         function getLevel(exp) {
             let level = 1;
@@ -109,9 +113,7 @@
                     totalExp += EXP_PER_LEVEL[i];
                     level++;
                 } else {
-                    const currentExp = exp - totalExp;
-                    const needed = EXP_PER_LEVEL[i];
-                    return { level, currentExp, needed };
+                    return { level, currentExp: exp - totalExp, needed: EXP_PER_LEVEL[i] };
                 }
             }
             return { level, currentExp: exp, needed: 'MAX' };
@@ -119,14 +121,37 @@
 
         function updateLevel() {
             const { level, currentExp, needed } = getLevel(exp);
+            // Даём 0.5 GH/s на уровне 2
+            const newHashrate = level >= 2 ? 0.5 : 0;
+            if (newHashrate !== hashrate) {
+                hashrate = newHashrate;
+                localStorage.setItem('hashrate', hashrate);
+            }
             document.getElementById('level-num').innerText = level;
             document.getElementById('exp-current').innerText = currentExp;
             document.getElementById('exp-needed').innerText = needed;
+            document.getElementById('hashrate').innerText = hashrate + ' GH/s';
+            document.getElementById('ltc-per-hour').innerText = hashrate > 0 ? (hashrate * 2).toFixed(1) : 0;
+            document.getElementById('mining-status').innerText = hashrate > 0 ? 'Active ✅' : 'Inactive';
+            document.getElementById('mining-status').style.color = hashrate > 0 ? '#22c55e' : '#ef4444';
             const pct = needed === 'MAX' ? 100 : (currentExp / needed * 100);
             document.getElementById('exp-bar').style.width = pct + '%';
         }
 
         updateLevel();
+
+        // Майнинг каждую секунду
+        if (hashrate > 0) {
+            setInterval(() => {
+                // 0.5 GH/s = 1 LTC coin/hour = 1/3600 per second
+                const earned = hashrate * 2 / 3600;
+                ltcCoins += earned;
+                sessionMined += earned;
+                localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
+                document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
+                document.getElementById('mined-session').innerText = '+' + sessionMined.toFixed(6);
+            }, 1000);
+        }
     </script>
 </body>
 </html>
