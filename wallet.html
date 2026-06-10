@@ -23,7 +23,6 @@
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
-        .nav-item.disabled { color: #3d3d3d; cursor: not-allowed; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
         .keyboard-open .banner-area, .keyboard-open .nav-bar { display: none !important; }
     </style>
@@ -90,8 +89,8 @@
                 <span class="nav-icon">🚰</span>Faucet
             </a>
             <a href="tasks.html" class="nav-item">
-    <span class="nav-icon">📋</span>Tasks
-</a>
+                <span class="nav-icon">📋</span>Tasks
+            </a>
             <div class="nav-item active">
                 <span class="nav-icon">👛</span>Wallet
             </div>
@@ -99,10 +98,29 @@
     </div>
 
     <script>
+        (function() {
+            const lastVisit = Number(localStorage.getItem('lastVisitTime')) || 0;
+            const now = Date.now();
+            const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+            const lastClaim = Number(localStorage.getItem('lastClaimTime')) || 0;
+            const hoursSinceClaim = (now - lastClaim) / 1000 / 3600;
+            const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
+            if (hashrate > 0 && !miningPaused && lastVisit > 0) {
+                const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
+                const earned = hashrate * 2 / 3600 * secondsAway;
+                if (earned > 0) {
+                    let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+                    ltc += earned;
+                    localStorage.setItem('ltc_balance', ltc.toFixed(6));
+                }
+            }
+            localStorage.setItem('lastVisitTime', now);
+        })();
+
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
-        let ltcCoins = Number(localStorage.getItem('ltc_balance')) || 0;
+        let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         document.getElementById('balance').innerText = coins;
-        document.getElementById('ltc-balance').innerText = ltcCoins;
+        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
 
         function toggleBox(showId, hideId) {
             const show = document.getElementById(showId);
@@ -150,8 +168,8 @@
                         document.getElementById('balance').innerText = coins;
                     } else {
                         ltcCoins -= points;
-                        localStorage.setItem('ltc_balance', ltcCoins);
-                        document.getElementById('ltc-balance').innerText = ltcCoins;
+                        localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
+                        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
                     }
                     alert("✅ Success! Funds sent to your FaucetPay!");
                 } else {
