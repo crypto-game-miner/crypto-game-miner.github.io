@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crypto Miner — Tasks</title>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
+        #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
+        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
+        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
+        .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+        .balance-row:first-child { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
+        .tasks-area { padding: 15px 20px; overflow-y: auto; padding-bottom: 90px; flex: 1; }
+        .task-card { background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px; padding: 14px; margin-bottom: 12px; text-align: left; }
+        .task-card.done { border-color: #22c55e; opacity: 0.6; }
+        .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .task-title { color: #facc15; font-size: 14px; font-weight: bold; }
+        .task-reward { color: #a78bfa; font-size: 12px; font-weight: bold; }
+        .task-desc { color: #8b949e; font-size: 11px; margin-bottom: 10px; }
+        .task-btn { background: #facc15; color: #1a1613; border: none; padding: 8px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; width: 100%; }
+        .task-btn.done { background: #22c55e; color: white; cursor: not-allowed; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
+        .nav-item.active { color: #facc15; }
+        .nav-icon { font-size: 24px; margin-bottom: 3px; }
+    </style>
+</head>
+<body>
+    <div id="main-content">
+        <div class="header">Tasks</div>
+        <div class="balance-container">
+            <div class="balance-row">
+                <span style="color:#facc15;">Coins</span>
+                <span style="font-weight:bold;" id="balance">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#a78bfa;">LTC Coins</span>
+                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0</span>
+            </div>
+        </div>
+
+        <div class="tasks-area">
+            <p style="color:#8b949e; font-size:12px; margin-bottom:15px; text-align:left;">Complete tasks to earn mining power!</p>
+
+            <div class="task-card" id="task-zerads">
+                <div class="task-header">
+                    <span class="task-title">⛏️ Boost Mining Power</span>
+                    <span class="task-reward">+0.2 GH/s</span>
+                </div>
+                <div class="task-desc">Visit our partner site and claim your mining power boost. One-time reward!</div>
+                <button class="task-btn" id="task-zerads-btn" onclick="doTask('zerads', 'https://zerads.com/e3AhcEW', 0.2)">Start Task</button>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <a href="home.html" class="nav-item">
+                <span class="nav-icon">🏠</span>Home
+            </a>
+            <a href="index.html" class="nav-item">
+                <span class="nav-icon">🚰</span>Faucet
+            </a>
+            <div class="nav-item active">
+                <span class="nav-icon">📋</span>Tasks
+            </div>
+            <a href="wallet.html" class="nav-item">
+                <span class="nav-icon">👛</span>Wallet
+            </a>
+        </div>
+    </div>
+
+    <script>
+        let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let ltcCoins = Number(localStorage.getItem('ltc_balance')) || 0;
+        document.getElementById('balance').innerText = coins;
+        document.getElementById('ltc-balance').innerText = ltcCoins;
+
+        // Проверяем выполненные задания
+        function checkDone(taskId) {
+            return localStorage.getItem('task_' + taskId) === 'done';
+        }
+
+        function setDone(taskId) {
+            const card = document.getElementById('task-' + taskId);
+            const btn = document.getElementById('task-' + taskId + '-btn');
+            if (card) card.classList.add('done');
+            if (btn) { btn.innerText = '✅ Completed'; btn.classList.add('done'); btn.disabled = true; }
+        }
+
+        if (checkDone('zerads')) setDone('zerads');
+
+        function doTask(taskId, url, ghReward) {
+            if (checkDone(taskId)) return;
+
+            // Открываем ссылку
+            window.open(url, '_blank');
+
+            // Ждём 15 сек потом даём награду
+            const btn = document.getElementById('task-' + taskId + '-btn');
+            btn.disabled = true;
+            btn.innerText = 'Verifying... 15s';
+            let t = 15;
+            const timer = setInterval(() => {
+                t--;
+                btn.innerText = 'Verifying... ' + t + 's';
+                if (t <= 0) {
+                    clearInterval(timer);
+                    // Даём GH/s
+                    let hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+                    hashrate = Math.round((hashrate + ghReward) * 10) / 10;
+                    localStorage.setItem('hashrate', hashrate);
+                    localStorage.setItem('task_' + taskId, 'done');
+                    setDone(taskId);
+                    alert('🎉 +' + ghReward + ' GH/s added to your mining power!');
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
