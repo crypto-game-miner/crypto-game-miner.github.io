@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crypto Miner — Home</title>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
+        #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
+        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
+        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
+        .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+        .balance-row:first-child { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
+        .main-area { flex: 1; padding: 15px 20px; overflow-y: auto; padding-bottom: 90px; }
+        .level-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
+        .level-title { color: #facc15; font-size: 22px; font-weight: bold; margin-bottom: 4px; }
+        .level-subtitle { color: #8b949e; font-size: 11px; margin-bottom: 12px; }
+        .exp-bar-bg { background: #3d2b1f; border-radius: 10px; height: 14px; width: 100%; overflow: hidden; }
+        .exp-bar-fill { background: linear-gradient(90deg, #facc15, #f97316); height: 100%; border-radius: 10px; transition: width 0.4s ease; }
+        .exp-text { color: #8b949e; font-size: 11px; margin-top: 6px; text-align: right; }
+        .mining-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; }
+        .mining-title { color: #a78bfa; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+        .mining-stat { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #3d2b1f; }
+        .mining-stat:last-child { border-bottom: none; }
+        .mining-label { color: #8b949e; font-size: 12px; }
+        .mining-value { color: #a78bfa; font-size: 14px; font-weight: bold; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
+        .nav-item.active { color: #facc15; }
+        .nav-item.disabled { color: #3d3d3d; cursor: not-allowed; }
+        .nav-icon { font-size: 24px; margin-bottom: 3px; }
+    </style>
+</head>
+<body>
+    <div id="main-content">
+        <div class="header">Home</div>
+        <div class="balance-container">
+            <div class="balance-row">
+                <span style="color:#facc15;">Coins</span>
+                <span style="font-weight:bold;" id="balance">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#a78bfa;">LTC Coins</span>
+                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0</span>
+            </div>
+        </div>
+
+        <div class="main-area">
+            <div class="level-card">
+                <div class="level-title">⚡ Level <span id="level-num">1</span></div>
+                <div class="level-subtitle">Complete tasks and collect to level up!</div>
+                <div class="exp-bar-bg">
+                    <div class="exp-bar-fill" id="exp-bar" style="width: 0%;"></div>
+                </div>
+                <div class="exp-text"><span id="exp-current">0</span> / <span id="exp-needed">50</span> EXP</div>
+            </div>
+
+            <div class="mining-card">
+                <div class="mining-title">⛏️ Mining Power</div>
+                <div class="mining-stat">
+                    <span class="mining-label">Hashrate</span>
+                    <span class="mining-value" id="hashrate">0 GH/s</span>
+                </div>
+                <div class="mining-stat">
+                    <span class="mining-label">LTC Coins / hour</span>
+                    <span class="mining-value" id="ltc-per-hour">0</span>
+                </div>
+                <div class="mining-stat">
+                    <span class="mining-label">Status</span>
+                    <span class="mining-value" style="color:#ef4444;">Inactive</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <div class="nav-item active">
+                <span class="nav-icon">🏠</span>Home
+            </div>
+            <a href="index.html" class="nav-item">
+                <span class="nav-icon">🚰</span>Faucet
+            </a>
+            <div class="nav-item disabled" onclick="alert('Coming soon!')">
+                <span class="nav-icon">📋</span>Tasks
+            </div>
+            <a href="wallet.html" class="nav-item">
+                <span class="nav-icon">👛</span>Wallet
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
+
+        let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let ltcCoins = Number(localStorage.getItem('ltc_balance')) || 0;
+        let exp = Number(localStorage.getItem('player_exp')) || 0;
+        let hashrate = Number(localStorage.getItem('hashrate')) || 0;
+
+        document.getElementById('balance').innerText = coins;
+        document.getElementById('ltc-balance').innerText = ltcCoins;
+        document.getElementById('hashrate').innerText = hashrate + ' GH/s';
+        document.getElementById('ltc-per-hour').innerText = hashrate > 0 ? hashrate : 0;
+
+        function getLevel(exp) {
+            let level = 1;
+            let totalExp = 0;
+            for (let i = 0; i < EXP_PER_LEVEL.length; i++) {
+                if (exp >= totalExp + EXP_PER_LEVEL[i]) {
+                    totalExp += EXP_PER_LEVEL[i];
+                    level++;
+                } else {
+                    const currentExp = exp - totalExp;
+                    const needed = EXP_PER_LEVEL[i];
+                    return { level, currentExp, needed };
+                }
+            }
+            return { level, currentExp: exp, needed: 'MAX' };
+        }
+
+        function updateLevel() {
+            const { level, currentExp, needed } = getLevel(exp);
+            document.getElementById('level-num').innerText = level;
+            document.getElementById('exp-current').innerText = currentExp;
+            document.getElementById('exp-needed').innerText = needed;
+            const pct = needed === 'MAX' ? 100 : (currentExp / needed * 100);
+            document.getElementById('exp-bar').style.width = pct + '%';
+        }
+
+        updateLevel();
+    </script>
+</body>
+</html>
