@@ -76,9 +76,9 @@
         </div>
 
         <div class="nav-bar">
-            <div class="nav-item disabled" onclick="alert('Coming soon!')">
+            <a href="home.html" class="nav-item">
                 <span class="nav-icon">🏠</span>Home
-            </div>
+            </a>
             <div class="nav-item active">
                 <span class="nav-icon">🚰</span>Faucet
             </div>
@@ -98,6 +98,7 @@
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let ltcCoins = Number(localStorage.getItem('ltc_balance')) || 0;
+        let exp = Number(localStorage.getItem('player_exp')) || 0;
         document.getElementById('balance').innerText = coins;
         document.getElementById('ltc-balance').innerText = ltcCoins;
 
@@ -158,8 +159,10 @@
                     overlay.style.display = 'none';
                     if (ok) {
                         coins += 25;
+                        exp += 8;
                         document.getElementById('balance').innerText = coins;
                         localStorage.setItem('miner_balance', coins);
+                        localStorage.setItem('player_exp', exp);
                         localStorage.setItem('claimsToday', String(nextClaim));
                         updateClaimsLeft();
                     }
