@@ -75,7 +75,6 @@
         document.getElementById('balance').innerText = coins;
         document.getElementById('ltc-balance').innerText = ltcCoins;
 
-        // Проверяем выполненные задания
         function checkDone(taskId) {
             return localStorage.getItem('task_' + taskId) === 'done';
         }
@@ -91,11 +90,7 @@
 
         function doTask(taskId, url, ghReward) {
             if (checkDone(taskId)) return;
-
-            // Открываем ссылку
             window.open(url, '_blank');
-
-            // Ждём 15 сек потом даём награду
             const btn = document.getElementById('task-' + taskId + '-btn');
             btn.disabled = true;
             btn.innerText = 'Verifying... 15s';
@@ -105,10 +100,9 @@
                 btn.innerText = 'Verifying... ' + t + 's';
                 if (t <= 0) {
                     clearInterval(timer);
-                    // Даём GH/s
-                    let hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
-                    hashrate = Math.round((hashrate + ghReward) * 10) / 10;
-                    localStorage.setItem('hashrate', hashrate);
+                    let taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
+                    taskBonus = Math.round((taskBonus + ghReward) * 10) / 10;
+                    localStorage.setItem('task_bonus_hashrate', taskBonus);
                     localStorage.setItem('task_' + taskId, 'done');
                     setDone(taskId);
                     alert('🎉 +' + ghReward + ' GH/s added to your mining power!');
