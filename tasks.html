@@ -70,10 +70,29 @@
     </div>
 
     <script>
+        (function() {
+            const lastVisit = Number(localStorage.getItem('lastVisitTime')) || 0;
+            const now = Date.now();
+            const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+            const lastClaim = Number(localStorage.getItem('lastClaimTime')) || 0;
+            const hoursSinceClaim = (now - lastClaim) / 1000 / 3600;
+            const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
+            if (hashrate > 0 && !miningPaused && lastVisit > 0) {
+                const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
+                const earned = hashrate * 2 / 3600 * secondsAway;
+                if (earned > 0) {
+                    let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+                    ltc += earned;
+                    localStorage.setItem('ltc_balance', ltc.toFixed(6));
+                }
+            }
+            localStorage.setItem('lastVisitTime', now);
+        })();
+
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
-        let ltcCoins = Number(localStorage.getItem('ltc_balance')) || 0;
+        let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         document.getElementById('balance').innerText = coins;
-        document.getElementById('ltc-balance').innerText = ltcCoins;
+        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
 
         function checkDone(taskId) {
             return localStorage.getItem('task_' + taskId) === 'done';
