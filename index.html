@@ -163,6 +163,7 @@
                         document.getElementById('balance').innerText = coins;
                         localStorage.setItem('miner_balance', coins);
                         localStorage.setItem('player_exp', exp);
+                        localStorage.setItem('lastClaimTime', Date.now());
                         localStorage.setItem('claimsToday', String(nextClaim));
                         updateClaimsLeft();
                     }
