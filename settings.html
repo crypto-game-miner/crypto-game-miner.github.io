@@ -34,12 +34,12 @@
             <div class="settings-section">
                 <div class="section-title">Account</div>
                 <div class="settings-card">
-                    <div class="settings-item" id="account-item">
+                    <div class="settings-item">
                         <div>
                             <div class="settings-label">Google Account</div>
-                            <div class="settings-value" id="account-desc">Sync your progress across devices</div>
+                            <div class="settings-value" id="account-desc">Sign in to get +0.3 GH/s bonus!</div>
                         </div>
-                        <button class="google-btn" id="google-btn" onclick="handleAuth()">
+                        <button class="google-btn" id="google-btn">
                             <span style="font-weight:bold;color:#4285F4;">G</span> Sign in
                         </button>
                     </div>
@@ -86,7 +86,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -114,34 +114,63 @@
             return { level };
         }
 
-        const coins = Number(localStorage.getItem('miner_balance')) || 0;
-        const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-        const exp = Number(localStorage.getItem('player_exp')) || 0;
-        const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
-        const { level } = getLevel(exp);
+        function updateStats() {
+            const coins = Number(localStorage.getItem('miner_balance')) || 0;
+            const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+            const exp = Number(localStorage.getItem('player_exp')) || 0;
+            const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+            const { level } = getLevel(exp);
+            document.getElementById('stat-coins').innerText = coins;
+            document.getElementById('stat-ltc').innerText = ltc.toFixed(6);
+            document.getElementById('stat-level').innerText = level;
+            document.getElementById('stat-hashrate').innerText = hashrate + ' GH/s';
+        }
 
-        document.getElementById('stat-coins').innerText = coins;
-        document.getElementById('stat-ltc').innerText = ltc.toFixed(6);
-        document.getElementById('stat-level').innerText = level;
-        document.getElementById('stat-hashrate').innerText = hashrate + ' GH/s';
+        updateStats();
 
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                document.getElementById('google-btn').innerHTML = 'Sign out';
-                document.getElementById('google-btn').onclick = handleSignOut;
-                document.getElementById('account-desc').innerHTML = `
-                    <span style="color:#22c55e;">✅ ${user.displayName}</span><br>
-                    <span style="font-size:10px;">${user.email}</span>
-                `;
-                await saveToFirestore(user.uid);
-            } else {
-                document.getElementById('google-btn').innerHTML = '<span style="font-weight:bold;color:#4285F4;">G</span> Sign in';
-                document.getElementById('google-btn').onclick = handleAuth;
-                document.getElementById('account-desc').innerText = 'Sync your progress across devices';
-            }
-        });
+        // Проверяем — уже привязан аккаунт?
+        const lockedEmail = localStorage.getItem('locked_google_email');
+        const bonusGiven = localStorage.getItem('task_register_bonus') === 'done';
+        const btn = document.getElementById('google-btn');
+        const desc = document.getElementById('account-desc');
 
-        async function saveToFirestore(uid) {
+        if (lockedEmail) {
+            // Аккаунт уже привязан — показываем email, кнопку убираем
+            btn.style.display = 'none';
+            desc.innerHTML = `<span style="color:#22c55e;">✅ ${lockedEmail}</span><br><span style="font-size:10px;">Account linked permanently</span>`;
+        } else {
+            btn.onclick = async () => {
+                try {
+                    const result = await signInWithPopup(auth, new GoogleAuthProvider());
+                    const user = result.user;
+
+                    // Фиксируем email навсегда
+                    localStorage.setItem('locked_google_email', user.email);
+
+                    // Даём бонус если ещё не давали
+                    if (!bonusGiven) {
+                        let taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
+                        taskBonus = Math.round((taskBonus + 0.3) * 10) / 10;
+                        localStorage.setItem('task_bonus_hashrate', taskBonus);
+                        localStorage.setItem('task_register_bonus', 'done');
+                        updateStats();
+                        alert('🎉 Registration bonus! +0.3 GH/s added to your mining power!');
+                    }
+
+                    // Сохраняем в Firestore
+                    await saveToFirestore(user.uid, user.email);
+
+                    // Обновляем UI
+                    btn.style.display = 'none';
+                    desc.innerHTML = `<span style="color:#22c55e;">✅ ${user.email}</span><br><span style="font-size:10px;">Account linked permanently</span>`;
+
+                } catch(e) {
+                    alert('Error: ' + e.message);
+                }
+            };
+        }
+
+        async function saveToFirestore(uid, email) {
             const coins = Number(localStorage.getItem('miner_balance')) || 0;
             const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
             const exp = Number(localStorage.getItem('player_exp')) || 0;
@@ -152,7 +181,7 @@
             const isNewPlayer = !userSnap.exists();
 
             await setDoc(userRef, {
-                coins, ltc, exp, hashrate,
+                coins, ltc, exp, hashrate, email,
                 updatedAt: new Date()
             });
 
@@ -178,19 +207,6 @@
             }
         }
 
-        window.handleAuth = async function() {
-            const provider = new GoogleAuthProvider();
-            try {
-                await signInWithPopup(auth, provider);
-            } catch(e) {
-                alert('Error: ' + e.message);
-            }
-        }
-
-        window.handleSignOut = async function() {
-            await signOut(auth);
-        }
-
         window.resetProgress = function() {
             if (confirm('Are you sure? All your progress will be deleted!')) {
                 localStorage.clear();
@@ -198,6 +214,11 @@
                 window.location.href = 'home.html';
             }
         }
+
+        // Автологин если Firebase помнит сессию
+        onAuthStateChanged(auth, (user) => {
+            // Ничего не делаем — управляем через lockedEmail
+        });
     </script>
 </body>
 </html>
