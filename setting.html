@@ -18,8 +18,11 @@
         .settings-label { font-size: 14px; color: white; }
         .settings-value { font-size: 12px; color: #8b949e; }
         .settings-btn { background: #facc15; color: #1a1613; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; }
-        .settings-btn.google { background: white; color: #333; display: flex; align-items: center; gap: 8px; }
-        .coming-soon { color: #3d3d3d; font-size: 11px; }
+        .google-btn { background: white; color: #333; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; }
+        .user-name { font-size: 13px; color: white; }
+        .sync-status { font-size: 11px; color: #22c55e; }
     </style>
 </head>
 <body>
@@ -36,13 +39,13 @@
             <div class="settings-section">
                 <div class="section-title">Account</div>
                 <div class="settings-card">
-                    <div class="settings-item">
+                    <div class="settings-item" id="account-item">
                         <div>
                             <div class="settings-label">Google Account</div>
-                            <div class="settings-value">Sync your progress across devices</div>
+                            <div class="settings-value" id="account-desc">Sync your progress across devices</div>
                         </div>
-                        <button class="settings-btn google" disabled>
-                            <span>G</span> Coming soon
+                        <button class="google-btn" id="google-btn" onclick="handleAuth()">
+                            <span style="font-weight:bold;color:#4285F4;">G</span> Sign in
                         </button>
                     </div>
                 </div>
@@ -53,7 +56,7 @@
                 <div class="section-title">My Stats</div>
                 <div class="settings-card">
                     <div class="settings-item">
-                        <span class="settings-label">Total Coins Earned</span>
+                        <span class="settings-label">Total Coins</span>
                         <span class="settings-value" id="stat-coins">0</span>
                     </div>
                     <div class="settings-item">
@@ -88,7 +91,25 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+            authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+            projectId: "crypto-miner-game-f45dc",
+            storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+            messagingSenderId: "33690622473",
+            appId: "1:33690622473:web:f80f6b836c15034e07f6d8",
+            measurementId: "G-CT63GXYYJ2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
         function getLevel(exp) {
@@ -100,6 +121,7 @@
             return { level };
         }
 
+        // Показываем локальную статистику
         const coins = Number(localStorage.getItem('miner_balance')) || 0;
         const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         const exp = Number(localStorage.getItem('player_exp')) || 0;
@@ -111,7 +133,63 @@
         document.getElementById('stat-level').innerText = level;
         document.getElementById('stat-hashrate').innerText = hashrate + ' GH/s';
 
-        function resetProgress() {
+        // Слушаем состояние авторизации
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Юзер залогинен
+                document.getElementById('google-btn').innerHTML = 'Sign out';
+                document.getElementById('google-btn').onclick = handleSignOut;
+                document.getElementById('account-desc').innerHTML = `
+                    <span style="color:#22c55e;">✅ ${user.displayName}</span><br>
+                    <span style="font-size:10px;">${user.email}</span>
+                `;
+
+                // Сохраняем данные в Firestore
+                await saveToFirestore(user.uid);
+            } else {
+                document.getElementById('google-btn').innerHTML = '<span style="font-weight:bold;color:#4285F4;">G</span> Sign in';
+                document.getElementById('google-btn').onclick = handleAuth;
+                document.getElementById('account-desc').innerText = 'Sync your progress across devices';
+            }
+        });
+
+        async function saveToFirestore(uid) {
+            const coins = Number(localStorage.getItem('miner_balance')) || 0;
+            const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+            const exp = Number(localStorage.getItem('player_exp')) || 0;
+            const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+
+            await setDoc(doc(db, 'users', uid), {
+                coins, ltc, exp, hashrate,
+                updatedAt: new Date()
+            });
+
+            // Обновляем глобальную статистику
+            const globalRef = doc(db, 'stats', 'global');
+            const globalSnap = await getDoc(globalRef);
+            const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0, totalPlayers: 0 };
+
+            await setDoc(globalRef, {
+                totalHashrate: (globalData.totalHashrate || 0) + hashrate,
+                totalPlayers: (globalData.totalPlayers || 0) + 1,
+                updatedAt: new Date()
+            }, { merge: true });
+        }
+
+        window.handleAuth = async function() {
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        window.handleSignOut = async function() {
+            await signOut(auth);
+        }
+
+        window.resetProgress = function() {
             if (confirm('Are you sure? All your progress will be deleted!')) {
                 localStorage.clear();
                 alert('Progress reset!');
