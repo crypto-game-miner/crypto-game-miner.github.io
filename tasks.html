@@ -43,6 +43,17 @@
         <div class="tasks-area">
             <p style="color:#8b949e; font-size:12px; margin-bottom:15px; text-align:left;">Complete tasks to earn mining power!</p>
 
+            <!-- Таск: регистрация -->
+            <div class="task-card" id="task-register-bonus">
+                <div class="task-header">
+                    <span class="task-title">🔑 Register Account</span>
+                    <span class="task-reward">+0.3 GH/s</span>
+                </div>
+                <div class="task-desc">Sign in with Google in Settings to get a permanent mining power boost!</div>
+                <button class="task-btn" id="task-register-bonus-btn" onclick="goToSettings()">Go to Settings</button>
+            </div>
+
+            <!-- Таск: Zerads -->
             <div class="task-card" id="task-zerads">
                 <div class="task-header">
                     <span class="task-title">⛏️ Boost Mining Power</span>
@@ -105,7 +116,14 @@
             if (btn) { btn.innerText = '✅ Completed'; btn.classList.add('done'); btn.disabled = true; }
         }
 
+        // Проверяем выполненные таски
+        if (checkDone('register-bonus')) setDone('register-bonus');
         if (checkDone('zerads')) setDone('zerads');
+
+        function goToSettings() {
+            if (checkDone('register-bonus')) return;
+            window.location.href = 'settings.html';
+        }
 
         function doTask(taskId, url, ghReward) {
             if (checkDone(taskId)) return;
