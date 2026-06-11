@@ -152,7 +152,7 @@
             btn.innerText = "Processing...";
 
             try {
-                const response = await fetch('https://crypto-game-miner-github-io.vercel.app/api/withdraw', {
+                const response = await fetch('https://crypto-game-miner.vercel.app/api/withdraw', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, points, currency: type })
