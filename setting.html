@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crypto Miner — Settings</title>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
+        #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .back-btn { color: #facc15; text-decoration: none; font-size: 20px; }
+        .settings-area { flex: 1; padding: 15px 20px; overflow-y: auto; }
+        .settings-section { margin-bottom: 20px; }
+        .section-title { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .settings-card { background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px; overflow: hidden; }
+        .settings-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 15px; border-bottom: 1px solid #3d2b1f; }
+        .settings-item:last-child { border-bottom: none; }
+        .settings-label { font-size: 14px; color: white; }
+        .settings-value { font-size: 12px; color: #8b949e; }
+        .settings-btn { background: #facc15; color: #1a1613; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; }
+        .settings-btn.google { background: white; color: #333; display: flex; align-items: center; gap: 8px; }
+        .coming-soon { color: #3d3d3d; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div id="main-content">
+        <div class="header">
+            <a href="home.html" class="back-btn">← Home</a>
+            <span>Settings</span>
+            <span style="width:60px;"></span>
+        </div>
+
+        <div class="settings-area">
+
+            <!-- Аккаунт -->
+            <div class="settings-section">
+                <div class="section-title">Account</div>
+                <div class="settings-card">
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-label">Google Account</div>
+                            <div class="settings-value">Sync your progress across devices</div>
+                        </div>
+                        <button class="settings-btn google" disabled>
+                            <span>G</span> Coming soon
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Статистика -->
+            <div class="settings-section">
+                <div class="section-title">My Stats</div>
+                <div class="settings-card">
+                    <div class="settings-item">
+                        <span class="settings-label">Total Coins Earned</span>
+                        <span class="settings-value" id="stat-coins">0</span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">LTC Coins Mined</span>
+                        <span class="settings-value" id="stat-ltc">0</span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">Current Level</span>
+                        <span class="settings-value" id="stat-level">1</span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">Hashrate</span>
+                        <span class="settings-value" id="stat-hashrate">0 GH/s</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Опасная зона -->
+            <div class="settings-section">
+                <div class="section-title">Danger Zone</div>
+                <div class="settings-card">
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-label">Reset Progress</div>
+                            <div class="settings-value">Delete all your data</div>
+                        </div>
+                        <button class="settings-btn" style="background:#ef4444;color:white;" onclick="resetProgress()">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
+
+        function getLevel(exp) {
+            let level = 1, totalExp = 0;
+            for (let i = 0; i < EXP_PER_LEVEL.length; i++) {
+                if (exp >= totalExp + EXP_PER_LEVEL[i]) { totalExp += EXP_PER_LEVEL[i]; level++; }
+                else return { level };
+            }
+            return { level };
+        }
+
+        const coins = Number(localStorage.getItem('miner_balance')) || 0;
+        const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+        const exp = Number(localStorage.getItem('player_exp')) || 0;
+        const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+        const { level } = getLevel(exp);
+
+        document.getElementById('stat-coins').innerText = coins;
+        document.getElementById('stat-ltc').innerText = ltc.toFixed(6);
+        document.getElementById('stat-level').innerText = level;
+        document.getElementById('stat-hashrate').innerText = hashrate + ' GH/s';
+
+        function resetProgress() {
+            if (confirm('Are you sure? All your progress will be deleted!')) {
+                localStorage.clear();
+                alert('Progress reset!');
+                window.location.href = 'home.html';
+            }
+        }
+    </script>
+</body>
+</html>
