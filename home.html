@@ -7,7 +7,7 @@
     <style>
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
-        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
+        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
         .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
         .balance-row:first-child { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
@@ -35,9 +35,9 @@
 </head>
 <body>
     <div id="main-content">
-        <div class="header" style="display:flex;justify-content:space-between;align-items:center;">
-    <span>Home</span>
-    <a href="settings.html" style="font-size:22px;text-decoration:none;">⚙️</a>
+        <div class="header">
+            <span>Home</span>
+            <a href="settings.html" style="font-size:22px;text-decoration:none;">⚙️</a>
         </div>
         <div class="balance-container">
             <div class="balance-row">
@@ -51,7 +51,7 @@
         </div>
 
         <div class="main-area">
-    <div class="warning-card" id="warning-card">
+            <div class="warning-card" id="warning-card">
                 <div class="warning-text">⚠️ Mining Paused!</div>
                 <div class="warning-sub">You haven't collected in 24h. Go to Faucet to resume mining.</div>
             </div>
@@ -105,6 +105,22 @@
     <script>
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
+        // Получаем дневной множитель рейта (меняется раз в день)
+        function getDailyRate() {
+            const today = new Date().toDateString();
+            const savedDay = localStorage.getItem('rateDay');
+            if (savedDay === today) {
+                return parseFloat(localStorage.getItem('dailyRate')) || 1.0;
+            }
+            // Новый день — генерируем новый множитель 0.98 - 1.005
+            const rate = 0.98 + Math.random() * 0.025;
+            localStorage.setItem('rateDay', today);
+            localStorage.setItem('dailyRate', rate.toFixed(4));
+            return rate;
+        }
+
+        const dailyRate = getDailyRate();
+
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         let exp = Number(localStorage.getItem('player_exp')) || 0;
@@ -131,11 +147,14 @@
         const hashrate = Math.round((baseHashrate + taskBonus) * 10) / 10;
         localStorage.setItem('hashrate', hashrate);
 
+        // Рейт с дневным множителем
+        const ltcPerHour = hashrate * 2 * dailyRate;
+
         document.getElementById('level-num').innerText = level;
         document.getElementById('exp-current').innerText = currentExp;
         document.getElementById('exp-needed').innerText = needed;
         document.getElementById('hashrate').innerText = hashrate + ' GH/s';
-        document.getElementById('ltc-per-hour').innerText = hashrate > 0 ? (hashrate * 2).toFixed(1) : 0;
+        document.getElementById('ltc-per-hour').innerText = hashrate > 0 ? ltcPerHour.toFixed(3) : 0;
         const pct = needed === 'MAX' ? 100 : (currentExp / needed * 100);
         document.getElementById('exp-bar').style.width = pct + '%';
 
@@ -148,10 +167,11 @@
             document.getElementById('warning-card').style.display = 'block';
         }
 
+        // Оффлайн начисление с дневным множителем
         if (hashrate > 0 && !miningPaused) {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || now;
             const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-            const offlineEarned = hashrate * 2 / 3600 * secondsAway;
+            const offlineEarned = hashrate * 2 * dailyRate / 3600 * secondsAway;
             if (offlineEarned > 0) {
                 ltcCoins += offlineEarned;
                 localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
@@ -165,9 +185,10 @@
         document.getElementById('mining-status').innerText = active ? 'Active ✅' : (hashrate === 0 ? 'Inactive' : 'Paused ⚠️');
         document.getElementById('mining-status').style.color = active ? '#22c55e' : '#ef4444';
 
+        // Тикер каждую секунду с дневным множителем
         if (active) {
             setInterval(() => {
-                const earned = hashrate * 2 / 3600;
+                const earned = hashrate * 2 * dailyRate / 3600;
                 ltcCoins += earned;
                 sessionMined += earned;
                 localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
