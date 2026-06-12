@@ -69,6 +69,20 @@
             </div>
 
             <div class="settings-section">
+                <div class="section-title">Withdrawal Limits</div>
+                <div class="settings-card">
+                    <div class="settings-item">
+                        <span class="settings-label">Daily USDT Withdraw Limit</span>
+                        <span class="settings-value">1000 Coins/day</span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">Withdrawn Today</span>
+                        <span class="settings-value" id="withdrawn-today">0 / 1000</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
                 <div class="section-title">Danger Zone</div>
                 <div class="settings-card">
                     <div class="settings-item">
@@ -114,6 +128,17 @@
             return { level };
         }
 
+        function getWithdrawnToday() {
+            const today = new Date().toDateString();
+            const lastDay = localStorage.getItem('withdrawDay');
+            if (lastDay !== today) {
+                localStorage.setItem('withdrawDay', today);
+                localStorage.setItem('withdrawnToday', '0');
+                return 0;
+            }
+            return Number(localStorage.getItem('withdrawnToday')) || 0;
+        }
+
         function updateStats() {
             const coins = Number(localStorage.getItem('miner_balance')) || 0;
             const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
@@ -124,18 +149,18 @@
             document.getElementById('stat-ltc').innerText = ltc.toFixed(6);
             document.getElementById('stat-level').innerText = level;
             document.getElementById('stat-hashrate').innerText = hashrate + ' GH/s';
+            const withdrawn = getWithdrawnToday();
+            document.getElementById('withdrawn-today').innerText = withdrawn + ' / 1000';
         }
 
         updateStats();
 
-        // Проверяем — уже привязан аккаунт?
         const lockedEmail = localStorage.getItem('locked_google_email');
         const bonusGiven = localStorage.getItem('task_register_bonus') === 'done';
         const btn = document.getElementById('google-btn');
         const desc = document.getElementById('account-desc');
 
         if (lockedEmail) {
-            // Аккаунт уже привязан — показываем email, кнопку убираем
             btn.style.display = 'none';
             desc.innerHTML = `<span style="color:#22c55e;">✅ ${lockedEmail}</span><br><span style="font-size:10px;">Account linked permanently</span>`;
         } else {
@@ -144,23 +169,25 @@
                     const result = await signInWithPopup(auth, new GoogleAuthProvider());
                     const user = result.user;
 
-                    // Фиксируем email навсегда
-                    localStorage.setItem('locked_google_email', user.email);
-
-                    // Даём бонус если ещё не давали
+                    // Даём бонус ПЕРЕД сохранением в Firebase
                     if (!bonusGiven) {
                         let taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
                         taskBonus = Math.round((taskBonus + 0.3) * 10) / 10;
                         localStorage.setItem('task_bonus_hashrate', taskBonus);
                         localStorage.setItem('task_register_bonus', 'done');
+                    }
+
+                    // Фиксируем email навсегда
+                    localStorage.setItem('locked_google_email', user.email);
+
+                    // Сохраняем в Firestore ПОСЛЕ бонуса
+                    await saveToFirestore(user.uid, user.email);
+
+                    if (!bonusGiven) {
                         updateStats();
                         alert('🎉 Registration bonus! +0.3 GH/s added to your mining power!');
                     }
 
-                    // Сохраняем в Firestore
-                    await saveToFirestore(user.uid, user.email);
-
-                    // Обновляем UI
                     btn.style.display = 'none';
                     desc.innerHTML = `<span style="color:#22c55e;">✅ ${user.email}</span><br><span style="font-size:10px;">Account linked permanently</span>`;
 
@@ -171,10 +198,17 @@
         }
 
         async function saveToFirestore(uid, email) {
+            // Берём актуальный hashrate ПОСЛЕ всех бонусов
             const coins = Number(localStorage.getItem('miner_balance')) || 0;
             const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
             const exp = Number(localStorage.getItem('player_exp')) || 0;
-            const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+
+            // Пересчитываем hashrate с учётом уровня и бонусов
+            const { level } = getLevel(exp);
+            const baseHashrate = level >= 2 ? 0.5 : 0;
+            const taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
+            const hashrate = Math.round((baseHashrate + taskBonus) * 10) / 10;
+            localStorage.setItem('hashrate', hashrate);
 
             const userRef = doc(db, 'users', uid);
             const userSnap = await getDoc(userRef);
@@ -191,16 +225,16 @@
 
             if (isNewPlayer) {
                 await setDoc(globalRef, {
-                    totalHashrate: (globalData.totalHashrate || 0) + hashrate,
+                    totalHashrate: Math.round(((globalData.totalHashrate || 0) + hashrate) * 10) / 10,
                     totalPlayers: (globalData.totalPlayers || 0) + 1,
                     updatedAt: new Date()
                 }, { merge: true });
             } else {
                 const oldHashrate = userSnap.data().hashrate || 0;
-                const diff = hashrate - oldHashrate;
+                const diff = Math.round((hashrate - oldHashrate) * 10) / 10;
                 if (diff !== 0) {
                     await setDoc(globalRef, {
-                        totalHashrate: (globalData.totalHashrate || 0) + diff,
+                        totalHashrate: Math.round(((globalData.totalHashrate || 0) + diff) * 10) / 10,
                         updatedAt: new Date()
                     }, { merge: true });
                 }
@@ -215,10 +249,7 @@
             }
         }
 
-        // Автологин если Firebase помнит сессию
-        onAuthStateChanged(auth, (user) => {
-            // Ничего не делаем — управляем через lockedEmail
-        });
+        onAuthStateChanged(auth, () => {});
     </script>
 </body>
 </html>
