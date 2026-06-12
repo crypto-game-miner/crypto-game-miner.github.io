@@ -25,7 +25,6 @@
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
         .keyboard-open .banner-area, .keyboard-open .nav-bar { display: none !important; }
-        .limit-info { color: #8b949e; font-size: 11px; margin-top: 8px; text-align: center; }
     </style>
 </head>
 <body>
@@ -50,7 +49,7 @@
                 <div class="card-info">
                     <h3>USDT</h3>
                     <p>via FaucetPay</p>
-                    <span style="font-size:10px; color:#8b949e">Min: 500 | Limit: 1000/day</span>
+                    <span style="font-size:10px; color:#8b949e">Min: 500 Coins</span>
                 </div>
             </div>
             <div id="usdt-box" class="withdraw-box">
@@ -58,7 +57,6 @@
                 <input type="number" id="wd-points-usdt" placeholder="Min 500">
                 <label>FaucetPay Email</label>
                 <input type="email" id="wd-email-usdt" placeholder="example@mail.com">
-                <div class="limit-info">Daily limit: <span id="limit-left">1000</span> coins remaining</div>
                 <button class="collect-btn" style="width:100%;box-shadow:none;padding:10px;font-size:16px;margin-top:10px;" onclick="handleWithdraw('usdt')">Withdraw USDT</button>
             </div>
 
@@ -137,10 +135,6 @@
         document.getElementById('balance').innerText = coins;
         document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
 
-        const withdrawn = getWithdrawnToday();
-        const remaining = Math.max(0, DAILY_LIMIT - withdrawn);
-        document.getElementById('limit-left').innerText = remaining;
-
         function toggleBox(showId, hideId) {
             const show = document.getElementById(showId);
             const hide = document.getElementById(hideId);
@@ -167,11 +161,11 @@
             if (points > balance) return alert("Not enough " + (type === 'usdt' ? "Coins!" : "LTC Coins!"));
             if (!email.includes('@')) return alert("Invalid email!");
 
-            // Проверка дневного лимита для USDT
             if (type === 'usdt') {
                 const withdrawnToday = getWithdrawnToday();
-                if (withdrawnToday + points > DAILY_LIMIT) {
-                    return alert(`Daily limit is 1000 coins! You have ${DAILY_LIMIT - withdrawnToday} coins remaining today.`);
+                const remaining = DAILY_LIMIT - withdrawnToday;
+                if (points > remaining) {
+                    return alert(`Daily limit is 1000 coins/day! You can withdraw ${remaining} more coins today.`);
                 }
             }
 
@@ -193,10 +187,8 @@
                         coins -= points;
                         localStorage.setItem('miner_balance', coins);
                         document.getElementById('balance').innerText = coins;
-                        // Обновляем дневной лимит
                         const newWithdrawn = getWithdrawnToday() + points;
                         localStorage.setItem('withdrawnToday', String(newWithdrawn));
-                        document.getElementById('limit-left').innerText = Math.max(0, DAILY_LIMIT - newWithdrawn);
                     } else {
                         ltcCoins -= points;
                         localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
