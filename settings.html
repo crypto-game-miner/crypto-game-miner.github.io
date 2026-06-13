@@ -37,7 +37,7 @@
                     <div class="settings-item">
                         <div>
                             <div class="settings-label">Google Account</div>
-                            <div class="settings-value" id="account-desc">Sign in to get +0.3 GH/s bonus!</div>
+                            <div class="settings-value" id="account-desc">Sign in to sync or restore progress!</div>
                         </div>
                         <button class="google-btn" id="google-btn">
                             <span style="font-weight:bold;color:#4285F4;">G</span> Sign in
@@ -95,8 +95,7 @@
             projectId: "crypto-miner-game-f45dc",
             storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
             messagingSenderId: "33690622473",
-            appId: "1:33690622473:web:f80f6b836c15034e07f6d8",
-            measurementId: "G-CT63GXYYJ2"
+            appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -138,36 +137,60 @@
 
         updateStats();
 
-        async function saveToFirestore(uid) {
+        function loadFromFirestore(data) {
+            // Загружаем данные с сервера в localStorage
+            localStorage.setItem('miner_balance', data.coins || 0);
+            localStorage.setItem('ltc_balance', (data.ltc || 0).toFixed(6));
+            localStorage.setItem('player_exp', data.exp || 0);
+            localStorage.setItem('hashrate', data.hashrate || 0);
+            // Восстанавливаем task_bonus
+            const exp = data.exp || 0;
+            const { level } = getLevel(exp);
+            const baseHashrate = level >= 2 ? 0.5 : 0;
+            const taskBonus = Math.round(((data.hashrate || 0) - baseHashrate) * 10) / 10;
+            if (taskBonus > 0) {
+                localStorage.setItem('task_bonus_hashrate', taskBonus);
+            }
+            if (data.registerBonusGiven) {
+                localStorage.setItem('task_register_bonus', 'done');
+            }
+            if (data.zeradsBonusGiven) {
+                localStorage.setItem('task_zerads', 'done');
+            }
+            updateStats();
+        }
+
+        async function saveToFirestore(uid, email, isNew) {
             const coins = Number(localStorage.getItem('miner_balance')) || 0;
             const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
             const exp = Number(localStorage.getItem('player_exp')) || 0;
-            const email = localStorage.getItem('locked_google_email') || '';
             const hashrate = getCurrentHashrate();
+            const registerBonusGiven = localStorage.getItem('task_register_bonus') === 'done';
+            const zeradsBonusGiven = localStorage.getItem('task_zerads') === 'done';
 
-            const userRef = doc(db, 'users', uid);
-            const userSnap = await getDoc(userRef);
-            const isNewPlayer = !userSnap.exists();
-
-            await setDoc(userRef, {
+            await setDoc(doc(db, 'users', uid), {
                 coins, ltc, exp, hashrate, email,
+                registerBonusGiven, zeradsBonusGiven,
                 updatedAt: new Date()
             });
 
-            const globalRef = doc(db, 'stats', 'global');
-            const globalSnap = await getDoc(globalRef);
-            const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0, totalPlayers: 0 };
-
-            if (isNewPlayer) {
+            if (isNew) {
+                const globalRef = doc(db, 'stats', 'global');
+                const globalSnap = await getDoc(globalRef);
+                const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0, totalPlayers: 0 };
                 await setDoc(globalRef, {
                     totalHashrate: Math.round(((globalData.totalHashrate || 0) + hashrate) * 10) / 10,
                     totalPlayers: (globalData.totalPlayers || 0) + 1,
                     updatedAt: new Date()
                 }, { merge: true });
             } else {
-                const oldHashrate = userSnap.data().hashrate || 0;
+                const userSnap = await getDoc(doc(db, 'users', uid));
+                const oldHashrate = userSnap.exists() ? (userSnap.data().hashrate || 0) : 0;
                 const diff = Math.round((hashrate - oldHashrate) * 10) / 10;
                 if (diff !== 0) {
+                    const globalRef = doc(db, 'stats', 'global');
+                    const globalSnap = await getDoc(globalRef);
+                    const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0 };
                     await setDoc(globalRef, {
                         totalHashrate: Math.round(((globalData.totalHashrate || 0) + diff) * 10) / 10,
                         updatedAt: new Date()
@@ -177,7 +200,6 @@
         }
 
         const lockedEmail = localStorage.getItem('locked_google_email');
-        const bonusGiven = localStorage.getItem('task_register_bonus') === 'done';
         const btn = document.getElementById('google-btn');
         const desc = document.getElementById('account-desc');
 
@@ -190,19 +212,29 @@
                     const result = await signInWithPopup(auth, new GoogleAuthProvider());
                     const user = result.user;
 
-                    if (!bonusGiven) {
-                        let taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
-                        taskBonus = Math.round((taskBonus + 0.3) * 10) / 10;
-                        localStorage.setItem('task_bonus_hashrate', taskBonus);
-                        localStorage.setItem('task_register_bonus', 'done');
-                    }
+                    const userRef = doc(db, 'users', user.uid);
+                    const userSnap = await getDoc(userRef);
+                    const isNewPlayer = !userSnap.exists();
 
-                    localStorage.setItem('locked_google_email', user.email);
-                    await saveToFirestore(user.uid);
-
-                    if (!bonusGiven) {
+                    if (isNewPlayer) {
+                        // Новый юзер — даём бонус
+                        const bonusGiven = localStorage.getItem('task_register_bonus') === 'done';
+                        if (!bonusGiven) {
+                            let taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
+                            taskBonus = Math.round((taskBonus + 0.3) * 10) / 10;
+                            localStorage.setItem('task_bonus_hashrate', taskBonus);
+                            localStorage.setItem('task_register_bonus', 'done');
+                        }
+                        localStorage.setItem('locked_google_email', user.email);
+                        await saveToFirestore(user.uid, user.email, true);
                         updateStats();
-                        alert('🎉 Registration bonus! +0.3 GH/s added to your mining power!');
+                        alert('🎉 Account created! +0.3 GH/s bonus added!');
+                    } else {
+                        // Существующий юзер — загружаем прогресс
+                        const data = userSnap.data();
+                        localStorage.setItem('locked_google_email', user.email);
+                        loadFromFirestore(data);
+                        alert('✅ Progress restored! Welcome back!');
                     }
 
                     btn.style.display = 'none';
@@ -217,7 +249,7 @@
         // Автообновление Firebase при каждом заходе если уже залогинен
         onAuthStateChanged(auth, async (user) => {
             if (user && lockedEmail) {
-                await saveToFirestore(user.uid);
+                await saveToFirestore(user.uid, lockedEmail, false);
             }
         });
 
