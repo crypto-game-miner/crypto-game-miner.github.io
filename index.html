@@ -70,7 +70,25 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+        import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+            authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+            projectId: "crypto-miner-game-f45dc",
+            storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+            messagingSenderId: "33690622473",
+            appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Оффлайн начисление LTC
         (function() {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || 0;
             const now = Date.now();
@@ -124,6 +142,39 @@
             } catch { return false; }
         }
 
+        async function updateFirebase() {
+            const lockedEmail = localStorage.getItem('locked_google_email');
+            if (!lockedEmail) return;
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const c = Number(localStorage.getItem('miner_balance')) || 0;
+                const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+                const e = Number(localStorage.getItem('player_exp')) || 0;
+                const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+
+                const userRef = doc(db, 'users', user.uid);
+                const userSnap = await getDoc(userRef);
+                const oldHashrate = userSnap.exists() ? (userSnap.data().hashrate || 0) : 0;
+
+                await setDoc(userRef, { coins: c, ltc, exp: e, hashrate, email: lockedEmail, updatedAt: new Date() });
+
+                const diff = Math.round((hashrate - oldHashrate) * 10) / 10;
+                if (diff !== 0) {
+                    const globalRef = doc(db, 'stats', 'global');
+                    const globalSnap = await getDoc(globalRef);
+                    const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0 };
+                    await setDoc(globalRef, {
+                        totalHashrate: Math.round(((globalData.totalHashrate || 0) + diff) * 10) / 10,
+                        updatedAt: new Date()
+                    }, { merge: true });
+                }
+            } catch(e) {
+                console.log('Firebase update skipped:', e.message);
+            }
+        }
+
         async function showAd() {
             const btn = document.getElementById('collect-btn');
             const today = new Date().toDateString();
@@ -149,7 +200,7 @@
             status.innerText = ok ? "AD LOADED ✅" : "ADBLOCK DETECTED! ❌";
             status.style.color = ok ? "#00ff00" : "#ff4444";
             let timeLeft = 10;
-            const timerAd = setInterval(() => {
+            const timerAd = setInterval(async () => {
                 timeLeft--;
                 document.getElementById('ad-timer').innerText = timeLeft;
                 if (timeLeft <= 0) {
@@ -164,11 +215,14 @@
                         localStorage.setItem('lastClaimTime', Date.now());
                         localStorage.setItem('claimsToday', String(nextClaim));
                         updateClaimsLeft();
+                        await updateFirebase();
                     }
                     btn.disabled = false;
                 }
             }, 1000);
         }
+
+        window.showAd = showAd;
     </script>
 </body>
 </html>
