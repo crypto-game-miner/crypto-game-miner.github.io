@@ -150,7 +150,7 @@
             } catch { return false; }
         }
 
-        async function updateFirebase() {
+                async function updateFirebase() {
             const lockedEmail = localStorage.getItem('locked_google_email');
             if (!lockedEmail) return;
             try {
@@ -165,24 +165,62 @@
 
                 const userRef = doc(db, 'users', user.uid);
                 const userSnap = await getDoc(userRef);
+                
+                // Проверяем активность игрока за последние 24 часа
+                let wasActive = false;
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    const oldUpdatedAt = userData.updatedAt ? userData.updatedAt.toDate().getTime() : 0;
+                    if (Date.now() - oldUpdatedAt < 24 * 60 * 60 * 1000) {
+                        wasActive = true;
+                    }
+                }
                 const oldHashrate = userSnap.exists() ? (userSnap.data().hashrate || 0) : 0;
 
-                await setDoc(userRef, { coins: c, game_coins: gc, ltc, exp: e, hashrate, email: lockedEmail, updatedAt: new Date() });
+                // Сохраняем обновленные данные юзера
+                await setDoc(userRef, { 
+                    coins: c, 
+                    game_coins: gc, 
+                    ltc, 
+                    exp: e, 
+                    hashrate, 
+                    email: lockedEmail, 
+                    updatedAt: new Date() 
+                });
 
-                const diff = Math.round((hashrate - oldHashrate) * 10) / 10;
-                if (diff !== 0) {
-                    const globalRef = doc(db, 'stats', 'global');
-                    const globalSnap = await getDoc(globalRef);
-                    const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0 };
-                    await setDoc(globalRef, {
-                        totalHashrate: Math.round(((globalData.totalHashrate || 0) + diff) * 10) / 10,
-                        updatedAt: new Date()
-                    }, { merge: true });
+                // Корректируем глобальный totalHashrate и activeHashrate
+                const globalRef = doc(db, 'stats', 'global');
+                const globalSnap = await getDoc(globalRef);
+                const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0, activeHashrate: 0 };
+                
+                let totalDiff = Math.round((hashrate - oldHashrate) * 10) / 10;
+                
+                let activeDiff = 0;
+                if (!wasActive) {
+                    // Если юзер спал больше 24 часов — добавляем весь его текущий хешрейт в активный пул
+                    activeDiff = hashrate;
+                } else {
+                    // Если он уже был активен, просто добавляем разницу (если она есть)
+                    activeDiff = Math.round((hashrate - oldHashrate) * 10) / 10;
                 }
+
+                let newTotal = Math.round(((globalData.totalHashrate || 0) + totalDiff) * 10) / 10;
+                let newActive = Math.round(((globalData.activeHashrate || 0) + activeDiff) * 10) / 10;
+                
+                if (newActive < 0) newActive = 0;
+                if (newTotal < 0) newTotal = 0;
+
+                await setDoc(globalRef, {
+                    totalHashrate: newTotal,
+                    activeHashrate: newActive,
+                    updatedAt: new Date()
+                }, { merge: true });
+
             } catch(e) {
                 console.log('Firebase update skipped:', e.message);
             }
         }
+
 
         async function showAd() {
             const btn = document.getElementById('collect-btn');
@@ -244,5 +282,7 @@
     </script>
 </body>
 </html>
+
+
 
 
