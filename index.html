@@ -78,7 +78,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
-        import { getAuth } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
@@ -114,17 +114,24 @@
             localStorage.setItem('lastVisitTime', now);
         })();
 
-        updateClaimsLeft();
-
         const POPUP_ON = [1];
+        const MAX_CLAIMS = 25;
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         let exp = Number(localStorage.getItem('player_exp')) || 0;
+        let currentUser = null;
+
+        // Ждём авторизацию один раз
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+        });
+
         document.getElementById('balance').innerText = coins;
         document.getElementById('game-coins').innerText = gameCoins;
         document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
+        updateClaimsLeft();
 
         function getClaimsToday() {
             const today = new Date().toDateString();
@@ -140,7 +147,9 @@
         function updateClaimsLeft() {
             const claimsToday = getClaimsToday();
             const el = document.getElementById('claims-left');
-            if (el) el.innerText = claimsToday < 20 ? `Claims today: ${claimsToday}/20` : "Daily limit reached! Come back tomorrow.";
+            if (el) el.innerText = claimsToday < MAX_CLAIMS
+                ? `Claims Today: ${claimsToday}/${MAX_CLAIMS}`
+                : "Daily Limit Reached! Come Back Tomorrow.";
         }
 
         async function verifyAd() {
@@ -150,77 +159,41 @@
             } catch { return false; }
         }
 
-                async function updateFirebase() {
+        // Сохраняем данные юзера — только merge, никогда не перезаписываем монеты старыми значениями
+        async function updateFirebase(c, gc, ltc, e) {
             const lockedEmail = localStorage.getItem('locked_google_email');
-            if (!lockedEmail) return;
+            if (!lockedEmail || !currentUser) return;
             try {
-                const user = auth.currentUser;
-                if (!user) return;
-
-                const c = Number(localStorage.getItem('miner_balance')) || 0;
-                const gc = Number(localStorage.getItem('game_coins')) || 0;
-                const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-                const e = Number(localStorage.getItem('player_exp')) || 0;
                 const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+                const lastClaimTime = Number(localStorage.getItem('lastClaimTime')) || 0;
 
-                const userRef = doc(db, 'users', user.uid);
-                const userSnap = await getDoc(userRef);
-                
-                // Проверяем активность игрока за последние 24 часа
-                let wasActive = false;
-                if (userSnap.exists()) {
-                    const userData = userSnap.data();
-                    const oldUpdatedAt = userData.updatedAt ? userData.updatedAt.toDate().getTime() : 0;
-                    if (Date.now() - oldUpdatedAt < 24 * 60 * 60 * 1000) {
-                        wasActive = true;
-                    }
-                }
-                const oldHashrate = userSnap.exists() ? (userSnap.data().hashrate || 0) : 0;
-
-                // Сохраняем обновленные данные юзера
-                await setDoc(userRef, { 
-                    coins: c, 
-                    game_coins: gc, 
-                    ltc, 
-                    exp: e, 
-                    hashrate, 
-                    email: lockedEmail, 
-                    updatedAt: new Date() 
+                await setDoc(doc(db, 'users', currentUser.uid), {
+                    coins: c,
+                    game_coins: gc,
+                    ltc,
+                    exp: e,
+                    hashrate,
+                    email: lockedEmail,
+                    lastClaimTime: lastClaimTime ? new Date(lastClaimTime) : null,
+                    updatedAt: new Date()
                 });
 
-                // Корректируем глобальный totalHashrate и activeHashrate
+                // Обновляем totalHashrate в global (только hashrate, без activeHashrate — он теперь не используется)
                 const globalRef = doc(db, 'stats', 'global');
                 const globalSnap = await getDoc(globalRef);
-                const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0, activeHashrate: 0 };
-                
-                let totalDiff = Math.round((hashrate - oldHashrate) * 10) / 10;
-                
-                let activeDiff = 0;
-                if (!wasActive) {
-                    // Если юзер спал больше 24 часов — добавляем весь его текущий хешрейт в активный пул
-                    activeDiff = hashrate;
-                } else {
-                    // Если он уже был активен, просто добавляем разницу (если она есть)
-                    activeDiff = Math.round((hashrate - oldHashrate) * 10) / 10;
+                const oldHashrate = globalSnap.exists() ? (globalSnap.data().prevHashrate || 0) : 0;
+                if (Math.abs(hashrate - oldHashrate) >= 0.1) {
+                    const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0 };
+                    const diff = hashrate - oldHashrate;
+                    await setDoc(globalRef, {
+                        totalHashrate: Math.max(0, Math.round(((globalData.totalHashrate || 0) + diff) * 10) / 10),
+                        updatedAt: new Date()
+                    }, { merge: true });
                 }
-
-                let newTotal = Math.round(((globalData.totalHashrate || 0) + totalDiff) * 10) / 10;
-                let newActive = Math.round(((globalData.activeHashrate || 0) + activeDiff) * 10) / 10;
-                
-                if (newActive < 0) newActive = 0;
-                if (newTotal < 0) newTotal = 0;
-
-                await setDoc(globalRef, {
-                    totalHashrate: newTotal,
-                    activeHashrate: newActive,
-                    updatedAt: new Date()
-                }, { merge: true });
-
             } catch(e) {
                 console.log('Firebase update skipped:', e.message);
             }
         }
-
 
         async function showAd() {
             const btn = document.getElementById('collect-btn');
@@ -232,7 +205,7 @@
                 localStorage.setItem('claimsToday', '0');
                 claimsToday = 0;
             }
-            if (claimsToday >= 20) return alert("Daily limit (20 claims) reached! Come back tomorrow.");
+            if (claimsToday >= MAX_CLAIMS) return alert("Daily Limit Reached! Come Back Tomorrow.");
             btn.disabled = true;
 
             const nextClaim = claimsToday + 1;
@@ -254,24 +227,26 @@
                     clearInterval(timerAd);
                     overlay.style.display = 'none';
                     if (ok) {
-                        // +20 USDT Coins
+                        // Сначала прибавляем
                         coins += 20;
-                        document.getElementById('balance').innerText = coins;
-                        localStorage.setItem('miner_balance', coins);
-
-                        // +5 Game Coins
                         gameCoins += 5;
-                        document.getElementById('game-coins').innerText = gameCoins;
-                        localStorage.setItem('game_coins', gameCoins);
-
-                        // EXP
                         exp += 8;
-                        localStorage.setItem('player_exp', exp);
 
+                        // Потом сохраняем в localStorage
+                        localStorage.setItem('miner_balance', coins);
+                        localStorage.setItem('game_coins', gameCoins);
+                        localStorage.setItem('player_exp', exp);
                         localStorage.setItem('lastClaimTime', Date.now());
                         localStorage.setItem('claimsToday', String(nextClaim));
+
+                        // Обновляем UI
+                        document.getElementById('balance').innerText = coins;
+                        document.getElementById('game-coins').innerText = gameCoins;
                         updateClaimsLeft();
-                        await updateFirebase();
+
+                        // Передаём актуальные значения напрямую в Firebase
+                        const ltcNow = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+                        await updateFirebase(coins, gameCoins, ltcNow, exp);
                     }
                     btn.disabled = false;
                 }
@@ -282,6 +257,7 @@
     </script>
 </body>
 </html>
+
 
 
 
