@@ -32,7 +32,7 @@
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
         body { text-transform: uppercase; }
-input { text-transform: none !important; }
+        input { text-transform: none !important; }
     </style>
 </head>
 <body>
@@ -59,12 +59,12 @@ input { text-transform: none !important; }
         <div class="main-area">
             <div class="warning-card" id="warning-card">
                 <div class="warning-text">⚠️ Mining Paused!</div>
-                <div class="warning-sub">You haven't collected in 24h. Go to Faucet to resume mining.</div>
+                <div class="warning-sub">You Haven't Collected In 24H. Go To Faucet To Resume Mining.</div>
             </div>
 
             <div class="level-card">
                 <div class="level-title">⚡ Level <span id="level-num">1</span></div>
-                <div class="level-subtitle">Complete tasks and collect to level up!</div>
+                <div class="level-subtitle">Complete Tasks And Collect To Level Up!</div>
                 <div class="exp-bar-bg">
                     <div class="exp-bar-fill" id="exp-bar" style="width: 0%;"></div>
                 </div>
@@ -108,7 +108,24 @@ input { text-transform: none !important; }
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+        import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+            authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+            projectId: "crypto-miner-game-f45dc",
+            storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+            messagingSenderId: "33690622473",
+            appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
         function getDailyRate() {
@@ -165,6 +182,7 @@ input { text-transform: none !important; }
         const now = Date.now();
         const hoursSinceClaim = (now - lastClaim) / 1000 / 3600;
         const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
+        const isActive = lastClaim > 0 && !miningPaused;
 
         if (miningPaused && hashrate > 0) {
             document.getElementById('warning-card').style.display = 'block';
@@ -186,6 +204,49 @@ input { text-transform: none !important; }
         const active = hashrate > 0 && !miningPaused;
         document.getElementById('mining-status').innerText = active ? 'Active ✅' : (hashrate === 0 ? 'Inactive' : 'Paused ⚠️');
         document.getElementById('mining-status').style.color = active ? '#22c55e' : '#ef4444';
+
+        // Обновляем Firebase при заходе на Home — актуализируем isActive
+        async function updateActiveStatus() {
+            const lockedEmail = localStorage.getItem('locked_google_email');
+            if (!lockedEmail) return;
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const userRef = doc(db, 'users', user.uid);
+                const userSnap = await getDoc(userRef);
+                if (!userSnap.exists()) return;
+
+                const oldData = userSnap.data();
+                const wasActive = oldData.isActive || false;
+
+                // Обновляем статус юзера
+                await setDoc(userRef, { isActive, updatedAt: new Date() }, { merge: true });
+
+                // Обновляем activeHashrate в global
+                if (wasActive !== isActive) {
+                    const globalRef = doc(db, 'stats', 'global');
+                    const globalSnap = await getDoc(globalRef);
+                    const globalData = globalSnap.exists() ? globalSnap.data() : { activeHashrate: 0 };
+                    let newActive = globalData.activeHashrate || 0;
+                    if (wasActive && !isActive) {
+                        newActive = Math.round((newActive - hashrate) * 10) / 10;
+                    } else if (!wasActive && isActive) {
+                        newActive = Math.round((newActive + hashrate) * 10) / 10;
+                    }
+                    newActive = Math.max(0, newActive);
+                    await setDoc(globalRef, { activeHashrate: newActive, updatedAt: new Date() }, { merge: true });
+                }
+            } catch(e) {
+                console.log('Firebase status update skipped:', e.message);
+            }
+        }
+
+        // Ждём авторизацию и обновляем
+        import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+        onAuthStateChanged(auth, (user) => {
+            if (user) updateActiveStatus();
+        });
 
         if (active) {
             setInterval(() => {
