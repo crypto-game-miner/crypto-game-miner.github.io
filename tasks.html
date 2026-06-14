@@ -10,7 +10,7 @@
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
         .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
         .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
-        .balance-row:first-child { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
+        .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
         .tasks-area { padding: 15px 20px; overflow-y: auto; padding-bottom: 90px; flex: 1; }
         .task-card { background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px; padding: 14px; margin-bottom: 12px; text-align: left; }
         .task-card.done { border-color: #22c55e; opacity: 0.6; }
@@ -24,6 +24,8 @@
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
+        body { text-transform: uppercase; }
+input { text-transform: none !important; }
     </style>
 </head>
 <body>
@@ -31,7 +33,11 @@
         <div class="header">Tasks</div>
         <div class="balance-container">
             <div class="balance-row">
-                <span style="color:#facc15;">Coins</span>
+                <span style="color:#22c55e;">Game Coins</span>
+                <span style="font-weight:bold; color:#22c55e;" id="game-coins">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#facc15;">USDT Coins</span>
                 <span style="font-weight:bold;" id="balance">0</span>
             </div>
             <div class="balance-row">
@@ -41,15 +47,15 @@
         </div>
 
         <div class="tasks-area">
-            <p style="color:#8b949e; font-size:12px; margin-bottom:15px; text-align:left;">Complete tasks to earn mining power!</p>
+            <p style="color:#8b949e; font-size:12px; margin-bottom:15px; text-align:left;">Complete Tasks To Earn Mining Power!</p>
 
             <div class="task-card" id="task-register-bonus">
                 <div class="task-header">
                     <span class="task-title">🔑 Register Account</span>
                     <span class="task-reward">+0.3 GH/s</span>
                 </div>
-                <div class="task-desc">Sign in with Google in Settings to get a permanent mining power boost!</div>
-                <button class="task-btn" id="task-register-bonus-btn" onclick="goToSettings()">Go to Settings</button>
+                <div class="task-desc">Sign In With Google In Settings To Get A Permanent Mining Power Boost!</div>
+                <button class="task-btn" id="task-register-bonus-btn" onclick="goToSettings()">Go To Settings</button>
             </div>
 
             <div class="task-card" id="task-zerads">
@@ -57,7 +63,7 @@
                     <span class="task-title">⛏️ Boost Mining Power</span>
                     <span class="task-reward">+0.2 GH/s</span>
                 </div>
-                <div class="task-desc">Visit our partner site and claim your mining power boost. One-time reward!</div>
+                <div class="task-desc">Visit Our Partner Site And Claim Your Mining Power Boost. One-Time Reward!</div>
                 <button class="task-btn" id="task-zerads-btn" onclick="doTask('zerads', 'https://zerads.com/e3AhcEW', 0.2)">Start Task</button>
             </div>
         </div>
@@ -99,8 +105,10 @@
         })();
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         document.getElementById('balance').innerText = coins;
+        document.getElementById('game-coins').innerText = gameCoins;
         document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
 
         function checkDone(taskId) {
@@ -114,7 +122,6 @@
             if (btn) { btn.innerText = '✅ Completed'; btn.classList.add('done'); btn.disabled = true; }
         }
 
-        // Автопроверка регистрации
         if (localStorage.getItem('locked_google_email') || checkDone('register-bonus')) {
             localStorage.setItem('task_register_bonus', 'done');
             setDone('register-bonus');
@@ -144,7 +151,7 @@
                     localStorage.setItem('task_bonus_hashrate', taskBonus);
                     localStorage.setItem('task_' + taskId, 'done');
                     setDone(taskId);
-                    alert('🎉 +' + ghReward + ' GH/s added to your mining power!');
+                    alert('🎉 +' + ghReward + ' GH/s Added To Your Mining Power!');
                 }
             }, 1000);
         }
