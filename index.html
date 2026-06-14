@@ -94,6 +94,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // Оффлайн начисление LTC
         (function() {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || 0;
             const now = Date.now();
@@ -116,13 +117,11 @@
         updateClaimsLeft();
 
         const POPUP_ON = [1];
-        const MAX_CLAIMS = 25;
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         let exp = Number(localStorage.getItem('player_exp')) || 0;
-
         document.getElementById('balance').innerText = coins;
         document.getElementById('game-coins').innerText = gameCoins;
         document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
@@ -141,7 +140,7 @@
         function updateClaimsLeft() {
             const claimsToday = getClaimsToday();
             const el = document.getElementById('claims-left');
-            if (el) el.innerText = claimsToday < MAX_CLAIMS ? `Claims Today: ${claimsToday}/${MAX_CLAIMS}` : "Daily Limit Reached! Come Back Tomorrow.";
+            if (el) el.innerText = claimsToday < 20 ? `Claims today: ${claimsToday}/20` : "Daily limit reached! Come back tomorrow.";
         }
 
         async function verifyAd() {
@@ -151,7 +150,7 @@
             } catch { return false; }
         }
 
-        async function updateFirebase(isActiveClaim = false) {
+        async function updateFirebase() {
             const lockedEmail = localStorage.getItem('locked_google_email');
             if (!lockedEmail) return;
             try {
@@ -163,53 +162,23 @@
                 const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
                 const e = Number(localStorage.getItem('player_exp')) || 0;
                 const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
-                const lastClaimTime = Number(localStorage.getItem('lastClaimTime')) || 0;
-                const isActive = lastClaimTime > 0 && (Date.now() - lastClaimTime) < 86400000;
 
                 const userRef = doc(db, 'users', user.uid);
                 const userSnap = await getDoc(userRef);
-                const oldData = userSnap.exists() ? userSnap.data() : {};
-                const oldHashrate = oldData.hashrate || 0;
-                const wasActive = oldData.isActive || false;
+                const oldHashrate = userSnap.exists() ? (userSnap.data().hashrate || 0) : 0;
 
-                await setDoc(userRef, {
-                    coins: c, game_coins: gc, ltc, exp: e,
-                    hashrate, email: lockedEmail,
-                    lastClaimTime: new Date(lastClaimTime),
-                    isActive,
-                    updatedAt: new Date()
-                });
+                await setDoc(userRef, { coins: c, game_coins: gc, ltc, exp: e, hashrate, email: lockedEmail, updatedAt: new Date() });
 
-                const globalRef = doc(db, 'stats', 'global');
-                const globalSnap = await getDoc(globalRef);
-                const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0, activeHashrate: 0 };
-
-                // Обновляем totalHashrate если изменился хешрейт
                 const diff = Math.round((hashrate - oldHashrate) * 10) / 10;
-                let newTotal = globalData.totalHashrate || 0;
-                if (diff !== 0) newTotal = Math.round((newTotal + diff) * 10) / 10;
-
-                // Обновляем activeHashrate
-                let newActive = globalData.activeHashrate || 0;
-                if (wasActive && !isActive) {
-                    // Юзер был активен, стал неактивен — вычитаем
-                    newActive = Math.round((newActive - oldHashrate) * 10) / 10;
-                } else if (!wasActive && isActive) {
-                    // Юзер стал активным — добавляем
-                    newActive = Math.round((newActive + hashrate) * 10) / 10;
-                } else if (wasActive && isActive && diff !== 0) {
-                    // Юзер активен и изменился хешрейт
-                    newActive = Math.round((newActive + diff) * 10) / 10;
+                if (diff !== 0) {
+                    const globalRef = doc(db, 'stats', 'global');
+                    const globalSnap = await getDoc(globalRef);
+                    const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0 };
+                    await setDoc(globalRef, {
+                        totalHashrate: Math.round(((globalData.totalHashrate || 0) + diff) * 10) / 10,
+                        updatedAt: new Date()
+                    }, { merge: true });
                 }
-
-                newActive = Math.max(0, newActive);
-
-                await setDoc(globalRef, {
-                    totalHashrate: newTotal,
-                    activeHashrate: newActive,
-                    updatedAt: new Date()
-                }, { merge: true });
-
             } catch(e) {
                 console.log('Firebase update skipped:', e.message);
             }
@@ -225,7 +194,7 @@
                 localStorage.setItem('claimsToday', '0');
                 claimsToday = 0;
             }
-            if (claimsToday >= MAX_CLAIMS) return alert("Daily Limit (25 Claims) Reached! Come Back Tomorrow.");
+            if (claimsToday >= 20) return alert("Daily limit (20 claims) reached! Come back tomorrow.");
             btn.disabled = true;
 
             const nextClaim = claimsToday + 1;
@@ -247,18 +216,24 @@
                     clearInterval(timerAd);
                     overlay.style.display = 'none';
                     if (ok) {
+                        // +20 USDT Coins
                         coins += 20;
-                        gameCoins += 5;
-                        exp += 8;
                         document.getElementById('balance').innerText = coins;
-                        document.getElementById('game-coins').innerText = gameCoins;
                         localStorage.setItem('miner_balance', coins);
+
+                        // +5 Game Coins
+                        gameCoins += 5;
+                        document.getElementById('game-coins').innerText = gameCoins;
                         localStorage.setItem('game_coins', gameCoins);
+
+                        // EXP
+                        exp += 8;
                         localStorage.setItem('player_exp', exp);
+
                         localStorage.setItem('lastClaimTime', Date.now());
                         localStorage.setItem('claimsToday', String(nextClaim));
                         updateClaimsLeft();
-                        await updateFirebase(true);
+                        await updateFirebase();
                     }
                     btn.disabled = false;
                 }
@@ -269,4 +244,5 @@
     </script>
 </body>
 </html>
+
 
