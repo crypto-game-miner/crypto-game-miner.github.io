@@ -10,7 +10,7 @@
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
         .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
         .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
-        .balance-row:first-child { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
+        .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
         .wallet-area { padding: 15px; text-align: left; overflow-y: auto; padding-bottom: 350px; flex: 1; }
         .wallet-card { background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px; padding: 10px; margin-bottom: 8px; display: flex; align-items: center; cursor: pointer; }
         .card-info h3 { margin: 0; font-size: 15px; }
@@ -24,6 +24,8 @@
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
+        body { text-transform: uppercase; }
+input { text-transform: none !important; }
         .keyboard-open .banner-area, .keyboard-open .nav-bar { display: none !important; }
     </style>
 </head>
@@ -32,7 +34,11 @@
         <div class="header">Wallet</div>
         <div class="balance-container">
             <div class="balance-row">
-                <span style="color:#facc15;">Coins</span>
+                <span style="color:#22c55e;">Game Coins</span>
+                <span style="font-weight:bold; color:#22c55e;" id="game-coins">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#facc15;">USDT Coins</span>
                 <span style="font-weight:bold;" id="balance">0</span>
             </div>
             <div class="balance-row">
@@ -49,11 +55,11 @@
                 <div class="card-info">
                     <h3>USDT</h3>
                     <p>via FaucetPay</p>
-                    <span style="font-size:10px; color:#8b949e">Min: 500 Coins</span>
+                    <span style="font-size:10px; color:#8b949e">Min: 500 USDT Coins</span>
                 </div>
             </div>
             <div id="usdt-box" class="withdraw-box">
-                <label>Coins to Convert</label>
+                <label>USDT Coins To Convert</label>
                 <input type="number" id="wd-points-usdt" placeholder="Min 500">
                 <label>FaucetPay Email</label>
                 <input type="email" id="wd-email-usdt" placeholder="example@mail.com">
@@ -69,7 +75,7 @@
                 </div>
             </div>
             <div id="ltc-box" class="withdraw-box">
-                <label>LTC Coins to Withdraw</label>
+                <label>LTC Coins To Withdraw</label>
                 <input type="number" id="wd-points-ltc" placeholder="Min 1000">
                 <label>FaucetPay Email</label>
                 <input type="email" id="wd-email-ltc" placeholder="example@mail.com">
@@ -131,8 +137,10 @@
         }
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         document.getElementById('balance').innerText = coins;
+        document.getElementById('game-coins').innerText = gameCoins;
         document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
 
         function toggleBox(showId, hideId) {
@@ -157,15 +165,15 @@
             const minCoins = type === 'usdt' ? 500 : 1000;
             const balance  = type === 'usdt' ? coins : ltcCoins;
 
-            if (!points || points < minCoins) return alert("Minimum " + minCoins + (type === 'usdt' ? " Coins!" : " LTC Coins!"));
-            if (points > balance) return alert("Not enough " + (type === 'usdt' ? "Coins!" : "LTC Coins!"));
+            if (!points || points < minCoins) return alert("Minimum " + minCoins + (type === 'usdt' ? " USDT Coins!" : " LTC Coins!"));
+            if (points > balance) return alert("Not enough " + (type === 'usdt' ? "USDT Coins!" : "LTC Coins!"));
             if (!email.includes('@')) return alert("Invalid email!");
 
             if (type === 'usdt') {
                 const withdrawnToday = getWithdrawnToday();
                 const remaining = DAILY_LIMIT - withdrawnToday;
                 if (points > remaining) {
-                    return alert(`Daily limit is 1000 coins/day! You can withdraw ${remaining} more coins today.`);
+                    return alert(`Daily limit is 1000 USDT Coins/day! You can withdraw ${remaining} more today.`);
                 }
             }
 
