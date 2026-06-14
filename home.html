@@ -10,7 +10,7 @@
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
         .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
-        .balance-row:first-child { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
+        .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
         .main-area { flex: 1; padding: 15px 20px; overflow-y: auto; padding-bottom: 90px; }
         .level-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
         .level-title { color: #facc15; font-size: 22px; font-weight: bold; margin-bottom: 4px; }
@@ -31,6 +31,8 @@
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
+        body { text-transform: uppercase; }
+input { text-transform: none !important; }
     </style>
 </head>
 <body>
@@ -41,7 +43,11 @@
         </div>
         <div class="balance-container">
             <div class="balance-row">
-                <span style="color:#facc15;">Coins</span>
+                <span style="color:#22c55e;">Game Coins</span>
+                <span style="font-weight:bold; color:#22c55e;" id="game-coins">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#facc15;">USDT Coins</span>
                 <span style="font-weight:bold;" id="balance">0</span>
             </div>
             <div class="balance-row">
@@ -72,11 +78,11 @@
                     <span class="mining-value" id="hashrate">0 GH/s</span>
                 </div>
                 <div class="mining-stat">
-                    <span class="mining-label">LTC Coins / hour</span>
+                    <span class="mining-label">LTC Coins / Hour</span>
                     <span class="mining-value" id="ltc-per-hour">0</span>
                 </div>
                 <div class="mining-stat">
-                    <span class="mining-label">Mined this session</span>
+                    <span class="mining-label">Mined This Session</span>
                     <span class="mining-value" id="mined-session" style="color:#22c55e;">+0.000000</span>
                 </div>
                 <div class="mining-stat">
@@ -105,14 +111,10 @@
     <script>
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
-        // Получаем дневной множитель рейта (меняется раз в день)
         function getDailyRate() {
             const today = new Date().toDateString();
             const savedDay = localStorage.getItem('rateDay');
-            if (savedDay === today) {
-                return parseFloat(localStorage.getItem('dailyRate')) || 1.0;
-            }
-            // Новый день — генерируем новый множитель 0.98 - 1.005
+            if (savedDay === today) return parseFloat(localStorage.getItem('dailyRate')) || 1.0;
             const rate = 0.98 + Math.random() * 0.025;
             localStorage.setItem('rateDay', today);
             localStorage.setItem('dailyRate', rate.toFixed(4));
@@ -122,11 +124,13 @@
         const dailyRate = getDailyRate();
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         let exp = Number(localStorage.getItem('player_exp')) || 0;
         let sessionMined = 0;
 
         document.getElementById('balance').innerText = coins;
+        document.getElementById('game-coins').innerText = gameCoins;
 
         function getLevel(exp) {
             let level = 1, totalExp = 0;
@@ -147,7 +151,6 @@
         const hashrate = Math.round((baseHashrate + taskBonus) * 10) / 10;
         localStorage.setItem('hashrate', hashrate);
 
-        // Рейт с дневным множителем
         const ltcPerHour = hashrate * 2 * dailyRate;
 
         document.getElementById('level-num').innerText = level;
@@ -167,7 +170,6 @@
             document.getElementById('warning-card').style.display = 'block';
         }
 
-        // Оффлайн начисление с дневным множителем
         if (hashrate > 0 && !miningPaused) {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || now;
             const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
@@ -185,7 +187,6 @@
         document.getElementById('mining-status').innerText = active ? 'Active ✅' : (hashrate === 0 ? 'Inactive' : 'Paused ⚠️');
         document.getElementById('mining-status').style.color = active ? '#22c55e' : '#ef4444';
 
-        // Тикер каждую секунду с дневным множителем
         if (active) {
             setInterval(() => {
                 const earned = hashrate * 2 * dailyRate / 3600;
