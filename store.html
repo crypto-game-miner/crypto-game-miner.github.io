@@ -151,6 +151,7 @@
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         let ownedNano = Number(localStorage.getItem('miner_nano')) || 0;
+        const isLoggedIn = !!localStorage.getItem('locked_google_email');
 
         document.getElementById('game-coins').innerText = gameCoins;
         document.getElementById('balance').innerText = coins;
@@ -159,17 +160,28 @@
         function updateUI() {
             document.getElementById('owned-nano').innerText = `Owned: ${ownedNano} / 10`;
             const btn = document.getElementById('btn-nano');
-            if (ownedNano >= 10) {
+            if (!isLoggedIn) {
+                btn.innerText = '🔒 Login Required';
+                btn.className = 'buy-btn';
+                btn.style.background = '#ef4444';
+                btn.style.boxShadow = '0 3px 0 #991b1b';
+                btn.disabled = false;
+            } else if (ownedNano >= 10) {
                 btn.innerText = 'MAX REACHED';
                 btn.className = 'buy-btn maxed';
                 btn.disabled = true;
             } else if (gameCoins < 50) {
                 btn.innerText = 'Not Enough Game Coins';
                 btn.disabled = true;
+                btn.className = 'buy-btn';
+                btn.style.background = '';
+                btn.style.boxShadow = '';
             } else {
                 btn.innerText = 'Buy for 50 Game Coins';
                 btn.disabled = false;
                 btn.className = 'buy-btn';
+                btn.style.background = '';
+                btn.style.boxShadow = '';
             }
             if (ownedNano > 0) {
                 document.getElementById('card-nano').classList.add('owned');
@@ -184,24 +196,24 @@
         }
 
         function buyMiner(type) {
+            if (!isLoggedIn) {
+                alert('❌ You must be logged in to buy miners!\nGo to Settings and sign in with Google.');
+                return;
+            }
             if (type === 'nano') {
                 if (ownedNano >= 10) return;
                 if (gameCoins < 50) return;
 
-                // Списываем монеты
                 gameCoins -= 50;
                 ownedNano += 1;
 
-                // Сохраняем
                 localStorage.setItem('game_coins', gameCoins);
                 localStorage.setItem('miner_nano', ownedNano);
 
-                // Прибавляем мощность (0.1 GH/s за каждый майнер)
                 const currentBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
                 const newBonus = Math.round((currentBonus + 0.1) * 10) / 10;
                 localStorage.setItem('task_bonus_hashrate', newBonus);
 
-                // Обновляем UI
                 document.getElementById('game-coins').innerText = gameCoins;
                 updateUI();
                 showToast(`✅ NanoMiner X1 purchased! +0.1 GH/S`);
@@ -212,3 +224,4 @@
     </script>
 </body>
 </html>
+
