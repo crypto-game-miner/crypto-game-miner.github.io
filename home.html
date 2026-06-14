@@ -142,6 +142,38 @@
         </div>
     </div>
 
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+        import { getFirestore, doc, setDoc, getDocs, collection } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+            authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+            projectId: "crypto-miner-game-f45dc",
+            storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+            messagingSenderId: "33690622473",
+            appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Пересчёт totalHashrate по всем юзерам
+        async function recalcTotalHashrate() {
+            try {
+                const usersSnap = await getDocs(collection(db, 'users'));
+                let total = 0;
+                usersSnap.forEach(d => { total += d.data().hashrate || 0; });
+                await setDoc(doc(db, 'stats', 'global'), {
+                    totalHashrate: Math.round(total * 10) / 10,
+                    updatedAt: new Date()
+                }, { merge: true });
+            } catch(e) { console.log('recalc error:', e.message); }
+        }
+
+        recalcTotalHashrate();
+
+    </script>
     <script>
         function openMenu() {
             document.getElementById('side-menu').classList.add('open');
@@ -243,6 +275,7 @@
     </script>
 </body>
 </html>
+
 
 
 
