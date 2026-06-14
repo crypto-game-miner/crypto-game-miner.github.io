@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crypto Miner — Store</title>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
+        #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
+        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
+        .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+        .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
+        .main-area { flex: 1; padding: 15px 20px; overflow-y: auto; padding-bottom: 90px; }
+        .section-title { color: #facc15; font-size: 14px; font-weight: bold; margin-bottom: 12px; text-align: left; }
+        .miner-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 15px; margin-bottom: 12px; text-align: left; }
+        .miner-card.owned { border-color: #22c55e; }
+        .miner-header { display: flex; align-items: center; margin-bottom: 10px; }
+        .miner-icon { width: 64px; height: 64px; margin-right: 12px; flex-shrink: 0; }
+        .miner-name { color: #facc15; font-size: 16px; font-weight: bold; }
+        .miner-desc { color: #8b949e; font-size: 10px; margin-top: 2px; }
+        .miner-stats { display: flex; justify-content: space-between; margin-bottom: 12px; }
+        .stat-box { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 12px; flex: 1; margin: 0 4px; text-align: center; }
+        .stat-box:first-child { margin-left: 0; }
+        .stat-box:last-child { margin-right: 0; }
+        .stat-label { color: #8b949e; font-size: 9px; margin-bottom: 2px; }
+        .stat-value { color: #a78bfa; font-size: 13px; font-weight: bold; }
+        .buy-btn { background: #22c55e; color: #1a1613; border: none; padding: 10px 0; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; width: 100%; box-shadow: 0 3px 0 #15803d; }
+        .buy-btn:disabled { background: #3d2b1f; color: #8b949e; box-shadow: none; cursor: default; }
+        .buy-btn.maxed { background: #a78bfa; color: #1a1613; box-shadow: 0 3px 0 #7c3aed; cursor: default; }
+        .owned-count { color: #22c55e; font-size: 11px; text-align: right; margin-bottom: 8px; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
+        .nav-item.active { color: #facc15; }
+        .nav-icon { font-size: 24px; margin-bottom: 3px; }
+        body { text-transform: uppercase; }
+        input { text-transform: none !important; }
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #22c55e; color: #1a1613; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; z-index: 9999; display: none; }
+    </style>
+</head>
+<body>
+    <div id="toast" class="toast"></div>
+    <div id="main-content">
+        <div class="header">
+            <a href="home.html" style="color:#facc15;text-decoration:none;font-size:20px;">←</a>
+            <span>Store</span>
+            <span style="width:20px;"></span>
+        </div>
+        <div class="balance-container">
+            <div class="balance-row">
+                <span style="color:#22c55e;">Game Coins</span>
+                <span style="font-weight:bold; color:#22c55e;" id="game-coins">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#facc15;">USDT Coins</span>
+                <span style="font-weight:bold;" id="balance">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#a78bfa;">LTC Coins</span>
+                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0</span>
+            </div>
+        </div>
+
+        <div class="main-area">
+            <div class="section-title">⛏️ Mining Equipment</div>
+
+            <!-- NanoMiner -->
+            <div class="miner-card" id="card-nano">
+                <div class="miner-header">
+                    <div class="miner-icon">
+                        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                          <!-- Body -->
+                          <rect x="4" y="18" width="56" height="28" rx="4" fill="#2a2a2a" stroke="#555" stroke-width="1.5"/>
+                          <!-- Front panel -->
+                          <rect x="6" y="20" width="52" height="24" rx="3" fill="#1a1a1a"/>
+                          <!-- Ventilation slots left -->
+                          <rect x="9" y="24" width="3" height="16" rx="1" fill="#333"/>
+                          <rect x="14" y="24" width="3" height="16" rx="1" fill="#333"/>
+                          <rect x="19" y="24" width="3" height="16" rx="1" fill="#333"/>
+                          <!-- Center chip area -->
+                          <rect x="26" y="23" width="14" height="18" rx="2" fill="#0f0f0f" stroke="#facc15" stroke-width="1"/>
+                          <rect x="28" y="25" width="10" height="14" rx="1" fill="#1a1613"/>
+                          <!-- Chip grid -->
+                          <rect x="29" y="26" width="3" height="3" rx="0.5" fill="#facc15" opacity="0.8"/>
+                          <rect x="33" y="26" width="3" height="3" rx="0.5" fill="#facc15" opacity="0.8"/>
+                          <rect x="29" y="30" width="3" height="3" rx="0.5" fill="#f97316" opacity="0.9"/>
+                          <rect x="33" y="30" width="3" height="3" rx="0.5" fill="#facc15" opacity="0.8"/>
+                          <rect x="29" y="34" width="3" height="3" rx="0.5" fill="#facc15" opacity="0.6"/>
+                          <rect x="33" y="34" width="3" height="3" rx="0.5" fill="#f97316" opacity="0.9"/>
+                          <!-- Fans right -->
+                          <circle cx="48" cy="32" r="7" fill="#222" stroke="#444" stroke-width="1"/>
+                          <circle cx="48" cy="32" r="5" fill="#1a1a1a"/>
+                          <line x1="48" y1="27" x2="48" y2="37" stroke="#555" stroke-width="1"/>
+                          <line x1="43" y1="32" x2="53" y2="32" stroke="#555" stroke-width="1"/>
+                          <line x1="44.5" y1="28.5" x2="51.5" y2="35.5" stroke="#555" stroke-width="1"/>
+                          <line x1="51.5" y1="28.5" x2="44.5" y2="35.5" stroke="#555" stroke-width="1"/>
+                          <circle cx="48" cy="32" r="2" fill="#333"/>
+                          <!-- LED indicator -->
+                          <circle cx="10" cy="44" r="2" fill="#22c55e"/>
+                          <!-- Connectors bottom -->
+                          <rect x="10" y="46" width="44" height="4" rx="1" fill="#111" stroke="#333" stroke-width="0.5"/>
+                          <rect x="13" y="47" width="5" height="2" rx="0.5" fill="#333"/>
+                          <rect x="21" y="47" width="5" height="2" rx="0.5" fill="#333"/>
+                          <rect x="29" y="47" width="5" height="2" rx="0.5" fill="#333"/>
+                          <rect x="37" y="47" width="5" height="2" rx="0.5" fill="#333"/>
+                          <rect x="45" y="47" width="5" height="2" rx="0.5" fill="#333"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="miner-name">NanoMiner X1</div>
+                        <div class="miner-desc">Entry-level personal crypto miner</div>
+                    </div>
+                </div>
+                <div class="miner-stats">
+                    <div class="stat-box">
+                        <div class="stat-label">Power</div>
+                        <div class="stat-value">+0.1 GH/S</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Price</div>
+                        <div class="stat-value" style="color:#22c55e;">50 🟢</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Max</div>
+                        <div class="stat-value">10x</div>
+                    </div>
+                </div>
+                <div class="owned-count" id="owned-nano">Owned: 0 / 10</div>
+                <button class="buy-btn" id="btn-nano" onclick="buyMiner('nano')">Buy for 50 Game Coins</button>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <a href="home.html" class="nav-item">
+                <span class="nav-icon">🏠</span>Home
+            </a>
+            <a href="index.html" class="nav-item">
+                <span class="nav-icon">🚰</span>Faucet
+            </a>
+            <a href="tasks.html" class="nav-item">
+                <span class="nav-icon">📋</span>Tasks
+            </a>
+            <a href="wallet.html" class="nav-item">
+                <span class="nav-icon">👛</span>Wallet
+            </a>
+        </div>
+    </div>
+
+    <script>
+        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
+        let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+        let ownedNano = Number(localStorage.getItem('miner_nano')) || 0;
+
+        document.getElementById('game-coins').innerText = gameCoins;
+        document.getElementById('balance').innerText = coins;
+        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
+
+        function updateUI() {
+            document.getElementById('owned-nano').innerText = `Owned: ${ownedNano} / 10`;
+            const btn = document.getElementById('btn-nano');
+            if (ownedNano >= 10) {
+                btn.innerText = 'MAX REACHED';
+                btn.className = 'buy-btn maxed';
+                btn.disabled = true;
+            } else if (gameCoins < 50) {
+                btn.innerText = 'Not Enough Game Coins';
+                btn.disabled = true;
+            } else {
+                btn.innerText = 'Buy for 50 Game Coins';
+                btn.disabled = false;
+                btn.className = 'buy-btn';
+            }
+            if (ownedNano > 0) {
+                document.getElementById('card-nano').classList.add('owned');
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 2500);
+        }
+
+        function buyMiner(type) {
+            if (type === 'nano') {
+                if (ownedNano >= 10) return;
+                if (gameCoins < 50) return;
+
+                // Списываем монеты
+                gameCoins -= 50;
+                ownedNano += 1;
+
+                // Сохраняем
+                localStorage.setItem('game_coins', gameCoins);
+                localStorage.setItem('miner_nano', ownedNano);
+
+                // Прибавляем мощность (0.1 GH/s за каждый майнер)
+                const currentBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
+                const newBonus = Math.round((currentBonus + 0.1) * 10) / 10;
+                localStorage.setItem('task_bonus_hashrate', newBonus);
+
+                // Обновляем UI
+                document.getElementById('game-coins').innerText = gameCoins;
+                updateUI();
+                showToast(`✅ NanoMiner X1 purchased! +0.1 GH/S`);
+            }
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
