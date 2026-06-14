@@ -10,32 +10,38 @@
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
         .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
         .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
-        .balance-row:first-child { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
+        .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
         .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 330px; }
-        .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 15px 40px; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 #a16207; transition: transform 0.1s; }
+        .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 15px 40px; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 #a16207; transition: transform 0.1s; text-transform: uppercase; }
         .banner-area { position: fixed; bottom: 70px; left: 0; width: 100%; height: 250px; display: flex; justify-content: center; align-items: center; z-index: 100; }
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
-        .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
+        .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; text-transform: uppercase; }
         .nav-item.active { color: #facc15; }
-        .nav-icon { font-size: 24px; margin-bottom: 3px; }
+        .nav-icon { font-size: 24px; margin-bottom: 3px; text-transform: none; }
         #ad-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; }
+        .balance-row span { text-transform: uppercase; }
+        .header { text-transform: uppercase; }
     </style>
 </head>
 <body>
     <div id="main-content">
         <div id="ad-overlay">
             <div style="font-size: 40px;">💎</div>
-            <h2 id="ad-status" style="color: #facc15;">VERIFYING...</h2>
+            <h2 id="ad-status" style="color: #facc15; text-transform: uppercase;">VERIFYING...</h2>
             <div style="margin: 10px 0;">
                 <iframe src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
             </div>
-            <p>Wait <span id="ad-timer" style="font-size: 20px; color: #facc15;">10</span>s</p>
+            <p style="text-transform: uppercase;">Wait <span id="ad-timer" style="font-size: 20px; color: #facc15;">10</span>s</p>
         </div>
 
         <div class="header">Faucet</div>
         <div class="balance-container">
             <div class="balance-row">
-                <span style="color:#facc15;">Coins</span>
+                <span style="color:#22c55e;">Game Coins</span>
+                <span style="font-weight:bold; color:#22c55e;" id="game-coins">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#facc15;">USDT Coins</span>
                 <span style="font-weight:bold;" id="balance">0</span>
             </div>
             <div class="balance-row">
@@ -46,8 +52,8 @@
 
         <div class="game-area">
             <div style="font-size: 90px; margin-bottom: 10px; filter: drop-shadow(0 0 15px rgba(250,204,21,0.2));">⛏️</div>
-            <button id="collect-btn" class="collect-btn" onclick="showAd()">Collect 25 Coins</button>
-            <p id="claims-left" style="color:#8b949e; font-size:12px; margin-top:10px;"></p>
+            <button id="collect-btn" class="collect-btn" onclick="showAd()">CLAIM</button>
+            <p id="claims-left" style="color:#8b949e; font-size:12px; margin-top:10px; text-transform: uppercase;"></p>
         </div>
 
         <div class="banner-area">
@@ -88,7 +94,6 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Оффлайн начисление LTC
         (function() {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || 0;
             const now = Date.now();
@@ -111,11 +116,15 @@
         updateClaimsLeft();
 
         const POPUP_ON = [1];
+        const MAX_CLAIMS = 25;
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         let exp = Number(localStorage.getItem('player_exp')) || 0;
+
         document.getElementById('balance').innerText = coins;
+        document.getElementById('game-coins').innerText = gameCoins;
         document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
 
         function getClaimsToday() {
@@ -132,7 +141,7 @@
         function updateClaimsLeft() {
             const claimsToday = getClaimsToday();
             const el = document.getElementById('claims-left');
-            if (el) el.innerText = claimsToday < 20 ? `Claims today: ${claimsToday}/20` : "Daily limit reached! Come back tomorrow.";
+            if (el) el.innerText = claimsToday < MAX_CLAIMS ? `Claims Today: ${claimsToday}/${MAX_CLAIMS}` : "Daily Limit Reached! Come Back Tomorrow.";
         }
 
         async function verifyAd() {
@@ -148,18 +157,15 @@
             try {
                 const user = auth.currentUser;
                 if (!user) return;
-
                 const c = Number(localStorage.getItem('miner_balance')) || 0;
+                const gc = Number(localStorage.getItem('game_coins')) || 0;
                 const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
                 const e = Number(localStorage.getItem('player_exp')) || 0;
                 const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
-
                 const userRef = doc(db, 'users', user.uid);
                 const userSnap = await getDoc(userRef);
                 const oldHashrate = userSnap.exists() ? (userSnap.data().hashrate || 0) : 0;
-
-                await setDoc(userRef, { coins: c, ltc, exp: e, hashrate, email: lockedEmail, updatedAt: new Date() });
-
+                await setDoc(userRef, { coins: c, gameCoins: gc, ltc, exp: e, hashrate, email: lockedEmail, updatedAt: new Date() });
                 const diff = Math.round((hashrate - oldHashrate) * 10) / 10;
                 if (diff !== 0) {
                     const globalRef = doc(db, 'stats', 'global');
@@ -185,7 +191,7 @@
                 localStorage.setItem('claimsToday', '0');
                 claimsToday = 0;
             }
-            if (claimsToday >= 20) return alert("Daily limit (20 claims) reached! Come back tomorrow.");
+            if (claimsToday >= MAX_CLAIMS) return alert("DAILY LIMIT (25 CLAIMS) REACHED! COME BACK TOMORROW.");
             btn.disabled = true;
 
             const nextClaim = claimsToday + 1;
@@ -207,10 +213,13 @@
                     clearInterval(timerAd);
                     overlay.style.display = 'none';
                     if (ok) {
-                        coins += 25;
+                        coins += 20;
+                        gameCoins += 5;
                         exp += 8;
                         document.getElementById('balance').innerText = coins;
+                        document.getElementById('game-coins').innerText = gameCoins;
                         localStorage.setItem('miner_balance', coins);
+                        localStorage.setItem('game_coins', gameCoins);
                         localStorage.setItem('player_exp', exp);
                         localStorage.setItem('lastClaimTime', Date.now());
                         localStorage.setItem('claimsToday', String(nextClaim));
