@@ -106,24 +106,7 @@
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
-        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-        import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
-            authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
-            projectId: "crypto-miner-game-f45dc",
-            storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
-            messagingSenderId: "33690622473",
-            appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
+    <script>
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
         function getDailyRate() {
@@ -138,7 +121,6 @@
 
         const dailyRate = getDailyRate();
 
-        
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
@@ -181,7 +163,6 @@
         const now = Date.now();
         const hoursSinceClaim = (now - lastClaim) / 1000 / 3600;
         const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
-        const isActive = lastClaim > 0 && !miningPaused;
 
         if (miningPaused && hashrate > 0) {
             document.getElementById('warning-card').style.display = 'block';
@@ -203,37 +184,6 @@
         const active = hashrate > 0 && !miningPaused;
         document.getElementById('mining-status').innerText = active ? 'Active ✅' : (hashrate === 0 ? 'Inactive' : 'Paused ⚠️');
         document.getElementById('mining-status').style.color = active ? '#22c55e' : '#ef4444';
-
-        async function updateActiveStatus() {
-            const lockedEmail = localStorage.getItem('locked_google_email');
-            if (!lockedEmail) return;
-            try {
-                const user = auth.currentUser;
-                if (!user) return;
-                const userRef = doc(db, 'users', user.uid);
-                const userSnap = await getDoc(userRef);
-                if (!userSnap.exists()) return;
-                const oldData = userSnap.data();
-                const wasActive = oldData.isActive || false;
-                await setDoc(userRef, { isActive, updatedAt: new Date() }, { merge: true });
-                if (wasActive !== isActive) {
-                    const globalRef = doc(db, 'stats', 'global');
-                    const globalSnap = await getDoc(globalRef);
-                    const globalData = globalSnap.exists() ? globalSnap.data() : { activeHashrate: 0 };
-                    let newActive = globalData.activeHashrate || 0;
-                    if (wasActive && !isActive) newActive = Math.round((newActive - hashrate) * 10) / 10;
-                    else if (!wasActive && isActive) newActive = Math.round((newActive + hashrate) * 10) / 10;
-                    newActive = Math.max(0, newActive);
-                    await setDoc(globalRef, { activeHashrate: newActive, updatedAt: new Date() }, { merge: true });
-                }
-            } catch(e) {
-                console.log('Firebase status update skipped:', e.message);
-            }
-        }
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) updateActiveStatus();
-        });
 
         if (active) {
             setInterval(() => {
