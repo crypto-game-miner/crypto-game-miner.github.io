@@ -7,18 +7,18 @@
     <style>
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
-        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .back-btn { color: #facc15; text-decoration: none; font-size: 20px; }
+        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; text-transform: uppercase; }
+        .back-btn { color: #facc15; text-decoration: none; font-size: 20px; text-transform: none; }
         .settings-area { flex: 1; padding: 15px 20px; overflow-y: auto; }
         .settings-section { margin-bottom: 20px; }
         .section-title { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
         .settings-card { background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px; overflow: hidden; }
         .settings-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 15px; border-bottom: 1px solid #3d2b1f; }
         .settings-item:last-child { border-bottom: none; }
-        .settings-label { font-size: 14px; color: white; }
+        .settings-label { font-size: 14px; color: white; text-transform: uppercase; }
         .settings-value { font-size: 12px; color: #8b949e; }
-        .settings-btn { background: #facc15; color: #1a1613; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; }
-        .google-btn { background: white; color: #333; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .settings-btn { background: #facc15; color: #1a1613; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; text-transform: uppercase; }
+        .google-btn { background: white; color: #333; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -37,10 +37,10 @@
                     <div class="settings-item">
                         <div>
                             <div class="settings-label">Google Account</div>
-                            <div class="settings-value" id="account-desc">Sign in to sync or restore progress!</div>
+                            <div class="settings-value" id="account-desc">Sign In To Sync Or Restore Progress!</div>
                         </div>
                         <button class="google-btn" id="google-btn">
-                            <span style="font-weight:bold;color:#4285F4;">G</span> Sign in
+                            <span style="font-weight:bold;color:#4285F4;">G</span> Sign In
                         </button>
                     </div>
                 </div>
@@ -50,7 +50,11 @@
                 <div class="section-title">My Stats</div>
                 <div class="settings-card">
                     <div class="settings-item">
-                        <span class="settings-label">Total Coins</span>
+                        <span class="settings-label">Game Coins</span>
+                        <span class="settings-value" id="stat-game-coins">0</span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">USDT Coins</span>
                         <span class="settings-value" id="stat-coins">0</span>
                     </div>
                     <div class="settings-item">
@@ -74,7 +78,7 @@
                     <div class="settings-item">
                         <div>
                             <div class="settings-label">Reset Progress</div>
-                            <div class="settings-value">Delete all your data</div>
+                            <div class="settings-value" style="text-transform:uppercase;">Delete All Your Data</div>
                         </div>
                         <button class="settings-btn" style="background:#ef4444;color:white;" onclick="resetProgress()">Reset</button>
                     </div>
@@ -125,11 +129,13 @@
 
         function updateStats() {
             const coins = Number(localStorage.getItem('miner_balance')) || 0;
+            const gc = Number(localStorage.getItem('game_coins')) || 0;
             const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
             const exp = Number(localStorage.getItem('player_exp')) || 0;
             const hashrate = getCurrentHashrate();
             const { level } = getLevel(exp);
             document.getElementById('stat-coins').innerText = coins;
+            document.getElementById('stat-game-coins').innerText = gc;
             document.getElementById('stat-ltc').innerText = ltc.toFixed(6);
             document.getElementById('stat-level').innerText = level;
             document.getElementById('stat-hashrate').innerText = hashrate + ' GH/s';
@@ -138,30 +144,24 @@
         updateStats();
 
         function loadFromFirestore(data) {
-            // Загружаем данные с сервера в localStorage
             localStorage.setItem('miner_balance', data.coins || 0);
+            localStorage.setItem('game_coins', data.gameCoins || 0);
             localStorage.setItem('ltc_balance', (data.ltc || 0).toFixed(6));
             localStorage.setItem('player_exp', data.exp || 0);
             localStorage.setItem('hashrate', data.hashrate || 0);
-            // Восстанавливаем task_bonus
             const exp = data.exp || 0;
             const { level } = getLevel(exp);
             const baseHashrate = level >= 2 ? 0.5 : 0;
-            const taskBonus = Math.round(((data.hashrate || 0) - baseHashrate) * 10) / 10;
-            if (taskBonus > 0) {
-                localStorage.setItem('task_bonus_hashrate', taskBonus);
-            }
-            if (data.registerBonusGiven) {
-                localStorage.setItem('task_register_bonus', 'done');
-            }
-            if (data.zeradsBonusGiven) {
-                localStorage.setItem('task_zerads', 'done');
-            }
+            const taskBonus = Math.max(0, Math.round(((data.hashrate || 0) - baseHashrate) * 10) / 10);
+            if (taskBonus > 0) localStorage.setItem('task_bonus_hashrate', taskBonus);
+            if (data.registerBonusGiven) localStorage.setItem('task_register_bonus', 'done');
+            if (data.zeradsBonusGiven) localStorage.setItem('task_zerads', 'done');
             updateStats();
         }
 
         async function saveToFirestore(uid, email, isNew) {
             const coins = Number(localStorage.getItem('miner_balance')) || 0;
+            const gc = Number(localStorage.getItem('game_coins')) || 0;
             const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
             const exp = Number(localStorage.getItem('player_exp')) || 0;
             const hashrate = getCurrentHashrate();
@@ -169,15 +169,16 @@
             const zeradsBonusGiven = localStorage.getItem('task_zerads') === 'done';
 
             await setDoc(doc(db, 'users', uid), {
-                coins, ltc, exp, hashrate, email,
+                coins, gameCoins: gc, ltc, exp, hashrate, email,
                 registerBonusGiven, zeradsBonusGiven,
                 updatedAt: new Date()
             });
 
+            const globalRef = doc(db, 'stats', 'global');
+            const globalSnap = await getDoc(globalRef);
+            const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0, totalPlayers: 0 };
+
             if (isNew) {
-                const globalRef = doc(db, 'stats', 'global');
-                const globalSnap = await getDoc(globalRef);
-                const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0, totalPlayers: 0 };
                 await setDoc(globalRef, {
                     totalHashrate: Math.round(((globalData.totalHashrate || 0) + hashrate) * 10) / 10,
                     totalPlayers: (globalData.totalPlayers || 0) + 1,
@@ -188,9 +189,6 @@
                 const oldHashrate = userSnap.exists() ? (userSnap.data().hashrate || 0) : 0;
                 const diff = Math.round((hashrate - oldHashrate) * 10) / 10;
                 if (diff !== 0) {
-                    const globalRef = doc(db, 'stats', 'global');
-                    const globalSnap = await getDoc(globalRef);
-                    const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0 };
                     await setDoc(globalRef, {
                         totalHashrate: Math.round(((globalData.totalHashrate || 0) + diff) * 10) / 10,
                         updatedAt: new Date()
@@ -205,19 +203,17 @@
 
         if (lockedEmail) {
             btn.style.display = 'none';
-            desc.innerHTML = `<span style="color:#22c55e;">✅ ${lockedEmail}</span><br><span style="font-size:10px;">Account linked permanently</span>`;
+            desc.innerHTML = `<span style="color:#22c55e;">✅ ${lockedEmail}</span><br><span style="font-size:10px; text-transform:none;">${lockedEmail}</span>`;
         } else {
             btn.onclick = async () => {
                 try {
                     const result = await signInWithPopup(auth, new GoogleAuthProvider());
                     const user = result.user;
-
                     const userRef = doc(db, 'users', user.uid);
                     const userSnap = await getDoc(userRef);
                     const isNewPlayer = !userSnap.exists();
 
                     if (isNewPlayer) {
-                        // Новый юзер — даём бонус
                         const bonusGiven = localStorage.getItem('task_register_bonus') === 'done';
                         if (!bonusGiven) {
                             let taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
@@ -228,25 +224,23 @@
                         localStorage.setItem('locked_google_email', user.email);
                         await saveToFirestore(user.uid, user.email, true);
                         updateStats();
-                        alert('🎉 Account created! +0.3 GH/s bonus added!');
+                        alert('🎉 ACCOUNT CREATED! +0.3 GH/S BONUS ADDED!');
                     } else {
-                        // Существующий юзер — загружаем прогресс
                         const data = userSnap.data();
                         localStorage.setItem('locked_google_email', user.email);
                         loadFromFirestore(data);
-                        alert('✅ Progress restored! Welcome back!');
+                        alert('✅ PROGRESS RESTORED! WELCOME BACK!');
                     }
 
                     btn.style.display = 'none';
-                    desc.innerHTML = `<span style="color:#22c55e;">✅ ${user.email}</span><br><span style="font-size:10px;">Account linked permanently</span>`;
+                    desc.innerHTML = `<span style="color:#22c55e;">✅ ACCOUNT LINKED</span><br><span style="font-size:10px; text-transform:none;">${user.email}</span>`;
 
                 } catch(e) {
-                    alert('Error: ' + e.message);
+                    alert('ERROR: ' + e.message);
                 }
             };
         }
 
-        // Автообновление Firebase при каждом заходе если уже залогинен
         onAuthStateChanged(auth, async (user) => {
             if (user && lockedEmail) {
                 await saveToFirestore(user.uid, lockedEmail, false);
@@ -254,9 +248,9 @@
         });
 
         window.resetProgress = function() {
-            if (confirm('Are you sure? All your progress will be deleted!')) {
+            if (confirm('ARE YOU SURE? ALL YOUR PROGRESS WILL BE DELETED!')) {
                 localStorage.clear();
-                alert('Progress reset!');
+                alert('PROGRESS RESET!');
                 window.location.href = 'home.html';
             }
         }
