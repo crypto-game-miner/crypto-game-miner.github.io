@@ -13,8 +13,7 @@
         .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
         .main-area { flex: 1; padding: 15px 20px; overflow-y: auto; padding-bottom: 90px; }
         .level-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
-        .level-title { color: #facc15; font-size: 22px; font-weight: bold; margin-bottom: 4px; }
-        .level-subtitle { color: #8b949e; font-size: 11px; margin-bottom: 12px; }
+        .level-title { color: #facc15; font-size: 22px; font-weight: bold; margin-bottom: 12px; }
         .exp-bar-bg { background: #3d2b1f; border-radius: 10px; height: 14px; width: 100%; overflow: hidden; }
         .exp-bar-fill { background: linear-gradient(90deg, #facc15, #f97316); height: 100%; border-radius: 10px; transition: width 0.4s ease; }
         .exp-text { color: #8b949e; font-size: 11px; margin-top: 6px; text-align: right; }
@@ -64,7 +63,6 @@
 
             <div class="level-card">
                 <div class="level-title">⚡ Level <span id="level-num">1</span></div>
-                <div class="level-subtitle">Complete Tasks And Collect To Level Up!</div>
                 <div class="exp-bar-bg">
                     <div class="exp-bar-fill" id="exp-bar" style="width: 0%;"></div>
                 </div>
@@ -110,7 +108,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
-        import { getAuth } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
@@ -205,35 +203,25 @@
         document.getElementById('mining-status').innerText = active ? 'Active ✅' : (hashrate === 0 ? 'Inactive' : 'Paused ⚠️');
         document.getElementById('mining-status').style.color = active ? '#22c55e' : '#ef4444';
 
-        // Обновляем Firebase при заходе на Home — актуализируем isActive
         async function updateActiveStatus() {
             const lockedEmail = localStorage.getItem('locked_google_email');
             if (!lockedEmail) return;
             try {
                 const user = auth.currentUser;
                 if (!user) return;
-
                 const userRef = doc(db, 'users', user.uid);
                 const userSnap = await getDoc(userRef);
                 if (!userSnap.exists()) return;
-
                 const oldData = userSnap.data();
                 const wasActive = oldData.isActive || false;
-
-                // Обновляем статус юзера
                 await setDoc(userRef, { isActive, updatedAt: new Date() }, { merge: true });
-
-                // Обновляем activeHashrate в global
                 if (wasActive !== isActive) {
                     const globalRef = doc(db, 'stats', 'global');
                     const globalSnap = await getDoc(globalRef);
                     const globalData = globalSnap.exists() ? globalSnap.data() : { activeHashrate: 0 };
                     let newActive = globalData.activeHashrate || 0;
-                    if (wasActive && !isActive) {
-                        newActive = Math.round((newActive - hashrate) * 10) / 10;
-                    } else if (!wasActive && isActive) {
-                        newActive = Math.round((newActive + hashrate) * 10) / 10;
-                    }
+                    if (wasActive && !isActive) newActive = Math.round((newActive - hashrate) * 10) / 10;
+                    else if (!wasActive && isActive) newActive = Math.round((newActive + hashrate) * 10) / 10;
                     newActive = Math.max(0, newActive);
                     await setDoc(globalRef, { activeHashrate: newActive, updatedAt: new Date() }, { merge: true });
                 }
@@ -242,8 +230,6 @@
             }
         }
 
-        // Ждём авторизацию и обновляем
-        import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
         onAuthStateChanged(auth, (user) => {
             if (user) updateActiveStatus();
         });
@@ -261,3 +247,4 @@
     </script>
 </body>
 </html>
+
