@@ -25,7 +25,7 @@
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
         body { text-transform: uppercase; }
-input { text-transform: none !important; }
+        input { text-transform: none !important; }
         .keyboard-open .banner-area, .keyboard-open .nav-bar { display: none !important; }
     </style>
 </head>
@@ -55,12 +55,12 @@ input { text-transform: none !important; }
                 <div class="card-info">
                     <h3>USDT</h3>
                     <p>via FaucetPay</p>
-                    <span style="font-size:10px; color:#8b949e">Min: 500 USDT Coins</span>
+                    <span style="font-size:10px; color:#8b949e">Min: 400 USDT Coins</span>
                 </div>
             </div>
             <div id="usdt-box" class="withdraw-box">
                 <label>USDT Coins To Convert</label>
-                <input type="number" id="wd-points-usdt" placeholder="Min 500">
+                <input type="number" id="wd-points-usdt" placeholder="Min 400">
                 <label>FaucetPay Email</label>
                 <input type="email" id="wd-email-usdt" placeholder="example@mail.com">
                 <button class="collect-btn" style="width:100%;box-shadow:none;padding:10px;font-size:16px;margin-top:10px;" onclick="handleWithdraw('usdt')">Withdraw USDT</button>
@@ -83,7 +83,7 @@ input { text-transform: none !important; }
             </div>
         </div>
 
-                        <div class="banner-area">
+        <div class="banner-area">
             <div style="width:320px; margin:0 auto; text-align:center;">
                 <iframe src="//ads.coinserom.com/pub?adsunit=353639&size=320x50" style="width:320px;height:50px;border:0px;padding:0;background-color: transparent;overflow: auto;"></iframe>
             </div>
@@ -164,7 +164,7 @@ input { text-transform: none !important; }
             const btn      = event.target;
             const points   = Number(pointsEl.value);
             const email    = emailEl.value.trim();
-            const minCoins = type === 'usdt' ? 500 : 1000;
+            const minCoins = type === 'usdt' ? 400 : 1000;
             const balance  = type === 'usdt' ? coins : ltcCoins;
 
             if (!points || points < minCoins) return alert("Minimum " + minCoins + (type === 'usdt' ? " USDT Coins!" : " LTC Coins!"));
@@ -218,5 +218,6 @@ input { text-transform: none !important; }
     </script>
 </body>
 </html>
+
 
 
