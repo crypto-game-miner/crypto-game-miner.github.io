@@ -187,18 +187,14 @@
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
         function getDailyRate() {
-    const today = new Date().toDateString();
-    const savedDay = localStorage.getItem('rateDay');
-    if (savedDay === today) return parseFloat(localStorage.getItem('dailyRate')) || 2.5;
-    
-    // Генерируем случайное число строго между 2.4700 и 2.5100
-    const rate = 2.47 + Math.random() * 0.04; 
-    
-    localStorage.setItem('rateDay', today);
-    localStorage.setItem('dailyRate', rate.toFixed(4));
-    return rate;
-}
-
+            const today = new Date().toDateString();
+            const savedDay = localStorage.getItem('rateDay');
+            if (savedDay === today) return parseFloat(localStorage.getItem('dailyRate')) || 1.0;
+            const rate = 0.98 + Math.random() * 0.025;
+            localStorage.setItem('rateDay', today);
+            localStorage.setItem('dailyRate', rate.toFixed(4));
+            return rate;
+        }
 
         const dailyRate = getDailyRate();
 
@@ -230,8 +226,7 @@
         const hashrate = Math.round((baseHashrate + taskBonus) * 10) / 10;
         localStorage.setItem('hashrate', hashrate);
 
-        const ltcPerHour = hashrate * dailyRate;
-
+        const ltcPerHour = hashrate * 2 * dailyRate;
 
         document.getElementById('level-num').innerText = level;
         document.getElementById('exp-current').innerText = currentExp;
@@ -269,7 +264,7 @@
 
         if (active) {
             setInterval(() => {
-                const earned = hashrate * dailyRate / 3600;
+                const earned = hashrate * 2 * dailyRate / 3600;
                 ltcCoins += earned;
                 sessionMined += earned;
                 localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
@@ -280,4 +275,8 @@
     </script>
 </body>
 </html>
+
+
+
+
 
