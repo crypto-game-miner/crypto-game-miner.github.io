@@ -55,12 +55,12 @@
                 <div class="card-info">
                     <h3>USDT</h3>
                     <p>via FaucetPay</p>
-                    <span style="font-size:10px; color:#8b949e">Min: 400 USDT Coins</span>
+                    <span style="font-size:10px; color:#8b949e">Min: 300 USDT Coins</span>
                 </div>
             </div>
             <div id="usdt-box" class="withdraw-box">
                 <label>USDT Coins To Convert</label>
-                <input type="number" id="wd-points-usdt" placeholder="Min 400">
+                <input type="number" id="wd-points-usdt" placeholder="Min 300">
                 <label>FaucetPay Email</label>
                 <input type="email" id="wd-email-usdt" placeholder="example@mail.com">
                 <button class="collect-btn" style="width:100%;box-shadow:none;padding:10px;font-size:16px;margin-top:10px;" onclick="handleWithdraw('usdt')">Withdraw USDT</button>
@@ -71,12 +71,12 @@
                 <div class="card-info">
                     <h3>Litecoin (LTC)</h3>
                     <p>via FaucetPay</p>
-                    <span style="font-size:10px; color:#8b949e">Min: 1000 LTC Coins</span>
+                    <span style="font-size:10px; color:#8b949e">Min: 500 LTC Coins</span>
                 </div>
             </div>
             <div id="ltc-box" class="withdraw-box">
                 <label>LTC Coins To Withdraw</label>
-                <input type="number" id="wd-points-ltc" placeholder="Min 1000">
+                <input type="number" id="wd-points-ltc" placeholder="Min 500">
                 <label>FaucetPay Email</label>
                 <input type="email" id="wd-email-ltc" placeholder="example@mail.com">
                 <button class="collect-btn" style="width:100%;box-shadow:none;padding:10px;font-size:16px;" onclick="handleWithdraw('ltc')">Withdraw LTC</button>
@@ -125,7 +125,7 @@
             localStorage.setItem('lastVisitTime', now);
         })();
 
-        const DAILY_LIMIT = 1000;
+        const DAILY_LIMIT = 700;
 
         function getWithdrawnToday() {
             const today = new Date().toDateString();
@@ -164,7 +164,7 @@
             const btn      = event.target;
             const points   = Number(pointsEl.value);
             const email    = emailEl.value.trim();
-            const minCoins = type === 'usdt' ? 400 : 1000;
+            const minCoins = type === 'usdt' ? 300 : 500;
             const balance  = type === 'usdt' ? coins : ltcCoins;
 
             if (!points || points < minCoins) return alert("Minimum " + minCoins + (type === 'usdt' ? " USDT Coins!" : " LTC Coins!"));
@@ -175,7 +175,7 @@
                 const withdrawnToday = getWithdrawnToday();
                 const remaining = DAILY_LIMIT - withdrawnToday;
                 if (points > remaining) {
-                    return alert(`Daily limit is 1000 USDT Coins/day! You can withdraw ${remaining} more today.`);
+                    return alert(`Daily limit is 700 USDT Coins/day! You can withdraw ${remaining} more today.`);
                 }
             }
 
@@ -218,6 +218,9 @@
     </script>
 </body>
 </html>
+
+
+
 
 
 
