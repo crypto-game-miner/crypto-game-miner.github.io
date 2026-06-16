@@ -30,7 +30,6 @@
         </div>
 
         <div class="settings-area">
-
             <div class="settings-section">
                 <div class="section-title">Account</div>
                 <div class="settings-card">
@@ -69,6 +68,10 @@
                         <span class="settings-label">Hashrate</span>
                         <span class="settings-value" id="stat-hashrate">0 GH/s</span>
                     </div>
+                    <div class="settings-item">
+                        <span class="settings-label">NanoMiners Owned</span>
+                        <span class="settings-value" id="stat-nano">0 / 10</span>
+                    </div>
                 </div>
             </div>
 
@@ -84,7 +87,6 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -133,67 +135,79 @@
             const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
             const exp = Number(localStorage.getItem('player_exp')) || 0;
             const hashrate = getCurrentHashrate();
+            const nano = Number(localStorage.getItem('miner_nano')) || 0;
             const { level } = getLevel(exp);
             document.getElementById('stat-coins').innerText = coins;
             document.getElementById('stat-game-coins').innerText = gc;
             document.getElementById('stat-ltc').innerText = ltc.toFixed(6);
             document.getElementById('stat-level').innerText = level;
             document.getElementById('stat-hashrate').innerText = hashrate + ' GH/s';
+            document.getElementById('stat-nano').innerText = nano + ' / 10';
         }
 
         updateStats();
 
+        // Загружаем данные из Firebase в localStorage
         function loadFromFirestore(data) {
             localStorage.setItem('miner_balance', data.coins || 0);
-            localStorage.setItem('game_coins', data.gameCoins || 0);
-            localStorage.setItem('ltc_balance', (data.ltc || 0).toFixed(6));
+            localStorage.setItem('game_coins', data.game_coins || 0); // ИСПРАВЛЕНО: было data.gameCoins
+            localStorage.setItem('ltc_balance', ((data.ltc || 0)).toFixed(6));
             localStorage.setItem('player_exp', data.exp || 0);
-            localStorage.setItem('hashrate', data.hashrate || 0);
+            localStorage.setItem('miner_nano', data.miner_nano || 0); // ДОБАВЛЕНО
+
+            // Восстанавливаем task_bonus_hashrate из количества майнеров
+            const nano = data.miner_nano || 0;
             const exp = data.exp || 0;
             const { level } = getLevel(exp);
             const baseHashrate = level >= 2 ? 0.5 : 0;
-            const taskBonus = Math.max(0, Math.round(((data.hashrate || 0) - baseHashrate) * 10) / 10);
-            if (taskBonus > 0) localStorage.setItem('task_bonus_hashrate', taskBonus);
+            // task_bonus = hashrate из Firebase минус base, но не меньше nano*0.1
+            const savedHashrate = data.hashrate || 0;
+            const taskBonus = Math.max(
+                Math.round(nano * 0.1 * 10) / 10,
+                Math.max(0, Math.round((savedHashrate - baseHashrate) * 10) / 10)
+            );
+            localStorage.setItem('task_bonus_hashrate', taskBonus);
+            localStorage.setItem('hashrate', Math.round((baseHashrate + taskBonus) * 10) / 10);
+
             if (data.registerBonusGiven) localStorage.setItem('task_register_bonus', 'done');
             if (data.zeradsBonusGiven) localStorage.setItem('task_zerads', 'done');
             updateStats();
         }
 
+        // Сохраняем данные в Firebase
         async function saveToFirestore(uid, email, isNew) {
             const coins = Number(localStorage.getItem('miner_balance')) || 0;
             const gc = Number(localStorage.getItem('game_coins')) || 0;
             const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
             const exp = Number(localStorage.getItem('player_exp')) || 0;
             const hashrate = getCurrentHashrate();
+            const nano = Number(localStorage.getItem('miner_nano')) || 0; // ДОБАВЛЕНО
             const registerBonusGiven = localStorage.getItem('task_register_bonus') === 'done';
             const zeradsBonusGiven = localStorage.getItem('task_zerads') === 'done';
 
             await setDoc(doc(db, 'users', uid), {
-                coins, gameCoins: gc, ltc, exp, hashrate, email,
-                registerBonusGiven, zeradsBonusGiven,
+                coins,
+                game_coins: gc, // ИСПРАВЛЕНО: было gameCoins
+                ltc,
+                exp,
+                hashrate,
+                miner_nano: nano, // ДОБАВЛЕНО
+                email,
+                registerBonusGiven,
+                zeradsBonusGiven,
                 updatedAt: new Date()
             });
 
-            const globalRef = doc(db, 'stats', 'global');
-            const globalSnap = await getDoc(globalRef);
-            const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0, totalPlayers: 0 };
-
+            // Обновляем глобальную статистику только для новых игроков
             if (isNew) {
+                const globalRef = doc(db, 'stats', 'global');
+                const globalSnap = await getDoc(globalRef);
+                const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0, totalPlayers: 0 };
                 await setDoc(globalRef, {
                     totalHashrate: Math.round(((globalData.totalHashrate || 0) + hashrate) * 10) / 10,
                     totalPlayers: (globalData.totalPlayers || 0) + 1,
                     updatedAt: new Date()
                 }, { merge: true });
-            } else {
-                const userSnap = await getDoc(doc(db, 'users', uid));
-                const oldHashrate = userSnap.exists() ? (userSnap.data().hashrate || 0) : 0;
-                const diff = Math.round((hashrate - oldHashrate) * 10) / 10;
-                if (diff !== 0) {
-                    await setDoc(globalRef, {
-                        totalHashrate: Math.round(((globalData.totalHashrate || 0) + diff) * 10) / 10,
-                        updatedAt: new Date()
-                    }, { merge: true });
-                }
             }
         }
 
@@ -203,7 +217,7 @@
 
         if (lockedEmail) {
             btn.style.display = 'none';
-            desc.innerHTML = `<span style="color:#22c55e;">✅ ${lockedEmail}</span><br><span style="font-size:10px; text-transform:none;">${lockedEmail}</span>`;
+            desc.innerHTML = `<span style="color:#22c55e;">✅ ACCOUNT LINKED</span><br><span style="font-size:10px; text-transform:none;">${lockedEmail}</span>`;
         } else {
             btn.onclick = async () => {
                 try {
@@ -257,3 +271,4 @@
     </script>
 </body>
 </html>
+
