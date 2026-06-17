@@ -32,6 +32,8 @@
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
         body { text-transform: uppercase; }
         input { text-transform: none !important; }
+
+        /* Burger menu */
         .burger-btn { background: none; border: none; cursor: pointer; padding: 4px; display: flex; flex-direction: column; gap: 5px; }
         .burger-btn span { display: block; width: 22px; height: 2px; background: #facc15; border-radius: 2px; }
         .side-menu { position: fixed; top: 0; right: -260px; width: 240px; height: 100%; background: #0d0b09; border-left: 2px solid #3d2b1f; z-index: 2000; transition: right 0.3s ease; display: flex; flex-direction: column; padding-top: 20px; }
@@ -47,7 +49,10 @@
     </style>
 </head>
 <body>
+    <!-- Overlay -->
     <div class="side-overlay" id="overlay" onclick="closeMenu()"></div>
+
+    <!-- Side menu -->
     <div class="side-menu" id="side-menu">
         <div class="side-menu-header">
             <span>Menu</span>
@@ -57,6 +62,11 @@
             <span class="menu-icon">🛒</span>
             Store
             <span class="menu-badge">New</span>
+        </a>
+        <a href="miners.html" class="side-menu-item">
+            <span class="menu-icon">⛏️</span>
+            My Miners
+            <span class="menu-badge" id="miners-badge" style="display:none;background:#a78bfa;">0</span>
         </a>
         <a href="settings.html" class="side-menu-item">
             <span class="menu-icon">⚙️</span>
@@ -153,34 +163,30 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Пересчёт totalHashrate по всем юзерам
         async function recalcTotalHashrate() {
             try {
                 const usersSnap = await getDocs(collection(db, 'users'));
-                const now = Date.now();
                 let total = 0;
-                let active = 0;
-                usersSnap.forEach(d => {
-                    const data = d.data();
-                    const h = data.hashrate || 0;
-                    total += h;
-                    const lastClaim = data.lastClaimTime ? data.lastClaimTime.toDate().getTime() : 0;
-                    if (lastClaim > 0 && (now - lastClaim) < 86400000) active += h;
-                });
+                usersSnap.forEach(d => { total += d.data().hashrate || 0; });
                 await setDoc(doc(db, 'stats', 'global'), {
                     totalHashrate: Math.round(total * 10) / 10,
-                    activeHashrate: Math.round(active * 10) / 10,
                     updatedAt: new Date()
                 }, { merge: true });
             } catch(e) { console.log('recalc error:', e.message); }
         }
 
         recalcTotalHashrate();
-    </script>
 
+    </script>
     <script>
         function openMenu() {
             document.getElementById('side-menu').classList.add('open');
             document.getElementById('overlay').classList.add('open');
+            // Показываем количество майнеров
+            const nano = Number(localStorage.getItem('miner_nano')) || 0;
+            const badge = document.getElementById('miners-badge');
+            if (nano > 0) { badge.innerText = nano; badge.style.display = 'inline'; }
         }
         function closeMenu() {
             document.getElementById('side-menu').classList.remove('open');
@@ -200,7 +206,6 @@
         }
 
         const dailyRate = getDailyRate();
-        const LTC_PER_GH = 2.5;
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
@@ -230,7 +235,7 @@
         const hashrate = Math.round((baseHashrate + taskBonus) * 10) / 10;
         localStorage.setItem('hashrate', hashrate);
 
-        const ltcPerHour = hashrate * LTC_PER_GH * dailyRate;
+        const ltcPerHour = hashrate * 2 * dailyRate;
 
         document.getElementById('level-num').innerText = level;
         document.getElementById('exp-current').innerText = currentExp;
@@ -252,7 +257,7 @@
         if (hashrate > 0 && !miningPaused) {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || now;
             const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-            const offlineEarned = hashrate * LTC_PER_GH * dailyRate / 3600 * secondsAway;
+            const offlineEarned = hashrate * 2 * dailyRate / 3600 * secondsAway;
             if (offlineEarned > 0) {
                 ltcCoins += offlineEarned;
                 localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
@@ -268,7 +273,7 @@
 
         if (active) {
             setInterval(() => {
-                const earned = hashrate * LTC_PER_GH * dailyRate / 3600;
+                const earned = hashrate * 2 * dailyRate / 3600;
                 ltcCoins += earned;
                 sessionMined += earned;
                 localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
@@ -279,6 +284,7 @@
     </script>
 </body>
 </html>
+
 
 
 
