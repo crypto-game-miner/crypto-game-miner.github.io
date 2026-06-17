@@ -93,7 +93,9 @@
                         hashrate: data.hashrate || 0,
                         coins: data.coins || 0,
                         game_coins: data.game_coins || 0,
-                        nano: data.miner_nano || 0,
+                        nano: (data.miner_nano != null)
+                            ? data.miner_nano
+                            : Math.max(0, Math.round(((data.hashrate || 0) - 1.0) / 0.1)),
                         isActive,
                         lastClaim
                     });
@@ -182,4 +184,5 @@
     </script>
 </body>
 </html>
+
 
