@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Leaderboard — Hashrate</title>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; color: white; font-family: 'Courier New', Courier, monospace; }
+        body { text-transform: uppercase; }
+        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3d2b1f; }
+        .refresh-btn { background: none; border: 1px solid #facc15; color: #facc15; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; font-family: monospace; text-transform: uppercase; }
+        .stats-row { display: flex; gap: 10px; padding: 12px 20px; }
+        .stat-box { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 10px; padding: 10px; text-align: center; }
+        .stat-label { color: #8b949e; font-size: 9px; margin-bottom: 4px; }
+        .stat-value { color: #facc15; font-size: 16px; font-weight: bold; }
+        .main-area { padding: 10px 20px 30px; }
+        .loading { text-align: center; padding: 40px; color: #8b949e; font-size: 13px; }
+        .row { display: flex; align-items: center; background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; gap: 12px; }
+        .row.top1 { border-color: #facc15; background: rgba(250,204,21,0.08); }
+        .row.top2 { border-color: #94a3b8; background: rgba(148,163,184,0.06); }
+        .row.top3 { border-color: #cd7f32; background: rgba(205,127,50,0.06); }
+        .rank { font-size: 20px; width: 30px; text-align: center; flex-shrink: 0; }
+        .info { flex: 1; min-width: 0; }
+        .email { font-size: 11px; color: #facc15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sub { font-size: 9px; color: #8b949e; margin-top: 3px; }
+        .hashrate { text-align: right; flex-shrink: 0; }
+        .hash-val { font-size: 16px; font-weight: bold; color: #a78bfa; }
+        .hash-label { font-size: 9px; color: #8b949e; }
+        .bar-wrap { height: 3px; background: #3d2b1f; border-radius: 2px; margin-top: 6px; }
+        .bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #a78bfa, #facc15); }
+        .updated { text-align: center; color: #3d2b1f; font-size: 10px; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span>⚡ Hashrate Top</span>
+        <button class="refresh-btn" onclick="load()">↻ Refresh</button>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-box">
+            <div class="stat-label">Total Players</div>
+            <div class="stat-value" id="s-players">—</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Total GH/S</div>
+            <div class="stat-value" id="s-total">—</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Active GH/S</div>
+            <div class="stat-value" id="s-active">—</div>
+        </div>
+    </div>
+
+    <div class="main-area" id="main-area">
+        <div class="loading">Loading...</div>
+    </div>
+
+    <div class="updated" id="updated"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+        import { getFirestore, getDocs, collection, doc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+            authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+            projectId: "crypto-miner-game-f45dc",
+            storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+            messagingSenderId: "33690622473",
+            appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function load() {
+            document.getElementById('main-area').innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                // Загружаем всех юзеров
+                const snap = await getDocs(collection(db, 'users'));
+                const now = Date.now();
+                const users = [];
+
+                snap.forEach(d => {
+                    const data = d.data();
+                    if (!data.hashrate || data.hashrate <= 0) return;
+                    const lastClaim = data.lastClaimTime ? data.lastClaimTime.toDate().getTime() : 0;
+                    const isActive = lastClaim > 0 && (now - lastClaim) < 86400000;
+                    users.push({
+                        email: data.email || 'unknown',
+                        hashrate: data.hashrate || 0,
+                        coins: data.coins || 0,
+                        game_coins: data.game_coins || 0,
+                        nano: data.miner_nano || 0,
+                        isActive,
+                        lastClaim
+                    });
+                });
+
+                // Сортируем по hashrate
+                users.sort((a, b) => b.hashrate - a.hashrate);
+
+                const maxHash = users[0]?.hashrate || 1;
+                const totalHash = users.reduce((s, u) => s + u.hashrate, 0);
+                const activeHash = users.filter(u => u.isActive).reduce((s, u) => s + u.hashrate, 0);
+
+                // Глобальная статистика
+                document.getElementById('s-players').innerText = users.length;
+                document.getElementById('s-total').innerText = Math.round(totalHash * 10) / 10;
+                document.getElementById('s-active').innerText = Math.round(activeHash * 10) / 10;
+
+                if (users.length === 0) {
+                    document.getElementById('main-area').innerHTML = '<div class="loading">No players yet</div>';
+                    return;
+                }
+
+                const medals = ['🥇', '🥈', '🥉'];
+                let html = '';
+
+                users.forEach((u, i) => {
+                    const rank = i < 3 ? medals[i] : `#${i + 1}`;
+                    const cls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+                    const pct = Math.round(u.hashrate / maxHash * 100);
+                    const emailShort = u.email.length > 28 ? u.email.substring(0, 25) + '...' : u.email;
+                    const ago = u.lastClaim ? Math.floor((now - u.lastClaim) / 3600000) + 'h ago' : 'never';
+                    const activeDot = u.isActive ? '<span style="color:#22c55e;">● Active</span>' : '<span style="color:#ef4444;">● Inactive</span>';
+
+                    html += `
+                    <div class="row ${cls}">
+                        <div class="rank">${rank}</div>
+                        <div class="info">
+                            <div class="email">${emailShort}</div>
+                            <div class="sub">${activeDot} · Last claim: ${ago} · Miners: ${u.nano}</div>
+                            <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+                        </div>
+                        <div class="hashrate">
+                            <div class="hash-val">${u.hashrate}</div>
+                            <div class="hash-label">GH/S</div>
+                        </div>
+                    </div>`;
+                });
+
+                document.getElementById('main-area').innerHTML = html;
+                document.getElementById('updated').innerText = 'Updated: ' + new Date().toLocaleTimeString();
+
+            } catch(e) {
+                document.getElementById('main-area').innerHTML = `<div class="loading">Error: ${e.message}</div>`;
+            }
+        }
+
+        window.load = load;
+        load();
+    </script>
+</body>
+</html>
