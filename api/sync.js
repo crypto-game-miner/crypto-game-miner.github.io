@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const { google } = require('googleapis');
 
+// Твой секретный ключ встроен прямо в код
 const serviceAccount = {
   "type": "service_account",
   "project_id": "crypto-miner-game-f45dc",
@@ -23,7 +24,7 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const SHEET_ID = '16YpAdNhuKwvKht-e0fqx-l-LYhDslGTivadaceaPUwI';
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
     try {
         const snapshot = await db.collection('users').get();
         if (snapshot.empty) {
@@ -59,6 +60,7 @@ export default async function handler(req, res) {
         });
         const sheets = google.sheets({ version: 'v4', auth });
 
+        // Запись Общей статистики
         const mainStats = [
             ["Параметр", "Значение"],
             ["Всего игроков", totalPlayers],
@@ -73,6 +75,7 @@ export default async function handler(req, res) {
             requestBody: { values: mainStats }
         });
 
+        // Запись Лидеров
         const leaderboardRows = [
             ["Место", "Email / Игрок", "Мощность (GH/s)", "Монеты (Coins)"]
         ];
@@ -91,6 +94,6 @@ export default async function handler(req, res) {
     } catch (error) {
         return res.status(500).send("Ошибка: " + error.message);
     }
-}
+};
 
 
