@@ -38,12 +38,10 @@
         .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #22c55e; color: #1a1613; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; z-index: 9999; display: none; }
 
         /* Mystery Box */
-        @keyframes shake { 0%,100%{transform:rotate(0deg)} 25%{transform:rotate(-10deg)} 75%{transform:rotate(10deg)} }
+        @keyframes shake { 0%,100%{transform:rotate(0deg) scale(1)} 25%{transform:rotate(-10deg) scale(1.1)} 75%{transform:rotate(10deg) scale(1.1)} }
         .box-card { background: rgba(0,0,0,0.4); border: 2px solid #a78bfa; border-radius: 12px; padding: 15px; margin-bottom: 12px; text-align: left; }
-        .box-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #a78bfa, #facc15, #a78bfa); }
-        .box-card.unavailable { border-color: #3d2b1f; opacity: 0.5; }
         .box-header { display: flex; align-items: center; margin-bottom: 12px; gap: 14px; }
-        .box-icon { font-size: 52px; line-height: 1; }
+        .box-icon-wrap { font-size: 52px; line-height: 1; flex-shrink: 0; }
         .box-name { color: #a78bfa; font-size: 16px; font-weight: bold; }
         .box-desc { color: #8b949e; font-size: 10px; margin-top: 3px; }
         .box-odds { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
@@ -55,18 +53,29 @@
         .open-btn:disabled { background: #3d2b1f; color: #8b949e; box-shadow: none; cursor: default; }
 
         /* Prize overlay */
-        #prize-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 3000; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .prize-box-anim { font-size: 80px; animation: shake 0.5s ease-in-out 3; }
-        @keyframes shake { 0%,100%{transform:rotate(0deg)} 25%{transform:rotate(-8deg)} 75%{transform:rotate(8deg)} }
-        .prize-reveal { display: none; }
-        .prize-icon { font-size: 64px; margin-bottom: 10px; }
-        .prize-title { color: #facc15; font-size: 22px; font-weight: bold; margin-bottom: 6px; }
-        .prize-sub { color: #8b949e; font-size: 13px; margin-bottom: 24px; }
-        .prize-close { background: #facc15; color: #1a1613; border: none; padding: 12px 32px; border-radius: 10px; font-weight: bold; font-size: 15px; cursor: pointer; }
+        #prize-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.97); z-index: 3000; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
+        #box-anim { font-size: 90px; display: block; }
+        #prize-reveal { display: none; }
+        #prize-icon { font-size: 70px; margin-bottom: 12px; }
+        #prize-title { color: #facc15; font-size: 24px; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; }
+        #prize-sub { color: #8b949e; font-size: 13px; margin-bottom: 28px; text-transform: uppercase; }
+        #prize-close-btn { background: #facc15; color: #1a1613; border: none; padding: 14px 40px; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; text-transform: uppercase; }
     </style>
 </head>
 <body>
     <div id="toast" class="toast"></div>
+
+    <!-- Prize overlay -->
+    <div id="prize-overlay">
+        <div id="box-anim">📦</div>
+        <div id="prize-reveal">
+            <div id="prize-icon"></div>
+            <div id="prize-title"></div>
+            <div id="prize-sub"></div>
+            <button id="prize-close-btn" onclick="closePrize()">Collect!</button>
+        </div>
+    </div>
+
     <div id="main-content">
         <div class="header">
             <a href="home.html" style="color:#facc15;text-decoration:none;font-size:20px;">←</a>
@@ -129,28 +138,18 @@
                     </div>
                 </div>
                 <div class="miner-stats">
-                    <div class="stat-box">
-                        <div class="stat-label">Power</div>
-                        <div class="stat-value">+0.1 GH/S</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Price</div>
-                        <div class="stat-value" style="color:#22c55e;">50 🟢</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Max</div>
-                        <div class="stat-value">10x</div>
-                    </div>
+                    <div class="stat-box"><div class="stat-label">Power</div><div class="stat-value">+0.1 GH/S</div></div>
+                    <div class="stat-box"><div class="stat-label">Price</div><div class="stat-value" style="color:#22c55e;">50 🟢</div></div>
+                    <div class="stat-box"><div class="stat-label">Max</div><div class="stat-value">10x</div></div>
                 </div>
                 <div class="owned-count" id="owned-nano">Owned: 0 / 10</div>
                 <button class="buy-btn" id="btn-nano" onclick="buyMiner('nano')">Buy for 50 Game Coins</button>
             </div>
 
-            <!-- Mystery Box -->
-            <div class="section-title" style="margin-top:8px;">🎁 Mystery Box</div>
+            <div class="section-title" style="margin-top:4px;">🎁 Mystery Box</div>
             <div class="box-card" id="card-box">
                 <div class="box-header">
-                    <div class="box-icon">📦</div>
+                    <div class="box-icon-wrap">📦</div>
                     <div>
                         <div class="box-name">Mystery Box</div>
                         <div class="box-desc">Chance to win exclusive MegaMiner X2!</div>
@@ -172,17 +171,6 @@
             <a href="index.html" class="nav-item"><span class="nav-icon">🚰</span>Faucet</a>
             <a href="tasks.html" class="nav-item"><span class="nav-icon">📋</span>Tasks</a>
             <a href="wallet.html" class="nav-item"><span class="nav-icon">👛</span>Wallet</a>
-        </div>
-    </div>
-
-    <!-- Prize overlay -->
-    <div id="prize-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:3000; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
-        <div id="box-anim" style="font-size:80px; margin-bottom:20px;">📦</div>
-        <div id="prize-reveal" style="display:none;">
-            <div id="prize-icon" style="font-size:64px; margin-bottom:10px;"></div>
-            <div id="prize-title" style="color:#facc15; font-size:22px; font-weight:bold; margin-bottom:6px; text-transform:uppercase;"></div>
-            <div id="prize-sub" style="color:#8b949e; font-size:13px; margin-bottom:24px; text-transform:uppercase;"></div>
-            <button onclick="closePrize()" style="background:#facc15; color:#1a1613; border:none; padding:12px 32px; border-radius:10px; font-weight:bold; font-size:15px; cursor:pointer; text-transform:uppercase;">Collect!</button>
         </div>
     </div>
 
@@ -218,7 +206,6 @@
             } catch(e) { console.log('recalc error:', e.message); }
         }
 
-        // Сохраняем в Firebase после покупки
         async function saveAfterPurchase() {
             const lockedEmail = localStorage.getItem('locked_google_email');
             if (!lockedEmail || !currentUser) return;
@@ -233,8 +220,7 @@
 
                 await setDoc(doc(db, 'users', currentUser.uid), {
                     coins, game_coins: gc, ltc, exp, hashrate,
-                    miner_nano: nano,
-                    miner_mega: mega,
+                    miner_nano: nano, miner_mega: mega,
                     email: lockedEmail,
                     updatedAt: new Date()
                 }, { merge: true });
@@ -243,17 +229,21 @@
             } catch(e) { console.log('save error:', e.message); }
         }
 
+        // Читаем из localStorage
         let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         let ownedNano = Number(localStorage.getItem('miner_nano')) || 0;
+        let ownedMega = Number(localStorage.getItem('miner_mega')) || 0;
         const isLoggedIn = !!localStorage.getItem('locked_google_email');
 
+        // Отображаем балансы
         document.getElementById('game-coins').innerText = gameCoins;
         document.getElementById('balance').innerText = coins;
         document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
 
-        function updateUI() {
+        // --- NanoMiner UI ---
+        function updateNanoUI() {
             document.getElementById('owned-nano').innerText = `Owned: ${ownedNano} / 10`;
             const btn = document.getElementById('btn-nano');
             if (!isLoggedIn) {
@@ -270,129 +260,44 @@
                 btn.disabled = true;
             } else if (gameCoins < 50) {
                 btn.innerText = 'Not Enough Game Coins';
-                btn.disabled = true;
                 btn.className = 'buy-btn';
                 btn.style.background = '';
                 btn.style.boxShadow = '';
+                btn.disabled = true;
             } else {
                 btn.innerText = 'Buy for 50 Game Coins';
-                btn.disabled = false;
                 btn.className = 'buy-btn';
                 btn.style.background = '';
                 btn.style.boxShadow = '';
+                btn.disabled = false;
             }
             if (ownedNano > 0) document.getElementById('card-nano').classList.add('owned');
         }
 
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 2500);
-        }
-
-        async function buyMiner(type) {
-            if (!isLoggedIn) {
-                alert('❌ You must be logged in to buy miners!\nGo to Settings and sign in with Google.');
-                return;
-            }
-            if (type === 'nano') {
-                if (ownedNano >= 10 || gameCoins < 50) return;
-
-                gameCoins -= 50;
-                ownedNano += 1;
-
-                localStorage.setItem('game_coins', gameCoins);
-                localStorage.setItem('miner_nano', ownedNano);
-
-                // Пересчитываем hashrate
-                const currentBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
-                const newBonus = Math.round((currentBonus + 0.1) * 10) / 10;
-                localStorage.setItem('task_bonus_hashrate', newBonus);
-
-                // Обновляем общий hashrate в localStorage
-                const exp = Number(localStorage.getItem('player_exp')) || 0;
-                const expLevels = [50, 120, 250, 500, 1000];
-                let level = 1, totalExp = 0pp = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        let currentUser = null;
-        onAuthStateChanged(auth, (user) => { currentUser = user; });
-
-        async function recalcTotalHashrate() {
-            try {
-                const usersSnap = await getDocs(collection(db, 'users'));
-                let total = 0;
-                usersSnap.forEach(d => { total += d.data().hashrate || 0; });
-                await setDoc(doc(db, 'stats', 'global'), {
-                    totalHashrate: Math.round(total * 10) / 10,
-                    updatedAt: new Date()
-                }, { merge: true });
-            } catch(e) { console.log('recalc error:', e.message); }
-        }
-
-        // Сохраняем в Firebase после покупки
-        async function saveAfterPurchase() {
-            const lockedEmail = localStorage.getItem('locked_google_email');
-            if (!lockedEmail || !currentUser) return;
-            try {
-                const coins = Number(localStorage.getItem('miner_balance')) || 0;
-                const gc = Number(localStorage.getItem('game_coins')) || 0;
-                const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-                const exp = Number(localStorage.getItem('player_exp')) || 0;
-                const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
-                const nano = Number(localStorage.getItem('miner_nano')) || 0;
-
-                await setDoc(doc(db, 'users', currentUser.uid), {
-                    coins, game_coins: gc, ltc, exp, hashrate,
-                    miner_nano: nano,
-                    email: lockedEmail,
-                    updatedAt: new Date()
-                }, { merge: true });
-
-                await recalcTotalHashrate();
-            } catch(e) { console.log('save error:', e.message); }
-        }
-
-        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
-        let coins = Number(localStorage.getItem('miner_balance')) || 0;
-        let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-        let ownedNano = Number(localStorage.getItem('miner_nano')) || 0;
-        const isLoggedIn = !!localStorage.getItem('locked_google_email');
-
-        document.getElementById('game-coins').innerText = gameCoins;
-        document.getElementById('balance').innerText = coins;
-        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
-
-        function updateUI() {
-            document.getElementById('owned-nano').innerText = `Owned: ${ownedNano} / 10`;
-            const btn = document.getElementById('btn-nano');
-            if (!isLoggedIn) {
+        // --- Mystery Box UI ---
+        function updateBoxUI() {
+            document.getElementById('owned-mega').innerText = `MegaMiner X2: ${ownedMega} / 2`;
+            const btn = document.getElementById('btn-box');
+            if (ownedMega >= 2) {
+                btn.innerText = '✅ All MegaMiners Unlocked!';
+                btn.disabled = true;
+                document.getElementById('card-box').style.opacity = '0.5';
+            } else if (!isLoggedIn) {
                 btn.innerText = '🔒 Login Required';
-                btn.className = 'buy-btn';
                 btn.style.background = '#ef4444';
                 btn.style.boxShadow = '0 3px 0 #991b1b';
                 btn.disabled = false;
-            } else if (ownedNano >= 10) {
-                btn.innerText = 'MAX REACHED';
-                btn.className = 'buy-btn maxed';
-                btn.style.background = '';
-                btn.style.boxShadow = '';
-                btn.disabled = true;
-            } else if (gameCoins < 50) {
+            } else if (gameCoins < 40) {
                 btn.innerText = 'Not Enough Game Coins';
                 btn.disabled = true;
-                btn.className = 'buy-btn';
                 btn.style.background = '';
                 btn.style.boxShadow = '';
             } else {
-                btn.innerText = 'Buy for 50 Game Coins';
+                btn.innerText = 'Open for 40 Game Coins';
                 btn.disabled = false;
-                btn.className = 'buy-btn';
                 btn.style.background = '';
                 btn.style.boxShadow = '';
             }
-            if (ownedNano > 0) document.getElementById('card-nano').classList.add('owned');
         }
 
         function showToast(msg) {
@@ -402,51 +307,109 @@
             setTimeout(() => t.style.display = 'none', 2500);
         }
 
-        async function buyMiner(type) {
-            if (!isLoggedIn) {
-                alert('❌ You must be logged in to buy miners!\nGo to Settings and sign in with Google.');
-                return;
+        function calcHashrate() {
+            const exp = Number(localStorage.getItem('player_exp')) || 0;
+            const expLevels = [50, 120, 250, 500, 1000];
+            let level = 1, tot = 0;
+            for (let i = 0; i < expLevels.length; i++) {
+                if (exp >= tot + expLevels[i]) { tot += expLevels[i]; level++; } else break;
             }
+            const base = level >= 2 ? 0.5 : 0;
+            const bonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
+            const h = Math.round((base + bonus) * 10) / 10;
+            localStorage.setItem('hashrate', h);
+            return h;
+        }
+
+        // --- Buy NanoMiner ---
+        async function buyMiner(type) {
+            if (!isLoggedIn) { alert('❌ Login required! Go to Settings and sign in with Google.'); return; }
             if (type === 'nano') {
                 if (ownedNano >= 10 || gameCoins < 50) return;
-
                 gameCoins -= 50;
                 ownedNano += 1;
-
                 localStorage.setItem('game_coins', gameCoins);
                 localStorage.setItem('miner_nano', ownedNano);
-
-                // Пересчитываем hashrate
-                const currentBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
-                const newBonus = Math.round((currentBonus + 0.1) * 10) / 10;
-                localStorage.setItem('task_bonus_hashrate', newBonus);
-
-                // Обновляем общий hashrate в localStorage
-                const exp = Number(localStorage.getItem('player_exp')) || 0;
-                const expLevels = [50, 120, 250, 500, 1000];
-                let level = 1, totalExp = 0;
-                for (let i = 0; i < expLevels.length; i++) {
-                    if (exp >= totalExp + expLevels[i]) { totalExp += expLevels[i]; level++; }
-                    else break;
-                }
-                const baseHashrate = level >= 2 ? 0.5 : 0;
-                const newHashrate = Math.round((baseHashrate + newBonus) * 10) / 10;
-                localStorage.setItem('hashrate', newHashrate);
-
+                const bonus = Math.round(((parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0) + 0.1) * 10) / 10;
+                localStorage.setItem('task_bonus_hashrate', bonus);
+                calcHashrate();
                 document.getElementById('game-coins').innerText = gameCoins;
-                updateUI();
-                showToast(`✅ NanoMiner X1 purchased! +0.1 GH/S`);
-
-                // Сохраняем в Firebase
+                updateNanoUI();
+                updateBoxUI();
+                showToast('✅ NanoMiner X1 purchased! +0.1 GH/S');
                 await saveAfterPurchase();
             }
         }
 
+        // --- Open Mystery Box ---
+        function rollPrize() {
+            const r = Math.random() * 100;
+            if (r < 35) return { type: 'coins', amount: 10, icon: '🟢', title: '+10 Game Coins', sub: 'Better luck next time!' };
+            if (r < 65) return { type: 'coins', amount: 20, icon: '🟢', title: '+20 Game Coins', sub: 'Not bad!' };
+            if (r < 80) return { type: 'coins', amount: 40, icon: '🟢', title: '+40 Game Coins', sub: 'You got your money back!' };
+            return { type: 'mega', icon: '🔥', title: 'MegaMiner X2!', sub: '+0.2 GH/S added to your hashrate!' };
+        }
+
+        async function openBox() {
+            if (!isLoggedIn) { alert('❌ Login required!'); return; }
+            if (ownedMega >= 2 || gameCoins < 40) return;
+
+            gameCoins -= 40;
+            localStorage.setItem('game_coins', gameCoins);
+            document.getElementById('game-coins').innerText = gameCoins;
+            document.getElementById('btn-box').disabled = true;
+
+            // Показываем оверлей с анимацией
+            const overlay = document.getElementById('prize-overlay');
+            const boxAnim = document.getElementById('box-anim');
+            const reveal = document.getElementById('prize-reveal');
+            overlay.style.display = 'flex';
+            boxAnim.style.display = 'block';
+            reveal.style.display = 'none';
+            boxAnim.style.animation = 'none';
+            void boxAnim.offsetWidth;
+            boxAnim.style.animation = 'shake 0.4s ease-in-out 4';
+
+            setTimeout(async () => {
+                const prize = rollPrize();
+                boxAnim.style.display = 'none';
+                reveal.style.display = 'block';
+                document.getElementById('prize-icon').innerText = prize.icon;
+                document.getElementById('prize-title').innerText = prize.title;
+                document.getElementById('prize-sub').innerText = prize.sub;
+
+                if (prize.type === 'coins') {
+                    gameCoins += prize.amount;
+                    localStorage.setItem('game_coins', gameCoins);
+                    document.getElementById('game-coins').innerText = gameCoins;
+                } else {
+                    ownedMega += 1;
+                    localStorage.setItem('miner_mega', ownedMega);
+                    const bonus = Math.round(((parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0) + 0.2) * 10) / 10;
+                    localStorage.setItem('task_bonus_hashrate', bonus);
+                    calcHashrate();
+                }
+
+                updateNanoUI();
+                updateBoxUI();
+                await saveAfterPurchase();
+            }, 1700);
+        }
+
         window.buyMiner = buyMiner;
-        updateUI();
+        window.openBox = openBox;
+        window.closePrize = function() {
+            document.getElementById('prize-overlay').style.display = 'none';
+            document.getElementById('box-anim').style.display = 'block';
+            document.getElementById('prize-reveal').style.display = 'none';
+        };
+
+        updateNanoUI();
+        updateBoxUI();
     </script>
 </body>
 </html>
+
 
 
 
