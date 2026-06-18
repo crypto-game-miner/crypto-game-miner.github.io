@@ -68,6 +68,10 @@
             My Miners
             <span class="menu-badge" id="miners-badge" style="display:none;background:#a78bfa;">0</span>
         </a>
+        <a href="leaderboard.html" class="side-menu-item">
+            <span class="menu-icon">🏆</span>
+            Leaderboard
+        </a>
         <a href="settings.html" class="side-menu-item">
             <span class="menu-icon">⚙️</span>
             Settings
@@ -235,7 +239,7 @@
         const hashrate = Math.round((baseHashrate + taskBonus) * 10) / 10;
         localStorage.setItem('hashrate', hashrate);
 
-        const ltcPerHour = hashrate * 2 * dailyRate;
+        const ltcPerHour = hashrate * 2.5 * dailyRate;
 
         document.getElementById('level-num').innerText = level;
         document.getElementById('exp-current').innerText = currentExp;
@@ -257,7 +261,7 @@
         if (hashrate > 0 && !miningPaused) {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || now;
             const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-            const offlineEarned = hashrate * 2 * dailyRate / 3600 * secondsAway;
+            const offlineEarned = hashrate * 2.5 * dailyRate / 3600 * secondsAway;
             if (offlineEarned > 0) {
                 ltcCoins += offlineEarned;
                 localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
@@ -273,7 +277,7 @@
 
         if (active) {
             setInterval(() => {
-                const earned = hashrate * 2 * dailyRate / 3600;
+                const earned = hashrate * 2.5 * dailyRate / 3600;
                 ltcCoins += earned;
                 sessionMined += earned;
                 localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
@@ -284,6 +288,7 @@
     </script>
 </body>
 </html>
+
 
 
 
