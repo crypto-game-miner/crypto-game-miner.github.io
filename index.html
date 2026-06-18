@@ -117,7 +117,7 @@
             localStorage.setItem('lastVisitTime', now);
         })();
 
-        const POPUP_ON = [1];
+        const POPUP_ON = [1, 10];
         const MAX_CLAIMS = 20;
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
@@ -187,6 +187,15 @@
                 claimsToday = 0;
             }
             if (claimsToday >= MAX_CLAIMS) return alert("Daily Limit Reached! Come Back Tomorrow.");
+
+            // Проверяем кулдаун 5 секунд
+            const lastClaimTs = Number(localStorage.getItem('lastClaimTs')) || 0;
+            const timeSinceLast = Date.now() - lastClaimTs;
+            if (lastClaimTs > 0 && timeSinceLast < CLAIM_COOLDOWN) {
+                const secsLeft = Math.ceil((CLAIM_COOLDOWN - timeSinceLast) / 1000);
+                return alert(`Please wait ${secsLeft}s before next claim.`);
+            }
+
             btn.disabled = true;
 
             const nextClaim = claimsToday + 1;
@@ -215,14 +224,30 @@
                         localStorage.setItem('game_coins', gameCoins);
                         localStorage.setItem('player_exp', exp);
                         localStorage.setItem('lastClaimTime', Date.now());
+                        localStorage.setItem('lastClaimTs', Date.now());
                         localStorage.setItem('claimsToday', String(nextClaim));
                         document.getElementById('balance').innerText = coins;
                         document.getElementById('game-coins').innerText = gameCoins;
                         updateClaimsLeft();
                         const ltcNow = parseFloat(localStorage.getItem('ltc_balance')) || 0;
                         await updateFirebase(coins, gameCoins, ltcNow, exp);
+
+                        // Пауза 5 секунд перед следующим клеймом
+                        let cooldown = 5;
+                        btn.innerText = `Wait ${cooldown}s...`;
+                        const coolTimer = setInterval(() => {
+                            cooldown--;
+                            if (cooldown <= 0) {
+                                clearInterval(coolTimer);
+                                btn.innerText = 'CLAIM';
+                                btn.disabled = false;
+                            } else {
+                                btn.innerText = `Wait ${cooldown}s...`;
+                            }
+                        }, 1000);
+                    } else {
+                        btn.disabled = false;
                     }
-                    btn.disabled = false;
                 }
             }, 1000);
         }
@@ -231,6 +256,7 @@
     </script>
 </body>
 </html>
+
 
 
 
