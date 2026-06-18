@@ -71,12 +71,12 @@
                 <div class="card-info">
                     <h3>Litecoin (LTC)</h3>
                     <p>via FaucetPay</p>
-                    <span style="font-size:10px; color:#8b949e">Min: 500 LTC Coins</span>
+                    <span style="font-size:10px; color:#8b949e">Min: 400 LTC Coins</span>
                 </div>
             </div>
             <div id="ltc-box" class="withdraw-box">
                 <label>LTC Coins To Withdraw</label>
-                <input type="number" id="wd-points-ltc" placeholder="Min 500">
+                <input type="number" id="wd-points-ltc" placeholder="Min 400">
                 <label>FaucetPay Email</label>
                 <input type="email" id="wd-email-ltc" placeholder="example@mail.com">
                 <button class="collect-btn" style="width:100%;box-shadow:none;padding:10px;font-size:16px;" onclick="handleWithdraw('ltc')">Withdraw LTC</button>
@@ -85,23 +85,15 @@
 
         <div class="banner-area">
             <div style="width:320px; margin:0 auto; text-align:center;">
-                <iframe src="//ads.coinserom.com/pub?adsunit=353639&size=320x50" style="width:320px;height:50px;border:0px;padding:0;background-color: transparent;overflow: auto;"></iframe>
+                <iframe src="//ads.coinserom.com/pub?adsunit=353639&size=320x50" style="width:320px;height:50px;border:0px;padding:0;background-color:transparent;overflow:auto;"></iframe>
             </div>
         </div>
 
         <div class="nav-bar">
-            <a href="home.html" class="nav-item">
-                <span class="nav-icon">🏠</span>Home
-            </a>
-            <a href="index.html" class="nav-item">
-                <span class="nav-icon">🚰</span>Faucet
-            </a>
-            <a href="tasks.html" class="nav-item">
-                <span class="nav-icon">📋</span>Tasks
-            </a>
-            <div class="nav-item active">
-                <span class="nav-icon">👛</span>Wallet
-            </div>
+            <a href="home.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+            <a href="index.html" class="nav-item"><span class="nav-icon">🚰</span>Faucet</a>
+            <a href="tasks.html" class="nav-item"><span class="nav-icon">📋</span>Tasks</a>
+            <div class="nav-item active"><span class="nav-icon">👛</span>Wallet</div>
         </div>
     </div>
 
@@ -115,7 +107,7 @@
             const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
             if (hashrate > 0 && !miningPaused && lastVisit > 0) {
                 const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-                const earned = hashrate * 2 / 3600 * secondsAway;
+                const earned = hashrate * 2.5 / 3600 * secondsAway;
                 if (earned > 0) {
                     let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
                     ltc += earned;
@@ -125,17 +117,20 @@
             localStorage.setItem('lastVisitTime', now);
         })();
 
-        const DAILY_LIMIT = 700;
+        const DAILY_LIMIT_USDT = 700;
+        const DAILY_LIMIT_LTC = 1500;
 
-        function getWithdrawnToday() {
+        function getWithdrawnToday(type) {
+            const key = type === 'usdt' ? 'withdrawDay' : 'withdrawDayLtc';
+            const valKey = type === 'usdt' ? 'withdrawnToday' : 'withdrawnTodayLtc';
             const today = new Date().toDateString();
-            const lastDay = localStorage.getItem('withdrawDay');
+            const lastDay = localStorage.getItem(key);
             if (lastDay !== today) {
-                localStorage.setItem('withdrawDay', today);
-                localStorage.setItem('withdrawnToday', '0');
+                localStorage.setItem(key, today);
+                localStorage.setItem(valKey, '0');
                 return 0;
             }
-            return Number(localStorage.getItem('withdrawnToday')) || 0;
+            return Number(localStorage.getItem(valKey)) || 0;
         }
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
@@ -164,19 +159,18 @@
             const btn      = event.target;
             const points   = Number(pointsEl.value);
             const email    = emailEl.value.trim();
-            const minCoins = type === 'usdt' ? 300 : 500;
+            const minCoins = type === 'usdt' ? 300 : 400;
+            const dailyLimit = type === 'usdt' ? DAILY_LIMIT_USDT : DAILY_LIMIT_LTC;
             const balance  = type === 'usdt' ? coins : ltcCoins;
 
             if (!points || points < minCoins) return alert("Minimum " + minCoins + (type === 'usdt' ? " USDT Coins!" : " LTC Coins!"));
             if (points > balance) return alert("Not enough " + (type === 'usdt' ? "USDT Coins!" : "LTC Coins!"));
             if (!email.includes('@')) return alert("Invalid email!");
 
-            if (type === 'usdt') {
-                const withdrawnToday = getWithdrawnToday();
-                const remaining = DAILY_LIMIT - withdrawnToday;
-                if (points > remaining) {
-                    return alert(`Daily limit is 700 USDT Coins/day! You can withdraw ${remaining} more today.`);
-                }
+            const withdrawnToday = getWithdrawnToday(type);
+            const remaining = dailyLimit - withdrawnToday;
+            if (points > remaining) {
+                return alert(`Daily limit is ${dailyLimit} ${type === 'usdt' ? 'USDT' : 'LTC'} Coins/day! You can withdraw ${remaining} more today.`);
             }
 
             btn.disabled = true;
@@ -193,17 +187,17 @@
                 catch { alert("Server returned unexpected response. HTTP " + response.status); return; }
 
                 if (result.status === 200) {
+                    const valKey = type === 'usdt' ? 'withdrawnToday' : 'withdrawnTodayLtc';
                     if (type === 'usdt') {
                         coins -= points;
                         localStorage.setItem('miner_balance', coins);
                         document.getElementById('balance').innerText = coins;
-                        const newWithdrawn = getWithdrawnToday() + points;
-                        localStorage.setItem('withdrawnToday', String(newWithdrawn));
                     } else {
                         ltcCoins -= points;
                         localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
                         document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
                     }
+                    localStorage.setItem(valKey, String(getWithdrawnToday(type) + points));
                     alert("✅ Success! Funds sent to your FaucetPay!");
                 } else {
                     alert("❌ FaucetPay error: " + (result.message || JSON.stringify(result)));
@@ -218,6 +212,7 @@
     </script>
 </body>
 </html>
+
 
 
 
