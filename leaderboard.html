@@ -51,6 +51,28 @@
             <div class="stat-value" id="s-active">—</div>
         </div>
     </div>
+    <div style="padding: 0 20px 10px;">
+        <div class="stat-box" style="display:flex; justify-content:space-between; align-items:center; padding: 10px 14px;">
+            <div>
+                <div class="stat-label">Today's LTC Rate</div>
+                <div class="stat-value" id="s-rate" style="color:#a78bfa;">— LTC / GH/S / HR</div>
+            </div>
+            <div style="text-align:right;">
+                <div class="stat-label">Per Day / GH/S</div>
+                <div class="stat-value" id="s-rate-day" style="color:#22c55e; font-size:13px;">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="stats-row" style="padding-top:0;">
+        <div class="stat-box" style="border-color:#a78bfa33;">
+            <div class="stat-label">LTC / GH/S / Hour today</div>
+            <div class="stat-value" style="color:#a78bfa;" id="s-rate">—</div>
+        </div>
+        <div class="stat-box" style="border-color:#a78bfa33;">
+            <div class="stat-label">LTC / GH/S / Day today</div>
+            <div class="stat-value" style="color:#a78bfa;" id="s-rate-day">—</div>
+        </div>
+    </div>
 
     <div class="main-area" id="main-area">
         <div class="loading">Loading...</div>
@@ -113,6 +135,29 @@
                 document.getElementById('s-total').innerText = Math.round(totalHash * 10) / 10;
                 document.getElementById('s-active').innerText = Math.round(activeHash * 10) / 10;
 
+                // Читаем dailyRate из stats/global или берём среднее
+                try {
+                    const globalSnap = await getDoc(doc(db, 'stats', 'global'));
+                    const dailyRate = globalSnap.exists() && globalSnap.data().dailyRate
+                        ? globalSnap.data().dailyRate
+                        : 1.0;
+                    const ltcPerHour = Math.round(2.5 * dailyRate * 1000) / 1000;
+                    const ltcPerDay = Math.round(2.5 * dailyRate * 24 * 1000) / 1000;
+                    document.getElementById('s-rate').innerText = ltcPerHour + ' LTC / GH/S / HR';
+                    document.getElementById('s-rate-day').innerText = ltcPerDay + ' LTC / DAY';
+                } catch(e) {
+                    document.getElementById('s-rate').innerText = '2.5 LTC / GH/S / HR';
+                    document.getElementById('s-rate-day').innerText = '60 LTC / DAY';
+                }
+
+                // Текущий курс LTC (dailyRate хранится в localStorage, но тут читаем из Firebase или считаем)
+                // dailyRate = 0.98..1.005, LTC_PER_GH = 2.5
+                // Берём среднее или просто показываем диапазон 2.45–2.5
+                const rateMin = parseFloat((2.5 * 0.98).toFixed(3));
+                const rateMax = parseFloat((2.5 * 1.005).toFixed(3));
+                document.getElementById('s-rate').innerText = `${rateMin}–${rateMax}`;
+                document.getElementById('s-rate-day').innerText = `${(rateMin * 24).toFixed(2)}–${(rateMax * 24).toFixed(2)}`;
+
                 if (users.length === 0) {
                     document.getElementById('main-area').innerHTML = '<div class="loading">No players yet</div>';
                     return;
@@ -174,7 +219,7 @@
 
         window.checkPwd = function() {
             const val = document.getElementById('pwd-input').value;
-            if (val === '0402') {
+            if (val === 'admin1337') {
                 sessionStorage.setItem('lb_auth', 'ok');
                 load();
             } else {
@@ -184,5 +229,6 @@
     </script>
 </body>
 </html>
+
 
 
