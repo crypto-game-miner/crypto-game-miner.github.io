@@ -65,18 +65,10 @@
         </div>
 
         <div class="nav-bar">
-            <a href="home.html" class="nav-item">
-                <span class="nav-icon">🏠</span>Home
-            </a>
-            <div class="nav-item active">
-                <span class="nav-icon">🚰</span>Faucet
-            </div>
-            <a href="tasks.html" class="nav-item">
-                <span class="nav-icon">📋</span>Tasks
-            </a>
-            <a href="wallet.html" class="nav-item">
-                <span class="nav-icon">👛</span>Wallet
-            </a>
+            <a href="home.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+            <div class="nav-item active"><span class="nav-icon">🚰</span>Faucet</div>
+            <a href="tasks.html" class="nav-item"><span class="nav-icon">📋</span>Tasks</a>
+            <a href="wallet.html" class="nav-item"><span class="nav-icon">👛</span>Wallet</a>
         </div>
     </div>
 
@@ -98,6 +90,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // Оффлайн начисление LTC
         (function() {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || 0;
             const now = Date.now();
@@ -107,7 +100,7 @@
             const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
             if (hashrate > 0 && !miningPaused && lastVisit > 0) {
                 const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-                const earned = hashrate * 2 / 3600 * secondsAway;
+                const earned = hashrate * 2.5 / 3600 * secondsAway;
                 if (earned > 0) {
                     let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
                     ltc += earned;
@@ -117,8 +110,9 @@
             localStorage.setItem('lastVisitTime', now);
         })();
 
-        const POPUP_ON = [1];
+        const POPUP_ON = [1, 10];
         const MAX_CLAIMS = 20;
+        const CLAIM_COOLDOWN = 5000;
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
@@ -187,6 +181,15 @@
                 claimsToday = 0;
             }
             if (claimsToday >= MAX_CLAIMS) return alert("Daily Limit Reached! Come Back Tomorrow.");
+
+            // Проверка кулдауна 5 сек
+            const lastClaimTs = Number(localStorage.getItem('lastClaimTs')) || 0;
+            const timeSinceLast = Date.now() - lastClaimTs;
+            if (lastClaimTs > 0 && timeSinceLast < CLAIM_COOLDOWN) {
+                const secsLeft = Math.ceil((CLAIM_COOLDOWN - timeSinceLast) / 1000);
+                return alert(`Please wait ${secsLeft}s before next claim.`);
+            }
+
             btn.disabled = true;
 
             const nextClaim = claimsToday + 1;
@@ -208,13 +211,16 @@
                     clearInterval(timerAd);
                     overlay.style.display = 'none';
                     if (ok) {
-                        coins += 15;
+                        const isLoggedIn = !!localStorage.getItem('locked_google_email');
+                        const usdtReward = isLoggedIn ? 15 : 14;
+                        coins += usdtReward;
                         gameCoins += 5;
                         exp += 8;
                         localStorage.setItem('miner_balance', coins);
                         localStorage.setItem('game_coins', gameCoins);
                         localStorage.setItem('player_exp', exp);
                         localStorage.setItem('lastClaimTime', Date.now());
+                        localStorage.setItem('lastClaimTs', Date.now());
                         localStorage.setItem('claimsToday', String(nextClaim));
                         document.getElementById('balance').innerText = coins;
                         document.getElementById('game-coins').innerText = gameCoins;
@@ -231,6 +237,7 @@
     </script>
 </body>
 </html>
+
 
 
 
