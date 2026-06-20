@@ -55,6 +55,8 @@
             <div style="font-size: 90px; margin-bottom: 10px; filter: drop-shadow(0 0 15px rgba(250,204,21,0.2));">⛏️</div>
             <button id="collect-btn" class="collect-btn" onclick="showAd()">CLAIM</button>
             <p id="claims-left" style="color:#8b949e; font-size:12px; margin-top:10px;"></p>
+            <p id="login-hint" style="font-size:11px; margin-top:4px; color:#facc15;"></p>
+            <p id="login-hint" style="font-size:11px; margin-top:4px; color:#facc15;"></p>
         </div>
 
         <div class="banner-area">
@@ -120,7 +122,11 @@
         let exp = Number(localStorage.getItem('player_exp')) || 0;
         let currentUser = null;
 
-        onAuthStateChanged(auth, (user) => { currentUser = user; });
+        const isLoggedIn = !!localStorage.getItem('locked_google_email');
+        const hint = document.getElementById('login-hint');
+        if (!isLoggedIn) {
+            hint.innerHTML = '🔒 <a href="settings.html" style="color:#facc15;">Sign in</a> to get +1 bonus coin per claim!';
+        }
 
         document.getElementById('balance').innerText = coins;
         document.getElementById('game-coins').innerText = gameCoins;
@@ -237,6 +243,7 @@
     </script>
 </body>
 </html>
+
 
 
 
