@@ -33,7 +33,7 @@ export default async function handler(req, res) {
 
   try {
     // v2 endpoint
-    const response = await fetch('https://admin.ccpayment.com/ccpayment/v2/payment/address/get', {
+    const response = await fetch('https://admin.ccpayment.com/ccpayment/v1/payment/address/get', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -61,5 +61,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message });
   }
 }
+
 
 
