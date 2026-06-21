@@ -49,6 +49,9 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
+    console.log('CCPayment response:', JSON.stringify(data));
+    console.log('APP_ID used:', APP_ID);
+
     if (data.code === 10000) {
       return res.status(200).json({
         address:  data.data.address,
@@ -56,9 +59,10 @@ export default async function handler(req, res) {
         currency,
       });
     } else {
-      return res.status(400).json({ error: data.msg || 'CCPayment error', code: data.code });
+      return res.status(400).json({ error: data.msg || 'CCPayment error', code: data.code, full: data });
     }
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
 }
+
