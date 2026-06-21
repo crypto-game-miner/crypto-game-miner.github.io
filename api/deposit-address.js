@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing userId or invalid currency' });
   }
 
-  const chain     = currency === 'USDT' ? 'TRC20' : 'LTC';
+  const chain     = currency === 'USDT' ? 'TRX' : 'LTC';
   const timestamp = Math.floor(Date.now() / 1000);
 
   const bodyObj = {
@@ -58,6 +58,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message });
   }
 }
+
 
 
 
