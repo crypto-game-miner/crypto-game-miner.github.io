@@ -5,11 +5,6 @@ import crypto from 'crypto';
 const APP_ID     = process.env.CCPAYMENT_APP_ID;
 const APP_SECRET = process.env.CCPAYMENT_APP_SECRET;
 
-function makeSignature(body, timestamp) {
-  const raw = APP_ID + APP_SECRET + timestamp + body;
-  return crypto.createHash('sha256').update(raw).digest('hex');
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -18,28 +13,30 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing userId or invalid currency' });
   }
 
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-
-  // v2 API uses chain name directly
-  const chain = currency === 'USDT' ? 'TRC20' : 'LTC';
+  const chain     = currency === 'USDT' ? 'TRC20' : 'LTC';
+  const timestamp = Math.floor(Date.now() / 1000);
 
   const bodyObj = {
-    user_id:    userId,
-    chain:      chain,
-    notify_url: `${process.env.SITE_URL}/api/deposit-webhook`,
+    referenceId: userId,
+    chain:       chain,
   };
   const bodyStr = JSON.stringify(bodyObj);
-  const sign    = makeSignature(bodyStr, timestamp);
+
+  // v2 signature: HMAC-SHA256(appId + timestamp + body, appSecret)
+  const signText = APP_ID + timestamp + bodyStr;
+  const sign = crypto
+    .createHmac('sha256', APP_SECRET)
+    .update(signText)
+    .digest('hex');
 
   try {
-    // v2 endpoint
-    const response = await fetch('https://admin.ccpayment.com/ccpayment/v1/payment/address/get', {
+    const response = await fetch('https://ccpayment.com/ccpayment/v2/getOrCreateAppDepositAddress', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Appid':        APP_ID,
         'Sign':         sign,
-        'Timestamp':    timestamp,
+        'Timestamp':    timestamp.toString(),
       },
       body: bodyStr,
     });
@@ -61,6 +58,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message });
   }
 }
+
 
 
 
