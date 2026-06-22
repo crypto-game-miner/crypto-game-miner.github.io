@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Ad Moderation</title>
+    <style>
+        html, body { margin: 0; padding: 0; background: #1a1613; color: white; font-family: 'Courier New', monospace; }
+        body { padding: 16px 16px 40px; }
+        .header { color: #facc15; font-size: 18px; font-weight: bold; margin-bottom: 16px; text-transform: uppercase; }
+        .login-box { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 10px; padding: 20px; max-width: 320px; margin: 60px auto; }
+        .login-box input { width: 100%; box-sizing: border-box; background: #0d0d0d; border: 1px solid #3d2b1f; border-radius: 8px; color: white; padding: 10px; font-size: 14px; font-family: monospace; outline: none; margin-bottom: 12px; }
+        .login-box button { background: #facc15; color: #1a1613; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; font-family: monospace; }
+        #panel { display: none; }
+        .card { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .status-badge { font-size: 10px; padding: 3px 8px; border-radius: 10px; font-weight: bold; }
+        .status-pending  { background: rgba(251,191,36,0.2); color: #fbbf24; border: 1px solid #fbbf24; }
+        .status-active   { background: rgba(34,197,94,0.2);  color: #22c55e; border: 1px solid #22c55e; }
+        .status-rejected { background: rgba(239,68,68,0.2);  color: #ef4444; border: 1px solid #ef4444; }
+        .banner-img { width: 100%; height: 50px; object-fit: contain; background: #0d0d0d; border-radius: 6px; margin: 8px 0; border: 1px dashed #3d2b1f; }
+        .info-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; border-bottom: 1px solid #2a2015; }
+        .info-row:last-child { border-bottom: none; }
+        .info-row span:first-child { color: #8b949e; }
+        .info-row a { color: #facc15; font-size: 11px; }
+        .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+        .btn-approve { background: #22c55e; color: #000; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; flex: 1; font-family: monospace; }
+        .btn-reject  { background: #ef4444; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; flex: 1; font-family: monospace; }
+        .btn-approve:disabled, .btn-reject:disabled { opacity: 0.5; cursor: not-allowed; }
+        .days-input { background: #0d0d0d; border: 1px solid #facc15; border-radius: 6px; color: white; padding: 6px 10px; font-size: 13px; font-family: monospace; width: 60px; outline: none; }
+        .empty { text-align: center; color: #555; padding: 40px 0; font-size: 14px; }
+        .tab-row { display: flex; gap: 8px; margin-bottom: 16px; }
+        .tab { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: 1px solid #3d2b1f; background: transparent; color: #8b949e; font-family: monospace; text-transform: uppercase; }
+        .tab.active { background: #facc15; color: #1a1613; border-color: #facc15; }
+    </style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-box" class="login-box">
+    <div style="color:#facc15; font-size:16px; font-weight:bold; margin-bottom:16px; text-align:center;">🔐 Admin Panel</div>
+    <input type="password" id="pwd" placeholder="Password" onkeydown="if(event.key==='Enter')checkPwd()">
+    <button onclick="checkPwd()">Enter</button>
+</div>
+
+<!-- Panel -->
+<div id="panel">
+    <div class="header">📢 Ad Moderation</div>
+    <div class="tab-row">
+        <button class="tab active" onclick="switchTab('pending')">⏳ Pending</button>
+        <button class="tab" onclick="switchTab('active')">✅ Active</button>
+        <button class="tab" onclick="switchTab('rejected')">❌ Rejected</button>
+    </div>
+    <div id="cards-container"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+    import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+
+    const ADMIN_PASSWORD = 'kr1stal2024'; // смени на свой пароль
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+        authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+        projectId: "crypto-miner-game-f45dc",
+        storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+        messagingSenderId: "33690622473",
+        appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    let currentTab = 'pending';
+
+    window.checkPwd = function() {
+        const pwd = document.getElementById('pwd').value;
+        if (pwd === ADMIN_PASSWORD) {
+            document.getElementById('login-box').style.display = 'none';
+            document.getElementById('panel').style.display = 'block';
+            loadRequests('pending');
+        } else {
+            alert('Wrong password');
+        }
+    };
+
+    window.switchTab = function(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        loadRequests(tab);
+    };
+
+    async function loadRequests(status) {
+        const container = document.getElementById('cards-container');
+        container.innerHTML = '<div class="empty">Loading...</div>';
+
+        try {
+            const q = query(collection(db, 'ad_requests'), where('status', '==', status), orderBy('createdAt', 'desc'));
+            const snap = await getDocs(q);
+
+            if (snap.empty) {
+                container.innerHTML = '<div class="empty">No ' + status + ' requests</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            snap.forEach(docSnap => {
+                const d = docSnap.data();
+                const id = docSnap.id;
+                const date = d.createdAt?.toDate?.()?.toLocaleDateString() || '—';
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-header">
+                        <span style="color:#facc15; font-size:13px; font-weight:bold;">${d.contact || '—'}</span>
+                        <span class="status-badge status-${d.status}">${d.status}</span>
+                    </div>
+                    <img class="banner-img" src="${d.banner_url}" onerror="this.src=''" alt="banner">
+                    <div class="info-row"><span>Link</span><a href="${d.click_url}" target="_blank">Open ↗</a></div>
+                    <div class="info-row"><span>Days requested</span><span>${d.days}</span></div>
+                    <div class="info-row"><span>Price</span><span>${d.ltc_coins} LTC or ${d.usdt_coins} USDT coins</span></div>
+                    <div class="info-row"><span>Submitted</span><span>${date}</span></div>
+                    ${status === 'pending' ? `
+                    <div class="btn-row" style="align-items:center;">
+                        <span style="font-size:11px; color:#8b949e;">Days to activate:</span>
+                        <input type="number" class="days-input" id="days-${id}" value="${d.days}" min="1">
+                        <button class="btn-approve" onclick="approve('${id}', '${d.banner_url}', '${d.click_url}')">✅ Approve</button>
+                        <button class="btn-reject" onclick="reject('${id}')">❌ Reject</button>
+                    </div>` : ''}
+                `;
+                container.appendChild(card);
+            });
+        } catch(e) {
+            container.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
+        }
+    }
+
+    window.approve = async function(reqId, bannerUrl, clickUrl) {
+        const days = parseInt(document.getElementById('days-' + reqId).value) || 1;
+        const paidUntil = new Date();
+        paidUntil.setDate(paidUntil.getDate() + days);
+
+        try {
+            // Update request status
+            await updateDoc(doc(db, 'ad_requests', reqId), { status: 'active' });
+
+            // Create active ad slot
+            await addDoc(collection(db, 'ad_slots'), {
+                banner_url: bannerUrl,
+                click_url:  clickUrl,
+                status:     'active',
+                paid_until: paidUntil,
+                days,
+                req_id:     reqId,
+                createdAt:  new Date()
+            });
+
+            alert('✅ Banner approved! Active for ' + days + ' days.');
+            loadRequests(currentTab);
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    window.reject = async function(reqId) {
+        if (!confirm('Reject this banner?')) return;
+        try {
+            await updateDoc(doc(db, 'ad_requests', reqId), { status: 'rejected' });
+            alert('❌ Banner rejected.');
+            loadRequests(currentTab);
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+}
+</script>
+</body>
+</html>
