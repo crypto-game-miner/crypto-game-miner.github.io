@@ -26,6 +26,17 @@
         .warning-card { background: rgba(239,68,68,0.15); border: 2px solid #ef4444; border-radius: 12px; padding: 12px 15px; margin-bottom: 15px; display: none; }
         .warning-text { color: #ef4444; font-size: 13px; font-weight: bold; }
         .warning-sub { color: #8b949e; font-size: 11px; margin-top: 4px; }
+
+        /* Paid banner slot */
+        .banner-slot { margin-bottom: 15px; }
+        #paid-banner-slot { display: none; width: 100%; border-radius: 8px; overflow: hidden; }
+        #paid-banner-slot a { display: block; }
+        #paid-banner-slot img { width: 100%; height: 50px; object-fit: cover; border-radius: 8px; }
+        #advertise-promo { display: none; }
+        .promo-banner { background: linear-gradient(90deg, #3d2b1f, #2a1a0f); border: 1px solid #facc15; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; text-decoration: none; }
+        .promo-text { font-size: 11px; color: #facc15; font-family: 'Courier New', monospace; text-transform: uppercase; }
+        .promo-price { font-size: 10px; color: #a16207; }
+
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
@@ -44,6 +55,7 @@
         .side-menu-item:hover { background: rgba(250,204,21,0.08); }
         .side-menu-item .menu-icon { font-size: 22px; }
         .side-menu-item .menu-badge { background: #facc15; color: #1a1613; font-size: 9px; padding: 2px 6px; border-radius: 10px; margin-left: auto; }
+        .side-menu-item .menu-badge.purple { background: #a78bfa; }
     </style>
 </head>
 <body>
@@ -61,7 +73,12 @@
         <a href="miners.html" class="side-menu-item">
             <span class="menu-icon">⛏️</span>
             My Miners
-            <span class="menu-badge" id="miners-badge" style="display:none;background:#a78bfa;">0</span>
+            <span class="menu-badge purple" id="miners-badge" style="display:none;">0</span>
+        </a>
+        <a href="advertise.html" class="side-menu-item">
+            <span class="menu-icon">📢</span>
+            Advertise
+            <span class="menu-badge" style="background:#22c55e;">$</span>
         </a>
         <a href="settings.html" class="side-menu-item">
             <span class="menu-icon">⚙️</span>
@@ -103,6 +120,25 @@
                 </div>
                 <div class="exp-text"><span id="exp-current">0</span> / <span id="exp-needed">50</span> EXP</div>
             </div>
+
+            <!-- Paid banner slot -->
+            <div class="banner-slot">
+                <div id="paid-banner-slot">
+                    <a id="paid-banner-link" href="#" target="_blank" rel="noopener">
+                        <img id="paid-banner-img" src="" alt="Ad">
+                    </a>
+                </div>
+                <div id="advertise-promo">
+                    <a class="promo-banner" href="advertise.html">
+                        <span>📢</span>
+                        <div>
+                            <div class="promo-text">Place your banner here</div>
+                            <div class="promo-price">from 220 LTC coins or 100 USDT coins / day</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
             <div class="mining-card">
                 <div class="mining-title">⛏️ Mining Power</div>
                 <div class="mining-stat">
@@ -134,7 +170,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
-        import { getFirestore, doc, setDoc, getDocs, collection } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getFirestore, doc, setDoc, getDocs, collection, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -148,6 +184,32 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Load paid banner
+        async function loadPaidBanner() {
+            try {
+                const now = new Date();
+                const q = query(
+                    collection(db, 'ad_slots'),
+                    where('status', '==', 'active'),
+                    where('paid_until', '>=', now),
+                    orderBy('paid_until', 'asc'),
+                    limit(1)
+                );
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    const ad = snap.docs[0].data();
+                    document.getElementById('paid-banner-img').src = ad.banner_url;
+                    document.getElementById('paid-banner-link').href = ad.click_url;
+                    document.getElementById('paid-banner-slot').style.display = 'block';
+                } else {
+                    document.getElementById('advertise-promo').style.display = 'block';
+                }
+            } catch(e) {
+                document.getElementById('advertise-promo').style.display = 'block';
+            }
+        }
+        loadPaidBanner();
+
         async function recalcTotalHashrate() {
             try {
                 const usersSnap = await getDocs(collection(db, 'users'));
@@ -160,9 +222,9 @@
                 }, { merge: true });
             } catch(e) { console.log('recalc error:', e.message); }
         }
-
         recalcTotalHashrate();
     </script>
+
     <script>
         function openMenu() {
             document.getElementById('side-menu').classList.add('open');
@@ -189,7 +251,6 @@
         }
 
         const dailyRate = getDailyRate();
-
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
@@ -261,6 +322,7 @@
     </script>
 </body>
 </html>
+
 
 
 
