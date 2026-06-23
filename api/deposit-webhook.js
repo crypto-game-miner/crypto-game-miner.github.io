@@ -39,25 +39,34 @@ export default async function handler(req, res) {
     console.error('Invalid signature');
   }
 
-  // Реальная структура вебхука: { type: "DirectDeposit", msg: { ... } }
+  // Реальная структура: { type: "DirectDeposit", msg: { referenceId, coinSymbol, status, amount, ... } }
   const msg = payload.msg || payload;
 
   if (msg.status !== 'Success') {
     return res.status(200).json({ msg: 'Success' });
   }
 
-  const userId     = msg.referenceId;
+  const userEmail  = msg.referenceId;
   const coinSymbol = msg.coinSymbol;
   const amount     = parseFloat(msg.amount || msg.value || '0');
 
-  if (!userId || !coinSymbol || amount <= 0) {
-    console.log('Missing data:', { userId, coinSymbol, amount });
+  if (!userEmail || !coinSymbol || amount <= 0) {
+    console.log('Missing data:', { userEmail, coinSymbol, amount });
     return res.status(200).json({ msg: 'Success' });
   }
 
   try {
-    const db      = initFirebase();
-    const userRef = db.collection('users').doc(userId);
+    const db = initFirebase();
+
+    // Ищем документ юзера по полю email, а не по ID документа
+    const snap = await db.collection('users').where('email', '==', userEmail).limit(1).get();
+
+    if (snap.empty) {
+      console.error('User not found for email:', userEmail);
+      return res.status(200).json({ msg: 'Success' });
+    }
+
+    const userRef = snap.docs[0].ref;
     const depKey  = `dep_${Date.now()}`;
 
     if (coinSymbol === 'USDT') {
@@ -66,7 +75,7 @@ export default async function handler(req, res) {
         coins: FieldValue.increment(usdtCoins),
         [`deposits.${depKey}`]: { type: 'USDT', amount, coins_added: usdtCoins, at: new Date() },
       });
-      console.log(`+${usdtCoins} USDT Coins → ${userId}`);
+      console.log(`+${usdtCoins} USDT Coins → ${userEmail}`);
 
     } else if (coinSymbol === 'LTC') {
       const ltcCoins = Math.floor(amount * 100_000_000);
@@ -74,7 +83,7 @@ export default async function handler(req, res) {
         ltc: FieldValue.increment(ltcCoins),
         [`deposits.${depKey}`]: { type: 'LTC', amount, ltc_coins_added: ltcCoins, at: new Date() },
       });
-      console.log(`+${ltcCoins} LTC Coins → ${userId}`);
+      console.log(`+${ltcCoins} LTC Coins → ${userEmail}`);
     }
 
   } catch (e) {
