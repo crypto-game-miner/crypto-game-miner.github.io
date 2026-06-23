@@ -32,27 +32,27 @@ export default async function handler(req, res) {
   const timestamp    = req.headers['timestamp'] || '';
   const receivedSign = req.headers['sign']      || '';
 
-  // Vercel парсит body автоматически — берём как есть
   const payload  = req.body || {};
   const bodyStr  = JSON.stringify(payload);
 
   if (!verifySignature(bodyStr, timestamp, receivedSign)) {
     console.error('Invalid signature');
-    // Пропускаем проверку подписи на этапе тестирования — раскомментируй после проверки
-    // return res.status(400).send('Invalid signature');
   }
 
-  // status 1 = deposit success
-  if (payload.status !== 1) {
+  // Реальная структура вебхука: { type: "DirectDeposit", msg: { ... } }
+  const msg = payload.msg || payload;
+
+  if (msg.status !== 'Success') {
     return res.status(200).json({ msg: 'Success' });
   }
 
-  const userId = payload.user_id;
-  const chain  = payload.chain;
-  const amount = parseFloat(payload.value || '0');
+  const userId     = msg.referenceId;
+  const coinSymbol = msg.coinSymbol;
+  const amount     = parseFloat(msg.amount || msg.value || '0');
 
-  if (!userId || !chain || amount <= 0) {
-    return res.status(200).json({ msg: 'Success' }); // всегда 200 чтобы CCPayment не ретраил
+  if (!userId || !coinSymbol || amount <= 0) {
+    console.log('Missing data:', { userId, coinSymbol, amount });
+    return res.status(200).json({ msg: 'Success' });
   }
 
   try {
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
     const userRef = db.collection('users').doc(userId);
     const depKey  = `dep_${Date.now()}`;
 
-    if (chain === 'TRC20') {
+    if (coinSymbol === 'USDT') {
       const usdtCoins = Math.floor(amount * 1_000_000);
       await userRef.update({
         coins: FieldValue.increment(usdtCoins),
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
       });
       console.log(`+${usdtCoins} USDT Coins → ${userId}`);
 
-    } else if (chain === 'LTC') {
+    } else if (coinSymbol === 'LTC') {
       const ltcCoins = Math.floor(amount * 100_000_000);
       await userRef.update({
         ltc: FieldValue.increment(ltcCoins),
@@ -79,7 +79,6 @@ export default async function handler(req, res) {
 
   } catch (e) {
     console.error('Firebase error:', e.message);
-    // Всё равно возвращаем Success — иначе CCPayment будет ретраить 6 раз
   }
 
   return res.status(200).json({ msg: 'Success' });
