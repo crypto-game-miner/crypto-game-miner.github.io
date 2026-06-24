@@ -218,7 +218,7 @@
                     overlay.style.display = 'none';
                     if (ok) {
                         const isLoggedIn = !!localStorage.getItem('locked_google_email');
-                        const usdtReward = isLoggedIn ? 15 : 14;
+                        const usdtReward = isLoggedIn ? 10 : 9;
                         coins += usdtReward;
                         gameCoins += 5;
                         exp += 8;
@@ -228,6 +228,10 @@
                         localStorage.setItem('lastClaimTime', Date.now());
                         localStorage.setItem('lastClaimTs', Date.now());
                         localStorage.setItem('claimsToday', String(nextClaim));
+                        // Добавляем буст мощности 0.1 GH/s на 24 часа
+const boosts = JSON.parse(localStorage.getItem('claimBoosts') || '[]');
+boosts.push({ expires: Date.now() + 24 * 60 * 60 * 1000 });
+localStorage.setItem('claimBoosts', JSON.stringify(boosts));
                         document.getElementById('balance').innerText = coins;
                         document.getElementById('game-coins').innerText = gameCoins;
                         updateClaimsLeft();
@@ -243,6 +247,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
