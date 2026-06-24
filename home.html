@@ -271,8 +271,15 @@
 
         const { level, currentExp, needed } = getLevel(exp);
         const baseHashrate = level >= 2 ? 0.5 : 0;
+        // Считаем активные бусты
+const now = Date.now();
+let boosts = JSON.parse(localStorage.getItem('claimBoosts') || '[]');
+        // Удаляем просроченные
+boosts = boosts.filter(b => b.expires > now);
+localStorage.setItem('claimBoosts', JSON.stringify(boosts));
+const boostBonus = boosts.length * 0.1;
         const taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
-        const hashrate = Math.round((baseHashrate + taskBonus) * 10) / 10;
+        const hashrate = Math.round((baseHashrate + taskBonus + boostBonus) * 10) / 10;
         localStorage.setItem('hashrate', hashrate);
 
         const ltcPerHour = hashrate * 2.5 * dailyRate;
@@ -322,6 +329,7 @@
     </script>
 </body>
 </html>
+
 
 
 
