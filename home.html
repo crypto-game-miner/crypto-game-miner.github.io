@@ -26,8 +26,6 @@
         .warning-card { background: rgba(239,68,68,0.15); border: 2px solid #ef4444; border-radius: 12px; padding: 12px 15px; margin-bottom: 15px; display: none; }
         .warning-text { color: #ef4444; font-size: 13px; font-weight: bold; }
         .warning-sub { color: #8b949e; font-size: 11px; margin-top: 4px; }
-
-        /* Paid banner slot */
         .banner-slot { margin-bottom: 15px; }
         #paid-banner-slot { display: none; width: 100%; border-radius: 8px; overflow: hidden; }
         #paid-banner-slot a { display: block; }
@@ -36,7 +34,6 @@
         .promo-banner { background: linear-gradient(90deg, #3d2b1f, #2a1a0f); border: 1px solid #facc15; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; text-decoration: none; }
         .promo-text { font-size: 11px; color: #facc15; font-family: 'Courier New', monospace; text-transform: uppercase; }
         .promo-price { font-size: 10px; color: #a16207; }
-
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
@@ -121,7 +118,6 @@
                 <div class="exp-text"><span id="exp-current">0</span> / <span id="exp-needed">50</span> EXP</div>
             </div>
 
-            <!-- Paid banner slot -->
             <div class="banner-slot">
                 <div id="paid-banner-slot">
                     <a id="paid-banner-link" href="#" target="_blank" rel="noopener">
@@ -142,8 +138,16 @@
             <div class="mining-card">
                 <div class="mining-title">⛏️ Mining Power</div>
                 <div class="mining-stat">
-                    <span class="mining-label">Hashrate</span>
+                    <span class="mining-label">Base Hashrate</span>
                     <span class="mining-value" id="hashrate">0 GH/s</span>
+                </div>
+                <div class="mining-stat">
+                    <span class="mining-label">Claim Boost (24h)</span>
+                    <span class="mining-value" id="boost-rate" style="color:#22c55e;">+0 GH/s</span>
+                </div>
+                <div class="mining-stat">
+                    <span class="mining-label">Total Hashrate</span>
+                    <span class="mining-value" id="total-hashrate">0 GH/s</span>
                 </div>
                 <div class="mining-stat">
                     <span class="mining-label">LTC Coins / Hour</span>
@@ -184,7 +188,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Load paid banner
         async function loadPaidBanner() {
             try {
                 const now = new Date();
@@ -238,6 +241,16 @@
             document.getElementById('overlay').classList.remove('open');
         }
 
+        // Активные claim-бусты (не старше 24ч)
+        function getClaimBoostTotal() {
+            const now = Date.now();
+            let boosts = [];
+            try { boosts = JSON.parse(localStorage.getItem('claimBoosts') || '[]'); } catch { boosts = []; }
+            const active = boosts.filter(b => (now - b.time) < 86400000);
+            localStorage.setItem('claimBoosts', JSON.stringify(active));
+            return Math.round(active.reduce((sum, b) => sum + b.amount, 0) * 10) / 10;
+        }
+
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
         function getDailyRate() {
@@ -272,16 +285,21 @@
         const { level, currentExp, needed } = getLevel(exp);
         const baseHashrate = level >= 2 ? 0.5 : 0;
         const taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
-        const hashrate = Math.round((baseHashrate + taskBonus) * 10) / 10;
-        localStorage.setItem('hashrate', hashrate);
+        const permHashrate = Math.round((baseHashrate + taskBonus) * 10) / 10;
+        localStorage.setItem('hashrate', permHashrate);
 
-        const ltcPerHour = hashrate * 2.5 * dailyRate;
+        const claimBoost = getClaimBoostTotal();
+        const totalHashrate = Math.round((permHashrate + claimBoost) * 10) / 10;
+
+        const ltcPerHour = totalHashrate * 2.5 * dailyRate;
 
         document.getElementById('level-num').innerText = level;
         document.getElementById('exp-current').innerText = currentExp;
         document.getElementById('exp-needed').innerText = needed;
-        document.getElementById('hashrate').innerText = hashrate + ' GH/s';
-        document.getElementById('ltc-per-hour').innerText = hashrate > 0 ? ltcPerHour.toFixed(3) : 0;
+        document.getElementById('hashrate').innerText = permHashrate + ' GH/s';
+        document.getElementById('boost-rate').innerText = '+' + claimBoost.toFixed(1) + ' GH/s';
+        document.getElementById('total-hashrate').innerText = totalHashrate + ' GH/s';
+        document.getElementById('ltc-per-hour').innerText = totalHashrate > 0 ? ltcPerHour.toFixed(3) : 0;
         const pct = needed === 'MAX' ? 100 : (currentExp / needed * 100);
         document.getElementById('exp-bar').style.width = pct + '%';
 
@@ -290,12 +308,12 @@
         const hoursSinceClaim = (now - lastClaim) / 1000 / 3600;
         const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
 
-        if (miningPaused && hashrate > 0) document.getElementById('warning-card').style.display = 'block';
+        if (miningPaused && totalHashrate > 0) document.getElementById('warning-card').style.display = 'block';
 
-        if (hashrate > 0 && !miningPaused) {
+        if (totalHashrate > 0 && !miningPaused) {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || now;
             const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-            const offlineEarned = hashrate * 2.5 * dailyRate / 3600 * secondsAway;
+            const offlineEarned = totalHashrate * 2.5 * dailyRate / 3600 * secondsAway;
             if (offlineEarned > 0) {
                 ltcCoins += offlineEarned;
                 localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
@@ -305,39 +323,26 @@
         localStorage.setItem('lastVisitTime', now);
         document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
 
-        const active = hashrate > 0 && !miningPaused;
-        document.getElementById('mining-status').innerText = active ? 'Active ✅' : (hashrate === 0 ? 'Inactive' : 'Paused ⚠️');
+        const active = totalHashrate > 0 && !miningPaused;
+        document.getElementById('mining-status').innerText = active ? 'Active ✅' : (totalHashrate === 0 ? 'Inactive' : 'Paused ⚠️');
         document.getElementById('mining-status').style.color = active ? '#22c55e' : '#ef4444';
 
         if (active) {
             setInterval(() => {
-                const earned = hashrate * 2.5 * dailyRate / 3600;
+                // Пересчитываем буст каждый раз — он мог истечь
+                const currentBoost = getClaimBoostTotal();
+                const currentTotal = permHashrate + currentBoost;
+                const earned = currentTotal * 2.5 * dailyRate / 3600;
                 ltcCoins += earned;
                 sessionMined += earned;
                 localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
                 document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
                 document.getElementById('mined-session').innerText = '+' + sessionMined.toFixed(6);
+                document.getElementById('boost-rate').innerText = '+' + currentBoost.toFixed(1) + ' GH/s';
+                document.getElementById('total-hashrate').innerText = Math.round(currentTotal * 10) / 10 + ' GH/s';
             }, 1000);
         }
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
