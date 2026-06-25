@@ -55,7 +55,7 @@
             <div style="font-size: 90px; margin-bottom: 10px; filter: drop-shadow(0 0 15px rgba(250,204,21,0.2));">⛏️</div>
             <button id="collect-btn" class="collect-btn" onclick="showAd()">CLAIM</button>
             <p id="claims-left" style="color:#8b949e; font-size:12px; margin-top:10px;"></p>
-            <p id="login-hint" style="font-size:11px; margin-top:4px; color:#facc15;"></p>
+            <p id="boost-info" style="font-size:11px; margin-top:4px; color:#a78bfa;"></p>
             <p id="login-hint" style="font-size:11px; margin-top:4px; color:#facc15;"></p>
         </div>
 
@@ -92,17 +92,36 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Оффлайн начисление LTC
+        // Получить активные claim-бонусы (не старше 24ч), отфильтровать устаревшие
+        function getActiveClaimBoosts() {
+            const now = Date.now();
+            let boosts = [];
+            try {
+                boosts = JSON.parse(localStorage.getItem('claimBoosts') || '[]');
+            } catch { boosts = []; }
+            const active = boosts.filter(b => (now - b.time) < 86400000);
+            localStorage.setItem('claimBoosts', JSON.stringify(active));
+            return active;
+        }
+
+        function getClaimBoostTotal() {
+            const active = getActiveClaimBoosts();
+            return Math.round(active.reduce((sum, b) => sum + b.amount, 0) * 10) / 10;
+        }
+
+        // Оффлайн начисление LTC (учитывая текущий буст приблизительно)
         (function() {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || 0;
             const now = Date.now();
             const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+            const claimBoost = getClaimBoostTotal();
+            const totalHashrate = hashrate + claimBoost;
             const lastClaim = Number(localStorage.getItem('lastClaimTime')) || 0;
             const hoursSinceClaim = (now - lastClaim) / 1000 / 3600;
             const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
-            if (hashrate > 0 && !miningPaused && lastVisit > 0) {
+            if (totalHashrate > 0 && !miningPaused && lastVisit > 0) {
                 const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-                const earned = hashrate * 2.5 / 3600 * secondsAway;
+                const earned = totalHashrate * 2.5 / 3600 * secondsAway;
                 if (earned > 0) {
                     let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
                     ltc += earned;
@@ -115,6 +134,7 @@
         const POPUP_ON = [1, 10];
         const MAX_CLAIMS = 20;
         const CLAIM_COOLDOWN = 5000;
+        const CLAIM_BOOST_AMOUNT = 0.1;
 
         let coins = Number(localStorage.getItem('miner_balance')) || 0;
         let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
@@ -132,6 +152,13 @@
         document.getElementById('game-coins').innerText = gameCoins;
         document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
         updateClaimsLeft();
+        updateBoostInfo();
+
+        function updateBoostInfo() {
+            const boostTotal = getClaimBoostTotal();
+            const el = document.getElementById('boost-info');
+            el.innerText = boostTotal > 0 ? `⚡ Active Claim Boost: +${boostTotal.toFixed(1)} GH/s (24h each)` : '';
+        }
 
         function getClaimsToday() {
             const today = new Date().toDateString();
@@ -163,10 +190,12 @@
             const lockedEmail = localStorage.getItem('locked_google_email');
             if (!lockedEmail || !currentUser) return;
             try {
-                const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+                const baseHashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+                const claimBoost = getClaimBoostTotal();
+                const totalHashrate = Math.round((baseHashrate + claimBoost) * 10) / 10;
                 const lastClaimTime = Number(localStorage.getItem('lastClaimTime')) || 0;
                 await setDoc(doc(db, 'users', currentUser.uid), {
-                    coins: c, game_coins: gc, ltc, exp: e, hashrate,
+                    coins: c, game_coins: gc, ltc, exp: e, hashrate: totalHashrate,
                     email: lockedEmail,
                     lastClaimTime: lastClaimTime ? new Date(lastClaimTime) : null,
                     updatedAt: new Date()
@@ -174,6 +203,82 @@
             } catch(e) {
                 console.log('Firebase update skipped:', e.message);
             }
+        }
+
+        async function showAd() {
+            const btn = document.getElementById('collect-btn');
+            const today = new Date().toDateString();
+            const lastDay = localStorage.getItem('lastClaimDay');
+            let claimsToday = Number(localStorage.getItem('claimsToday')) || 0;
+            if (lastDay !== today) {
+                localStorage.setItem('lastClaimDay', today);
+                localStorage.setItem('claimsToday', '0');
+                claimsToday = 0;
+            }
+            if (claimsToday >= MAX_CLAIMS) return alert("Daily Limit Reached! Come Back Tomorrow.");
+
+            const lastClaimTs = Number(localStorage.getItem('lastClaimTs')) || 0;
+            const timeSinceLast = Date.now() - lastClaimTs;
+            if (lastClaimTs > 0 && timeSinceLast < CLAIM_COOLDOWN) {
+                const secsLeft = Math.ceil((CLAIM_COOLDOWN - timeSinceLast) / 1000);
+                return alert(`Please wait ${secsLeft}s before next claim.`);
+            }
+
+            btn.disabled = true;
+
+            const nextClaim = claimsToday + 1;
+            if (POPUP_ON.includes(nextClaim)) {
+                window.open('https://zerads.com/ad/pop.php?ref=11364', '_blank');
+            }
+
+            const overlay = document.getElementById('ad-overlay');
+            const status = document.getElementById('ad-status');
+            overlay.style.display = 'flex';
+            const ok = await verifyAd();
+            status.innerText = ok ? "AD LOADED ✅" : "ADBLOCK DETECTED! ❌";
+            status.style.color = ok ? "#00ff00" : "#ff4444";
+            let timeLeft = 10;
+            const timerAd = setInterval(async () => {
+                timeLeft--;
+                document.getElementById('ad-timer').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerAd);
+                    overlay.style.display = 'none';
+                    if (ok) {
+                        const isLoggedIn = !!localStorage.getItem('locked_google_email');
+                        const usdtReward = isLoggedIn ? 10 : 9;
+                        coins += usdtReward;
+                        gameCoins += 5;
+                        exp += 8;
+
+                        // Добавляем claim-буст +0.1 GH/s на 24ч
+                        let boosts = [];
+                        try { boosts = JSON.parse(localStorage.getItem('claimBoosts') || '[]'); } catch { boosts = []; }
+                        boosts.push({ time: Date.now(), amount: CLAIM_BOOST_AMOUNT });
+                        localStorage.setItem('claimBoosts', JSON.stringify(boosts));
+
+                        localStorage.setItem('miner_balance', coins);
+                        localStorage.setItem('game_coins', gameCoins);
+                        localStorage.setItem('player_exp', exp);
+                        localStorage.setItem('lastClaimTime', Date.now());
+                        localStorage.setItem('lastClaimTs', Date.now());
+                        localStorage.setItem('claimsToday', String(nextClaim));
+                        document.getElementById('balance').innerText = coins;
+                        document.getElementById('game-coins').innerText = gameCoins;
+                        updateClaimsLeft();
+                        updateBoostInfo();
+                        const ltcNow = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+                        await updateFirebase(coins, gameCoins, ltcNow, exp);
+                    }
+                    btn.disabled = false;
+                }
+            }, 1000);
+        }
+
+        window.showAd = showAd;
+    </script>
+</body>
+</html>}
         }
 
         async function showAd() {
@@ -247,16 +352,4 @@ localStorage.setItem('claimBoosts', JSON.stringify(boosts));
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
 
