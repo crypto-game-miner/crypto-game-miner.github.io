@@ -191,12 +191,20 @@
             const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
             if (hashrate > 0 && !miningPaused && lastVisit > 0) {
                 const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-                const earned = hashrate * 2.5 / 3600 * secondsAway;
-                if (earned > 0) {
-                    let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-                    ltc += earned;
-                    localStorage.setItem('ltc_balance', ltc.toFixed(6));
-                }
+                const miningCoin = localStorage.getItem('miningCoin') || 'ltc';
+const rate = miningCoin === 'ltc' ? 2.5 : 1.1;
+const earned = hashrate * rate / 3600 * secondsAway;
+if (earned > 0) {
+    if (miningCoin === 'ltc') {
+        let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+        ltc += earned;
+        localStorage.setItem('ltc_balance', ltc.toFixed(4));
+    } else {
+        let coins = parseFloat(localStorage.getItem('miner_balance')) || 0;
+        coins += earned;
+        localStorage.setItem('miner_balance', coins.toFixed(4));
+    }
+}
             }
             localStorage.setItem('lastVisitTime', now);
         })();
@@ -209,7 +217,7 @@
         let ltcCoins  = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         document.getElementById('balance').innerText     = coins;
         document.getElementById('game-coins').innerText  = gameCoins;
-        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
+        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
 
         // ─── Tabs ────────────────────────────────────────────────────────
         function switchTab(tab) {
@@ -339,8 +347,8 @@
                         document.getElementById('balance').innerText = coins;
                     } else {
                         ltcCoins -= points;
-                        localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
-                        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
+                        localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
+                        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
                     }
                     localStorage.setItem(valKey, String(getWithdrawnToday(type) + points));
                     alert('✅ Success! Funds sent to your FaucetPay!');
@@ -357,11 +365,4 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
 
