@@ -367,8 +367,8 @@
                     localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
                 } else {
                     coins += offlineEarned;
-                    localStorage.setItem('miner_balance', Math.floor(coins));
-                    document.getElementById('balance').innerText = Math.floor(coins);
+                    localStorage.setItem('miner_balance', coins.toFixed(4));
+                    document.getElementById('balance').innerText = coins.toFixed(4);
                 }
             }
         }
