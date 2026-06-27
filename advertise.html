@@ -255,7 +255,7 @@
                 await updateDoc(userRef, { ltc: increment(-costLtc) });
                 userLtc -= costLtc;
                 document.getElementById('bal-ltc').innerText = userLtc;
-                localStorage.setItem('ltc_balance', userLtc.toFixed(6));
+                localStorage.setItem('ltc_balance', userLtc.toFixed(4));
             } else {
                 await updateDoc(userRef, { coins: increment(-costUsdt) });
                 userCoins -= costUsdt;
@@ -324,5 +324,7 @@
 
 </body>
 </html>
+
+
 
 
