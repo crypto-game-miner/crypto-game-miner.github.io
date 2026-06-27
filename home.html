@@ -344,11 +344,13 @@
         }
 
         window.switchCoin = function(coin) {
-            miningCoin = coin;
-            localStorage.setItem('miningCoin', coin);
-            updateSwitchButtons();
-            updateRateDisplay();
-        }
+    miningCoin = coin;
+    localStorage.setItem('miningCoin', coin);
+    sessionMined = 0;
+    document.getElementById('mined-session').innerText = '+0.0000';
+    updateSwitchButtons();
+    updateRateDisplay();
+}
 
         updateSwitchButtons();
         updateRateDisplay();
