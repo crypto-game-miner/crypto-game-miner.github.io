@@ -93,12 +93,12 @@
                     <div class="card-info">
                         <h3>USDT</h3>
                         <p>via FaucetPay</p>
-                        <span style="font-size:10px; color:#8b949e">Min: 300 USDT Coins</span>
+                        <span style="font-size:10px; color:#8b949e">Min: 200 USDT Coins</span>
                     </div>
                 </div>
                 <div id="usdt-box" class="withdraw-box">
                     <label>USDT Coins To Convert</label>
-                    <input type="number" id="wd-points-usdt" placeholder="Min 300">
+                    <input type="number" id="wd-points-usdt" placeholder="Min 200">
                     <label>FaucetPay Email</label>
                     <input type="email" id="wd-email-usdt" placeholder="example@mail.com">
                     <button class="collect-btn" onclick="handleWithdraw('usdt')">Withdraw USDT</button>
@@ -315,7 +315,7 @@ if (earned > 0) {
             const btn      = event.target;
             const points   = Number(document.getElementById('wd-points-' + type).value);
             const email    = document.getElementById('wd-email-' + type).value.trim();
-            const minCoins   = type === 'usdt' ? 300 : 400;
+            const minCoins   = type === 'usdt' ? 200 : 400;
             const dailyLimit = type === 'usdt' ? DAILY_LIMIT_USDT : DAILY_LIMIT_LTC;
             const balance    = type === 'usdt' ? coins : ltcCoins;
 
@@ -365,4 +365,5 @@ if (earned > 0) {
     </script>
 </body>
 </html>
+
 
