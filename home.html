@@ -283,7 +283,7 @@
         let exp = Number(localStorage.getItem('player_exp')) || 0;
         let sessionMined = 0;
 
-        document.getElementById('balance').innerText = coins.toFixed(6);
+        document.getElementById('balance').innerText = coins.toFixed(4);
         document.getElementById('game-coins').innerText = gameCoins;
 
         // Текущий выбранный режим майнинга
@@ -362,7 +362,7 @@
             if (offlineEarned > 0) {
                 if (miningCoin === 'ltc') {
                     ltcCoins += offlineEarned;
-                    localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
+                    localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
                 } else {
                     coins += offlineEarned;
                     localStorage.setItem('miner_balance', Math.floor(coins));
@@ -372,7 +372,7 @@
         }
 
         localStorage.setItem('lastVisitTime', now);
-        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
+        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
 
         const active = totalHashrate > 0 && !miningPaused;
         document.getElementById('mining-status').innerText = active ? 'Active ✅' : (totalHashrate === 0 ? 'Inactive' : 'Paused ⚠️');
@@ -388,8 +388,8 @@
                 if (miningCoin === 'ltc') {
                     ltcCoins += earned;
                     sessionMined += earned;
-                    localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
-                    document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
+                    localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
+                    document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
                 } else {
                     coins += earned;
                     sessionMined += earned;
@@ -397,7 +397,7 @@
                     document.getElementById('balance').innerText = Math.floor(coins);
                 }
 
-                document.getElementById('mined-session').innerText = '+' + sessionMined.toFixed(6);
+                document.getElementById('mined-session').innerText = '+' + sessionMined.toFixed(4);
                 document.getElementById('boost-rate').innerText = '+' + currentBoost.toFixed(1) + ' GH/s';
                 document.getElementById('total-hashrate').innerText = Math.round(currentTotal * 10) / 10 + ' GH/s';
                 const perHour = currentTotal * rate * dailyRate;
