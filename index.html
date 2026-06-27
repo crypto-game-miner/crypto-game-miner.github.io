@@ -256,9 +256,9 @@ const claimBoost = Math.round(boosts.filter(b => (Date.now() - b.time) < 8640000
                     overlay.style.display = 'none';
                     if (ok) {
                         const isLoggedIn = !!localStorage.getItem('locked_google_email');
-                        const usdtReward = isLoggedIn ? 10 : 9;
+                        const usdtReward = isLoggedIn ? 5 : 4;
                         coins += usdtReward;
-                        gameCoins += 5;
+                        gameCoins += 7;
                         exp += 8;
 
                         // Добавляем claim-буст +0.1 GH/s на 24ч
@@ -289,6 +289,3 @@ const claimBoost = Math.round(boosts.filter(b => (Date.now() - b.time) < 8640000
     </script>
 </body>
 </html>
-
-
-
