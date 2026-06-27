@@ -101,7 +101,7 @@
             </div>
             <div class="balance-row">
                 <span style="color:#facc15;">USDT Coins</span>
-                <span style="font-weight:bold;" id="balance">0</span>
+                <span style="font-weight:bold;" id="balance">0.000000</span>
             </div>
             <div class="balance-row">
                 <span style="color:#a78bfa;">LTC Coins</span>
@@ -283,7 +283,7 @@
         let exp = Number(localStorage.getItem('player_exp')) || 0;
         let sessionMined = 0;
 
-        document.getElementById('balance').innerText = coins;
+        document.getElementById('balance').innerText = coins.toFixed(6);
         document.getElementById('game-coins').innerText = gameCoins;
 
         // Текущий выбранный режим майнинга
