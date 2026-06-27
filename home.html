@@ -277,7 +277,7 @@
         }
 
         const dailyRate = getDailyRate();
-        let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let coins = parseFloat(localStorage.getItem('miner_balance')) || 0;
         let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         let exp = Number(localStorage.getItem('player_exp')) || 0;
@@ -392,12 +392,12 @@
                     sessionMined += earned;
                     localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
                     document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
-                } else {
-                    coins += earned;
-                    sessionMined += earned;
-                    localStorage.setItem('miner_balance', Math.floor(coins));
-                    document.getElementById('balance').innerText = Math.floor(coins);
-                }
+} else {
+    coins += earned;
+    sessionMined += earned;
+    localStorage.setItem('miner_balance', coins.toFixed(4));
+    document.getElementById('balance').innerText = coins.toFixed(4);  // ← эту
+}
 
                 document.getElementById('mined-session').innerText = '+' + sessionMined.toFixed(4);
                 document.getElementById('boost-rate').innerText = '+' + currentBoost.toFixed(1) + ' GH/s';
