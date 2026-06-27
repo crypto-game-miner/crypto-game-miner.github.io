@@ -158,7 +158,7 @@ if (earned > 0) {
 
         document.getElementById('balance').innerText = coins;
         document.getElementById('game-coins').innerText = gameCoins;
-        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
+        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
         updateClaimsLeft();
         updateBoostInfo();
 
@@ -289,5 +289,6 @@ const claimBoost = Math.round(boosts.filter(b => (Date.now() - b.time) < 8640000
     </script>
 </body>
 </html>
+
 
 
