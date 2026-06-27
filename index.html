@@ -121,12 +121,20 @@
             const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
             if (totalHashrate > 0 && !miningPaused && lastVisit > 0) {
                 const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-                const earned = totalHashrate * 2.5 / 3600 * secondsAway;
-                if (earned > 0) {
-                    let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-                    ltc += earned;
-                    localStorage.setItem('ltc_balance', ltc.toFixed(6));
-                }
+                const miningCoin = localStorage.getItem('miningCoin') || 'ltc';
+const rate = miningCoin === 'ltc' ? 2.5 : 1.1;
+const earned = totalHashrate * rate / 3600 * secondsAway;
+if (earned > 0) {
+    if (miningCoin === 'ltc') {
+        let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+        ltc += earned;
+        localStorage.setItem('ltc_balance', ltc.toFixed(4));
+    } else {
+        let coins = parseFloat(localStorage.getItem('miner_balance')) || 0;
+        coins += earned;
+        localStorage.setItem('miner_balance', coins.toFixed(4));
+    }
+}
             }
             localStorage.setItem('lastVisitTime', now);
         })();
@@ -191,7 +199,9 @@
             if (!lockedEmail || !currentUser) return;
             try {
                 const baseHashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
-                const claimBoost = getClaimBoostTotal();
+                let boosts = [];
+try { boosts = JSON.parse(localStorage.getItem('claimBoosts') || '[]'); } catch {}
+const claimBoost = Math.round(boosts.filter(b => (Date.now() - b.time) < 86400000).reduce((s, b) => s + b.amount, 0) * 10) / 10;
                 const totalHashrate = Math.round((baseHashrate + claimBoost) * 10) / 10;
                 const lastClaimTime = Number(localStorage.getItem('lastClaimTime')) || 0;
                 await setDoc(doc(db, 'users', currentUser.uid), {
@@ -279,4 +289,5 @@
     </script>
 </body>
 </html>
+
 
