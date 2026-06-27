@@ -18,11 +18,15 @@
         .exp-bar-fill { background: linear-gradient(90deg, #facc15, #f97316); height: 100%; border-radius: 10px; transition: width 0.4s ease; }
         .exp-text { color: #8b949e; font-size: 11px; margin-top: 6px; text-align: right; }
         .mining-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; }
-        .mining-title { color: #a78bfa; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+        .mining-title { color: #a78bfa; font-size: 16px; font-weight: bold; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
         .mining-stat { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #3d2b1f; }
         .mining-stat:last-child { border-bottom: none; }
         .mining-label { color: #8b949e; font-size: 12px; }
         .mining-value { color: #a78bfa; font-size: 14px; font-weight: bold; }
+        .coin-switch { display: flex; background: rgba(0,0,0,0.4); border-radius: 8px; padding: 3px; border: 1px solid #3d2b1f; margin-bottom: 14px; }
+        .switch-btn { flex: 1; padding: 8px 0; border: none; background: transparent; color: #8b949e; font-size: 12px; font-family: 'Courier New', monospace; cursor: pointer; border-radius: 6px; font-weight: bold; text-transform: uppercase; }
+        .switch-btn.active-ltc { background: #a78bfa; color: #1a1613; }
+        .switch-btn.active-usdt { background: #facc15; color: #1a1613; }
         .warning-card { background: rgba(239,68,68,0.15); border: 2px solid #ef4444; border-radius: 12px; padding: 12px 15px; margin-bottom: 15px; display: none; }
         .warning-text { color: #ef4444; font-size: 13px; font-weight: bold; }
         .warning-sub { color: #8b949e; font-size: 11px; margin-top: 4px; }
@@ -137,6 +141,12 @@
 
             <div class="mining-card">
                 <div class="mining-title">⛏️ Mining Power</div>
+
+                <div class="coin-switch">
+                    <button class="switch-btn" id="btn-ltc" onclick="switchCoin('ltc')">LTC</button>
+                    <button class="switch-btn" id="btn-usdt" onclick="switchCoin('usdt')">USDT</button>
+                </div>
+
                 <div class="mining-stat">
                     <span class="mining-label">Base Hashrate</span>
                     <span class="mining-value" id="hashrate">0 GH/s</span>
@@ -150,7 +160,7 @@
                     <span class="mining-value" id="total-hashrate">0 GH/s</span>
                 </div>
                 <div class="mining-stat">
-                    <span class="mining-label">LTC Coins / Hour</span>
+                    <span class="mining-label" id="rate-label">LTC Coins / Hour</span>
                     <span class="mining-value" id="ltc-per-hour">0</span>
                 </div>
                 <div class="mining-stat">
@@ -241,6 +251,9 @@
             document.getElementById('overlay').classList.remove('open');
         }
 
+        const LTC_RATE = 2.5;
+        const USDT_RATE = 1.1;
+
         // Активные claim-бусты (не старше 24ч)
         function getClaimBoostTotal() {
             const now = Date.now();
@@ -273,6 +286,9 @@
         document.getElementById('balance').innerText = coins;
         document.getElementById('game-coins').innerText = gameCoins;
 
+        // Текущий выбранный режим майнинга
+        let miningCoin = localStorage.getItem('miningCoin') || 'ltc';
+
         function getLevel(exp) {
             let level = 1, totalExp = 0;
             for (let i = 0; i < EXP_PER_LEVEL.length; i++) {
@@ -291,15 +307,12 @@
         const claimBoost = getClaimBoostTotal();
         const totalHashrate = Math.round((permHashrate + claimBoost) * 10) / 10;
 
-        const ltcPerHour = totalHashrate * 2.5 * dailyRate;
-
         document.getElementById('level-num').innerText = level;
         document.getElementById('exp-current').innerText = currentExp;
         document.getElementById('exp-needed').innerText = needed;
         document.getElementById('hashrate').innerText = permHashrate + ' GH/s';
         document.getElementById('boost-rate').innerText = '+' + claimBoost.toFixed(1) + ' GH/s';
         document.getElementById('total-hashrate').innerText = totalHashrate + ' GH/s';
-        document.getElementById('ltc-per-hour').innerText = totalHashrate > 0 ? ltcPerHour.toFixed(3) : 0;
         const pct = needed === 'MAX' ? 100 : (currentExp / needed * 100);
         document.getElementById('exp-bar').style.width = pct + '%';
 
@@ -310,13 +323,51 @@
 
         if (miningPaused && totalHashrate > 0) document.getElementById('warning-card').style.display = 'block';
 
+        function getRatePerGH() {
+            return miningCoin === 'ltc' ? LTC_RATE : USDT_RATE;
+        }
+
+        function updateRateDisplay() {
+            const rate = getRatePerGH();
+            const perHour = totalHashrate * rate * dailyRate;
+            document.getElementById('rate-label').innerText = (miningCoin === 'ltc' ? 'LTC' : 'USDT') + ' Coins / Hour';
+            document.getElementById('ltc-per-hour').innerText = totalHashrate > 0 ? perHour.toFixed(3) : 0;
+        }
+
+        function updateSwitchButtons() {
+            const btnLtc = document.getElementById('btn-ltc');
+            const btnUsdt = document.getElementById('btn-usdt');
+            btnLtc.classList.remove('active-ltc');
+            btnUsdt.classList.remove('active-usdt');
+            if (miningCoin === 'ltc') btnLtc.classList.add('active-ltc');
+            else btnUsdt.classList.add('active-usdt');
+        }
+
+        window.switchCoin = function(coin) {
+            miningCoin = coin;
+            localStorage.setItem('miningCoin', coin);
+            updateSwitchButtons();
+            updateRateDisplay();
+        }
+
+        updateSwitchButtons();
+        updateRateDisplay();
+
+        // Оффлайн начисление — учитываем какой режим был активен (текущий, упрощённо)
         if (totalHashrate > 0 && !miningPaused) {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || now;
             const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-            const offlineEarned = totalHashrate * 2.5 * dailyRate / 3600 * secondsAway;
+            const rate = getRatePerGH();
+            const offlineEarned = totalHashrate * rate * dailyRate / 3600 * secondsAway;
             if (offlineEarned > 0) {
-                ltcCoins += offlineEarned;
-                localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
+                if (miningCoin === 'ltc') {
+                    ltcCoins += offlineEarned;
+                    localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
+                } else {
+                    coins += offlineEarned;
+                    localStorage.setItem('miner_balance', Math.floor(coins));
+                    document.getElementById('balance').innerText = Math.floor(coins);
+                }
             }
         }
 
@@ -329,17 +380,28 @@
 
         if (active) {
             setInterval(() => {
-                // Пересчитываем буст каждый раз — он мог истечь
                 const currentBoost = getClaimBoostTotal();
                 const currentTotal = permHashrate + currentBoost;
-                const earned = currentTotal * 2.5 * dailyRate / 3600;
-                ltcCoins += earned;
-                sessionMined += earned;
-                localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
-                document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
+                const rate = getRatePerGH();
+                const earned = currentTotal * rate * dailyRate / 3600;
+
+                if (miningCoin === 'ltc') {
+                    ltcCoins += earned;
+                    sessionMined += earned;
+                    localStorage.setItem('ltc_balance', ltcCoins.toFixed(6));
+                    document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(6);
+                } else {
+                    coins += earned;
+                    sessionMined += earned;
+                    localStorage.setItem('miner_balance', Math.floor(coins));
+                    document.getElementById('balance').innerText = Math.floor(coins);
+                }
+
                 document.getElementById('mined-session').innerText = '+' + sessionMined.toFixed(6);
                 document.getElementById('boost-rate').innerText = '+' + currentBoost.toFixed(1) + ' GH/s';
                 document.getElementById('total-hashrate').innerText = Math.round(currentTotal * 10) / 10 + ' GH/s';
+                const perHour = currentTotal * rate * dailyRate;
+                document.getElementById('ltc-per-hour').innerText = perHour.toFixed(3);
             }, 1000);
         }
     </script>
