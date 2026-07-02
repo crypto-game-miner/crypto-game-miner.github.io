@@ -355,20 +355,27 @@
         updateSwitchButtons();
         updateRateDisplay();
 
-        // Оффлайн начисление — учитываем какой режим был активен (текущий, упрощённо)
-        if (totalHashrate > 0 && !miningPaused) {
-            const lastVisit = Number(localStorage.getItem('lastVisitTime')) || now;
-            const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-            const rate = getRatePerGH();
-            const offlineEarned = totalHashrate * rate * dailyRate / 3600 * secondsAway;
-            if (offlineEarned > 0) {
-                if (miningCoin === 'ltc') {
-                    ltcCoins += offlineEarned;
-                    localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
-                } else {
-                    coins += offlineEarned;
-                    localStorage.setItem('miner_balance', coins.toFixed(4));
-                    document.getElementById('balance').innerText = coins.toFixed(4);
+        // Sync mining earnings from server
+const uid = localStorage.getItem('firebase_uid');
+if (uid) {
+    fetch('/api/sync-mining', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, miningCoin }),
+    }).then(r => r.json()).then(data => {
+        if (data.success && data.earned > 0) {
+            if (data.coin === 'ltc') {
+                ltcCoins += data.earned;
+                localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
+                document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
+            } else {
+                coins += data.earned;
+                localStorage.setItem('miner_balance', coins.toFixed(4));
+                document.getElementById('balance').innerText = coins.toFixed(4);
+            }
+        }
+    }).catch(e => console.log('sync-mining error:', e.message));
+}
                 }
             }
         }
@@ -409,6 +416,9 @@
     </script>
 </body>
 </html>
+
+
+
 
 
 
