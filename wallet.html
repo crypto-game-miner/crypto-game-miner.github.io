@@ -331,40 +331,17 @@ if (earned > 0) {
             btn.innerText   = 'Processing...';
 
             try {
-                const response = await fetch('https://crypto-game-miner.vercel.app/api/withdraw', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, points, currency: type }),
-                });
+                const uid = localStorage.getItem('firebase_uid');
+const response = await fetch('/api/withdraw', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ uid, email, points, currency: type }),
+});
                 let result;
                 try { result = await response.json(); } catch { alert('Server error. HTTP ' + response.status); return; }
 
                 if (result.status === 200) {
-                    const valKey = type === 'usdt' ? 'withdrawnToday' : 'withdrawnTodayLtc';
-                    if (type === 'usdt') {
-                        coins -= points;
-                        localStorage.setItem('miner_balance', coins);
-                        document.getElementById('balance').innerText = coins;
-                    } else {
-                        ltcCoins -= points;
-                        localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
-                        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
-                    }
-                    localStorage.setItem(valKey, String(getWithdrawnToday(type) + points));
-                    alert('✅ Success! Funds sent to your FaucetPay!');
-                } else {
-                    alert('❌ FaucetPay error: ' + (result.message || JSON.stringify(result)));
-                }
-            } catch(e) {
-                alert('❌ Network error: ' + e.message);
-            } finally {
-                btn.disabled  = false;
-                btn.innerText = type === 'usdt' ? 'Withdraw USDT' : 'Withdraw LTC';
-            }
-        }
-    </script>
-</body>
-</html>
+                    const valKey = type === 'usd
 
 
 
