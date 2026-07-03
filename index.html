@@ -13,7 +13,7 @@
         .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
         .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 220px; }
         .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 14px 0; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 5px 0 #a16207; transition: transform 0.1s; width: 60%; }
-        .collect-btn:disabled { background: #555; box-shadow: none; }
+        .collect-btn:disabled { background: #555; box-shadow: none; color: #999; cursor: not-allowed; }
         .banner-area { position: fixed; bottom: 70px; left: 0; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; gap: 10px; padding: 8px 0; box-sizing: border-box; overflow: hidden; }
         .banner-scale { transform: scale(0.7); transform-origin: center center; display: block; }
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
@@ -28,32 +28,32 @@
 <body>
     <div id="main-content">
         <div id="ad-overlay">
-            <div style="font-size: 40px;">💎</div>
-            <h2 id="ad-status" style="color: #facc15;">VERIFYING...</h2>
-            <div style="margin: 10px 0;">
+            <div style="font-size:40px;">💎</div>
+            <h2 id="ad-status" style="color:#facc15;">VERIFYING...</h2>
+            <div style="margin:10px 0;">
                 <iframe src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
             </div>
-            <p>Wait <span id="ad-timer" style="font-size: 20px; color: #facc15;">10</span>s</p>
+            <p>Wait <span id="ad-timer" style="font-size:20px; color:#facc15;">10</span>s</p>
         </div>
 
         <div class="header">Faucet</div>
         <div class="balance-container">
             <div class="balance-row">
                 <span style="color:#22c55e;">Game Coins</span>
-                <span style="font-weight:bold; color:#22c55e;" id="game-coins">0</span>
+                <span style="font-weight:bold; color:#22c55e;" id="game-coins">—</span>
             </div>
             <div class="balance-row">
                 <span style="color:#facc15;">USDT Coins</span>
-                <span style="font-weight:bold;" id="balance">0.0000</span>
+                <span style="font-weight:bold;" id="balance">—</span>
             </div>
             <div class="balance-row">
                 <span style="color:#a78bfa;">LTC Coins</span>
-                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0.0000</span>
+                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">—</span>
             </div>
         </div>
 
         <div class="game-area">
-            <div style="font-size: 90px; margin-bottom: 10px; filter: drop-shadow(0 0 15px rgba(250,204,21,0.2));">⛏️</div>
+            <div style="font-size:90px; margin-bottom:10px; filter:drop-shadow(0 0 15px rgba(250,204,21,0.2));">⛏️</div>
             <button id="collect-btn" class="collect-btn" onclick="doClaim()" disabled>LOADING...</button>
             <p id="claims-left" style="color:#8b949e; font-size:12px; margin-top:10px;"></p>
             <p id="boost-info" style="font-size:11px; margin-top:4px; color:#a78bfa;"></p>
@@ -93,98 +93,99 @@
         const auth = getAuth(app);
         const db   = getFirestore(app);
 
-        const API_BASE = '';
         const MAX_CLAIMS = 20;
-        const POPUP_ON = [1, 10];
+        const POPUP_ON   = [1, 10];
 
         let currentUser = null;
-        let userData = {};
+        let userData    = {};
         let unsubscribe = null;
 
-        // ─── Sign in anonymously if not already signed in ──────────────
+        // ── Auto sign-in anonymously ──────────────────────────────────
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
                 localStorage.setItem('firebase_uid', user.uid);
                 listenToUserData(user.uid);
+                syncMining(user.uid);
             } else {
-                try {
-                    await signInAnonymously(auth);
-                } catch (e) {
-                    console.error('Anonymous sign-in failed:', e.message);
+                try { await signInAnonymously(auth); }
+                catch (e) {
+                    console.error('Anon sign-in failed:', e.message);
                     document.getElementById('collect-btn').innerText = 'CONNECTION ERROR';
                 }
             }
         });
 
+        // ── Live balance from Firestore ───────────────────────────────
         function listenToUserData(uid) {
             if (unsubscribe) unsubscribe();
             unsubscribe = onSnapshot(doc(db, 'users', uid), (snap) => {
                 userData = snap.exists() ? snap.data() : {};
-                renderBalances();
-                renderClaimsLeft();
-                renderBoostInfo();
-                renderLoginHint();
-                document.getElementById('collect-btn').disabled = false;
-                document.getElementById('collect-btn').innerText = 'CLAIM';
-            }, (err) => {
-                console.error('Snapshot error:', err.message);
+                renderUI();
             });
-
-            // Sync offline mining earnings immediately, then every 60s
-            syncMining(uid);
-            setInterval(() => syncMining(uid), 60000);
         }
 
-        async function syncMining(uid) {
-            try {
-                const miningCoin = localStorage.getItem('miningCoin') || 'ltc';
-                await fetch(API_BASE + '/api/sync-mining', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid, miningCoin }),
-                });
-                // Firestore onSnapshot will pick up the new balance automatically
-            } catch (e) {
-                console.error('Sync mining failed:', e.message);
-            }
-        }
-
-        function renderBalances() {
-            const coins    = userData.coins || 0;
+        function renderUI() {
+            const coins     = userData.coins      || 0;
             const gameCoins = userData.game_coins || 0;
-            const ltc      = userData.ltc || 0;
-            document.getElementById('balance').innerText = coins.toFixed(4);
-            document.getElementById('game-coins').innerText = gameCoins;
-            document.getElementById('ltc-balance').innerText = ltc.toFixed(4);
-        }
+            const ltc       = userData.ltc        || 0;
 
-        function renderClaimsLeft() {
-            const today = new Date().toDateString();
+            document.getElementById('balance').innerText     = parseFloat(coins).toFixed(4);
+            document.getElementById('game-coins').innerText  = gameCoins;
+            document.getElementById('ltc-balance').innerText = parseFloat(ltc).toFixed(4);
+
+            // Claims today
+            const today       = new Date().toDateString();
             const claimsToday = userData.claimsDay === today ? (userData.claimsToday || 0) : 0;
-            const el = document.getElementById('claims-left');
+            const el          = document.getElementById('claims-left');
             el.innerText = claimsToday < MAX_CLAIMS
                 ? `Claims Today: ${claimsToday}/${MAX_CLAIMS}`
-                : "Daily Limit Reached! Come Back Tomorrow.";
-        }
+                : 'Daily Limit Reached! Come Back Tomorrow.';
 
-        function renderBoostInfo() {
-            const now = Date.now();
+            // Boost info
+            const now    = Date.now();
             const boosts = (userData.claimBoosts || []).filter(b => {
                 const t = b.time?.toMillis ? b.time.toMillis() : b.time;
                 return now - t < 86400000;
             });
-            const total = Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 10) / 10;
-            const el = document.getElementById('boost-info');
-            el.innerText = total > 0 ? `⚡ Active Claim Boost: +${total.toFixed(1)} GH/s (24h each)` : '';
-        }
+            const total  = Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 10) / 10;
+            document.getElementById('boost-info').innerText =
+                total > 0 ? `⚡ +${total.toFixed(1)} GH/s Boost Active` : '';
 
-        function renderLoginHint() {
+            // Login hint
             const hint = document.getElementById('login-hint');
-            const isRealLogin = !!userData.email;
-            hint.innerHTML = isRealLogin ? '' : '🔒 <a href="settings.html" style="color:#facc15;">Sign in</a> to get a higher claim reward!';
+            hint.innerHTML = userData.email ? '' :
+                '🔒 <a href="settings.html" style="color:#facc15;">Sign in</a> for higher rewards!';
+
+            // Enable claim button
+            const btn = document.getElementById('collect-btn');
+            btn.disabled  = false;
+            btn.innerText = 'CLAIM';
         }
 
+        // ── Sync offline mining earnings ──────────────────────────────
+        async function syncMining(uid) {
+            try {
+                const miningCoin = localStorage.getItem('miningCoin') || 'ltc';
+                await fetch('/api/sync-mining', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid, miningCoin }),
+                });
+            } catch(e) { console.log('sync-mining error:', e.message); }
+        }
+
+        // Sync every 60s
+        setInterval(() => {
+            if (currentUser) syncMining(currentUser.uid);
+        }, 60000);
+
+        // Refresh balance when returning to tab
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && currentUser) syncMining(currentUser.uid);
+        });
+
+        // ── Ad verify ────────────────────────────────────────────────
         async function verifyAd() {
             try {
                 await fetch('https://zerads.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
@@ -192,10 +193,11 @@
             } catch { return false; }
         }
 
+        // ── Claim ─────────────────────────────────────────────────────
         window.doClaim = async function() {
             if (!currentUser) return;
 
-            const today = new Date().toDateString();
+            const today       = new Date().toDateString();
             const claimsToday = userData.claimsDay === today ? (userData.claimsToday || 0) : 0;
             if (claimsToday >= MAX_CLAIMS) return alert('Daily Limit Reached! Come Back Tomorrow.');
 
@@ -211,20 +213,19 @@
             const status  = document.getElementById('ad-status');
             overlay.style.display = 'flex';
             const ok = await verifyAd();
-            status.innerText = ok ? "AD LOADED ✅" : "ADBLOCK DETECTED! ❌";
-            status.style.color = ok ? "#00ff00" : "#ff4444";
+            status.innerText = ok ? 'AD LOADED ✅' : 'ADBLOCK DETECTED! ❌';
+            status.style.color = ok ? '#00ff00' : '#ff4444';
 
             let timeLeft = 10;
-            const timerAd = setInterval(async () => {
+            const timer = setInterval(async () => {
                 timeLeft--;
                 document.getElementById('ad-timer').innerText = timeLeft;
                 if (timeLeft <= 0) {
-                    clearInterval(timerAd);
+                    clearInterval(timer);
                     overlay.style.display = 'none';
-
                     if (ok) {
                         try {
-                            const resp = await fetch(API_BASE + '/api/claim', {
+                            const resp = await fetch('/api/claim', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ uid: currentUser.uid }),
@@ -233,10 +234,11 @@
                             if (!result.success) {
                                 alert(result.error || 'Claim failed');
                             } else {
+                                // Sync mining right after claim so boost takes effect
                                 syncMining(currentUser.uid);
                             }
-                            // onSnapshot will auto-update the UI with new balance
-                        } catch (e) {
+                            // onSnapshot updates balance automatically
+                        } catch(e) {
                             alert('Network error: ' + e.message);
                         }
                     }
@@ -247,6 +249,7 @@
     </script>
 </body>
 </html>
+
 
 
 
