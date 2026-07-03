@@ -180,8 +180,25 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
         // ─── Offline LTC mining ──────────────────────────────────────────
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+
+const firebaseConfig = {
+    apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+    authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+    projectId: "crypto-miner-game-f45dc",
+    storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+    messagingSenderId: "33690622473",
+    appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+};
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+onAuthStateChanged(auth, async (user) => {
+    if (user) { localStorage.setItem('firebase_uid', user.uid); }
+    else { try { await signInAnonymously(auth); } catch(e) {} }
+});
         (function() {
             const lastVisit = Number(localStorage.getItem('lastVisitTime')) || 0;
             const now = Date.now();
@@ -324,47 +341,7 @@ if (earned > 0) {
             if (!email.includes('@'))         return alert('Invalid email!');
 
             const withdrawnToday = getWithdrawnToday(type);
-            const remaining = dailyLimit - withdrawnToday;
-            if (points > remaining) return alert(`Daily limit is ${dailyLimit} ${type === 'usdt' ? 'USDT' : 'LTC'} Coins/day! You can withdraw ${remaining} more today.`);
-
-            btn.disabled    = true;
-            btn.innerText   = 'Processing...';
-
-            try {
-                const response = await fetch('https://crypto-game-miner.vercel.app/api/withdraw', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, points, currency: type }),
-                });
-                let result;
-                try { result = await response.json(); } catch { alert('Server error. HTTP ' + response.status); return; }
-
-                if (result.status === 200) {
-                    const valKey = type === 'usdt' ? 'withdrawnToday' : 'withdrawnTodayLtc';
-                    if (type === 'usdt') {
-                        coins -= points;
-                        localStorage.setItem('miner_balance', coins);
-                        document.getElementById('balance').innerText = coins;
-                    } else {
-                        ltcCoins -= points;
-                        localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
-                        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
-                    }
-                    localStorage.setItem(valKey, String(getWithdrawnToday(type) + points));
-                    alert('✅ Success! Funds sent to your FaucetPay!');
-                } else {
-                    alert('❌ FaucetPay error: ' + (result.message || JSON.stringify(result)));
-                }
-            } catch(e) {
-                alert('❌ Network error: ' + e.message);
-            } finally {
-                btn.disabled  = false;
-                btn.innerText = type === 'usdt' ? 'Withdraw USDT' : 'Withdraw LTC';
-            }
-        }
-    </script>
-</body>
-</html>
+   
 
 
 
