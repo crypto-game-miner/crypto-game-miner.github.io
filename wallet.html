@@ -302,7 +302,35 @@
                 });
                 let result;
                 try { result = await response.json(); }
-                catch { alert('Server error. HTTP ' + resp
+                catch { alert('Server error. HTTP ' + response.status); return; }
+
+                if (result.status === 200) {
+                    const valKey = type === 'usdt' ? 'withdrawnToday' : 'withdrawnTodayLtc';
+                    if (type === 'usdt') {
+                        coins -= points;
+                        localStorage.setItem('miner_balance', coins.toFixed(4));
+                        document.getElementById('balance').innerText = coins.toFixed(4);
+                    } else {
+                        ltcCoins -= points;
+                        localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
+                        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
+                    }
+                    localStorage.setItem(valKey, String(getWithdrawnToday(type) + points));
+                    alert('✅ Success! Funds sent to your FaucetPay!');
+                } else {
+                    alert('❌ ' + (result.message || JSON.stringify(result)));
+                }
+            } catch(e) {
+                alert('❌ Network error: ' + e.message);
+            } finally {
+                btn.disabled  = false;
+                btn.innerText = type === 'usdt' ? 'Withdraw USDT' : 'Withdraw LTC';
+            }
+        };
+    </script>
+</body>
+</html>
+
    
 
 
