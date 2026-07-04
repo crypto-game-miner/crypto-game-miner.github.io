@@ -52,15 +52,15 @@
         <div class="balance-container">
             <div class="balance-row">
                 <span style="color:#22c55e;">Game Coins</span>
-                <span style="font-weight:bold; color:#22c55e;" id="game-coins">0</span>
+                <span style="font-weight:bold; color:#22c55e;" id="game-coins">—</span>
             </div>
             <div class="balance-row">
                 <span style="color:#facc15;">USDT Coins</span>
-                <span style="font-weight:bold;" id="balance">0</span>
+                <span style="font-weight:bold;" id="balance">—</span>
             </div>
             <div class="balance-row">
                 <span style="color:#a78bfa;">LTC Coins</span>
-                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0</span>
+                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">—</span>
             </div>
         </div>
 
@@ -133,6 +133,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
         import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+        import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -142,58 +143,39 @@
             messagingSenderId: "33690622473",
             appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
         };
+
         const app  = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db   = getFirestore(app);
 
-        // Sign in anonymously to get firebase_uid
+        const DAILY_LIMIT_USDT = 700;
+        const DAILY_LIMIT_LTC  = 1500;
+
+        // These track the SERVER balance (from Firebase)
+        let coins    = 0;
+        let gameCoins = 0;
+        let ltcCoins = 0;
+
+        // ── Auth + live balance from Firebase ────────────────────────
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 localStorage.setItem('firebase_uid', user.uid);
+                // Listen to real-time balance updates
+                onSnapshot(doc(db, 'users', user.uid), (snap) => {
+                    const data = snap.exists() ? snap.data() : {};
+                    coins     = parseFloat(data.coins || 0);
+                    gameCoins = data.game_coins || 0;
+                    ltcCoins  = parseFloat(data.ltc || 0);
+                    document.getElementById('balance').innerText     = coins.toFixed(4);
+                    document.getElementById('game-coins').innerText  = gameCoins;
+                    document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
+                });
             } else {
                 try { await signInAnonymously(auth); } catch(e) {}
             }
         });
 
-        // ─── Offline mining sync ─────────────────────────────────────────
-        (function() {
-            const lastVisit = Number(localStorage.getItem('lastVisitTime')) || 0;
-            const now = Date.now();
-            const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
-            const lastClaim = Number(localStorage.getItem('lastClaimTime')) || 0;
-            const hoursSinceClaim = (now - lastClaim) / 1000 / 3600;
-            const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
-            if (hashrate > 0 && !miningPaused && lastVisit > 0) {
-                const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-                const miningCoin = localStorage.getItem('miningCoin') || 'ltc';
-                const rate = miningCoin === 'ltc' ? 2.5 : 1.1;
-                const earned = hashrate * rate / 3600 * secondsAway;
-                if (earned > 0) {
-                    if (miningCoin === 'ltc') {
-                        let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-                        ltc += earned;
-                        localStorage.setItem('ltc_balance', ltc.toFixed(4));
-                    } else {
-                        let coins = parseFloat(localStorage.getItem('miner_balance')) || 0;
-                        coins += earned;
-                        localStorage.setItem('miner_balance', coins.toFixed(4));
-                    }
-                }
-            }
-            localStorage.setItem('lastVisitTime', now);
-        })();
-
-        const DAILY_LIMIT_USDT = 700;
-        const DAILY_LIMIT_LTC  = 1500;
-
-        let coins     = parseFloat(localStorage.getItem('miner_balance')) || 0;
-        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
-        let ltcCoins  = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-
-        document.getElementById('balance').innerText     = coins.toFixed(4);
-        document.getElementById('game-coins').innerText  = gameCoins;
-        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
-
-        // ─── Tabs ────────────────────────────────────────────────────────
+        // ─── Tabs ────────────────────────────────────────────────────
         window.switchTab = function(tab) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -208,7 +190,7 @@
             show.style.display = show.style.display === 'block' ? 'none' : 'block';
         };
 
-        // ─── Deposit boxes ───────────────────────────────────────────────
+        // ─── Deposit boxes ───────────────────────────────────────────
         const loadedAddresses = {};
 
         window.toggleDepositBox = async function(showId, hideId, currency) {
@@ -261,7 +243,7 @@
             input.addEventListener('blur',  () => document.body.classList.remove('keyboard-open'));
         });
 
-        // ─── Withdraw ────────────────────────────────────────────────────
+        // ─── Withdraw ────────────────────────────────────────────────
         function getWithdrawnToday(type) {
             const key    = type === 'usdt' ? 'withdrawDay'    : 'withdrawDayLtc';
             const valKey = type === 'usdt' ? 'withdrawnToday' : 'withdrawnTodayLtc';
@@ -305,16 +287,8 @@
                 catch { alert('Server error. HTTP ' + response.status); return; }
 
                 if (result.status === 200) {
+                    // Balance will auto-update via onSnapshot from Firebase
                     const valKey = type === 'usdt' ? 'withdrawnToday' : 'withdrawnTodayLtc';
-                    if (type === 'usdt') {
-                        coins -= points;
-                        localStorage.setItem('miner_balance', coins.toFixed(4));
-                        document.getElementById('balance').innerText = coins.toFixed(4);
-                    } else {
-                        ltcCoins -= points;
-                        localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
-                        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
-                    }
                     localStorage.setItem(valKey, String(getWithdrawnToday(type) + points));
                     alert('✅ Success! Funds sent to your FaucetPay!');
                 } else {
@@ -330,6 +304,7 @@
     </script>
 </body>
 </html>
+
 
    
 
