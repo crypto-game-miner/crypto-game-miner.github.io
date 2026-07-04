@@ -25,7 +25,7 @@
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
         body { text-transform: uppercase; }
-input { text-transform: none !important; }
+        input { text-transform: none !important; }
     </style>
 </head>
 <body>
@@ -34,15 +34,15 @@ input { text-transform: none !important; }
         <div class="balance-container">
             <div class="balance-row">
                 <span style="color:#22c55e;">Game Coins</span>
-                <span style="font-weight:bold; color:#22c55e;" id="game-coins">0</span>
+                <span style="font-weight:bold; color:#22c55e;" id="game-coins">—</span>
             </div>
             <div class="balance-row">
                 <span style="color:#facc15;">USDT Coins</span>
-                <span style="font-weight:bold;" id="balance">0</span>
+                <span style="font-weight:bold;" id="balance">—</span>
             </div>
             <div class="balance-row">
                 <span style="color:#a78bfa;">LTC Coins</span>
-                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0</span>
+                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">—</span>
             </div>
         </div>
 
@@ -69,84 +69,84 @@ input { text-transform: none !important; }
         </div>
 
         <div class="nav-bar">
-            <a href="home.html" class="nav-item">
-                <span class="nav-icon">🏠</span>Home
-            </a>
-            <a href="index.html" class="nav-item">
-                <span class="nav-icon">🚰</span>Faucet
-            </a>
-            <div class="nav-item active">
-                <span class="nav-icon">📋</span>Tasks
-            </div>
-            <a href="wallet.html" class="nav-item">
-                <span class="nav-icon">👛</span>Wallet
-            </a>
+            <a href="home.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+            <a href="index.html" class="nav-item"><span class="nav-icon">🚰</span>Faucet</a>
+            <div class="nav-item active"><span class="nav-icon">📋</span>Tasks</div>
+            <a href="wallet.html" class="nav-item"><span class="nav-icon">👛</span>Wallet</a>
         </div>
     </div>
 
-    <script>
-        (function() {
-            const lastVisit = Number(localStorage.getItem('lastVisitTime')) || 0;
-            const now = Date.now();
-            const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
-            const lastClaim = Number(localStorage.getItem('lastClaimTime')) || 0;
-            const hoursSinceClaim = (now - lastClaim) / 1000 / 3600;
-            const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
-            if (hashrate > 0 && !miningPaused && lastVisit > 0) {
-                const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
-                const miningCoin = localStorage.getItem('miningCoin') || 'ltc';
-const rate = miningCoin === 'ltc' ? 2.5 : 1.1;
-const earned = hashrate * rate / 3600 * secondsAway;
-if (earned > 0) {
-    if (miningCoin === 'ltc') {
-        let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-        ltc += earned;
-        localStorage.setItem('ltc_balance', ltc.toFixed(4));
-    } else {
-        let coins = parseFloat(localStorage.getItem('miner_balance')) || 0;
-        coins += earned;
-        localStorage.setItem('miner_balance', coins.toFixed(4));
-    }
-}
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+        import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+        import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+            authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+            projectId: "crypto-miner-game-f45dc",
+            storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+            messagingSenderId: "33690622473",
+            appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+        };
+
+        const app  = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db   = getFirestore(app);
+
+        // ── Auth + live balance ───────────────────────────────────────
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                localStorage.setItem('firebase_uid', user.uid);
+                onSnapshot(doc(db, 'users', user.uid), (snap) => {
+                    const data = snap.exists() ? snap.data() : {};
+                    document.getElementById('balance').innerText     = parseFloat(data.coins || 0).toFixed(4);
+                    document.getElementById('game-coins').innerText  = data.game_coins || 0;
+                    document.getElementById('ltc-balance').innerText = parseFloat(data.ltc || 0).toFixed(4);
+                });
+            } else {
+                try { await signInAnonymously(auth); } catch(e) {}
             }
-            localStorage.setItem('lastVisitTime', now);
-        })();
+        });
 
-        let coins = Number(localStorage.getItem('miner_balance')) || 0;
-        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
-        let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-        document.getElementById('balance').innerText = coins;
-        document.getElementById('game-coins').innerText = gameCoins;
-        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
+        // ── Sync mining on page load ──────────────────────────────────
+        const uid = localStorage.getItem('firebase_uid');
+        if (uid) {
+            fetch('/api/sync-mining', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid, miningCoin: localStorage.getItem('miningCoin') || 'ltc' }),
+            }).catch(() => {});
+        }
 
+        // ── Task logic ────────────────────────────────────────────────
         function checkDone(taskId) {
             return localStorage.getItem('task_' + taskId) === 'done';
         }
 
         function setDone(taskId) {
             const card = document.getElementById('task-' + taskId);
-            const btn = document.getElementById('task-' + taskId + '-btn');
+            const btn  = document.getElementById('task-' + taskId + '-btn');
             if (card) card.classList.add('done');
-            if (btn) { btn.innerText = '✅ Completed'; btn.classList.add('done'); btn.disabled = true; }
+            if (btn)  { btn.innerText = '✅ Completed'; btn.classList.add('done'); btn.disabled = true; }
         }
 
         if (localStorage.getItem('locked_google_email') || checkDone('register-bonus')) {
             localStorage.setItem('task_register_bonus', 'done');
             setDone('register-bonus');
         }
-
         if (checkDone('zerads')) setDone('zerads');
 
-        function goToSettings() {
+        window.goToSettings = function() {
             if (checkDone('register-bonus')) return;
             window.location.href = 'settings.html';
-        }
+        };
 
-        function doTask(taskId, url, ghReward) {
+        window.doTask = function(taskId, url, ghReward) {
             if (checkDone(taskId)) return;
             window.open(url, '_blank');
             const btn = document.getElementById('task-' + taskId + '-btn');
-            btn.disabled = true;
+            btn.disabled  = true;
             btn.innerText = 'Verifying... 15s';
             let t = 15;
             const timer = setInterval(() => {
@@ -162,7 +162,8 @@ if (earned > 0) {
                     alert('🎉 +' + ghReward + ' GH/s Added To Your Mining Power!');
                 }
             }, 1000);
-        }
+        };
     </script>
 </body>
 </html>
+
