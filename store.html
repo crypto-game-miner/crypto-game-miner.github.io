@@ -181,7 +181,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
         import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-        import { getFirestore, doc, setDoc, getDocs, collection } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getFirestore, doc, setDoc, getDoc, getDocs, collection } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -196,7 +196,65 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         let currentUser = null;
-        onAuthStateChanged(auth, (user) => { currentUser = user; });
+
+        // Значения баланса, отображаемые на странице. Изначально читаем из
+        // localStorage (кэш), но сразу после авторизации подтягиваем
+        // актуальные данные с сервера (Firestore) и они становятся источником правды.
+        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
+        let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+        let ownedNano = Number(localStorage.getItem('miner_nano')) || 0;
+        let ownedMega = Number(localStorage.getItem('miner_mega')) || 0;
+        let isLoggedIn = !!localStorage.getItem('locked_google_email');
+        let serverSynced = false;
+
+        renderBalances();
+        updateNanoUI();
+        updateBoxUI();
+
+        onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+            await syncFromServer();
+        });
+
+        // Тянем актуальный баланс прямо из Firestore ("users/{uid}")
+        async function syncFromServer() {
+            const lockedEmail = localStorage.getItem('locked_google_email');
+            if (!lockedEmail || !currentUser) return;
+            try {
+                const snap = await getDoc(doc(db, 'users', currentUser.uid));
+                if (snap.exists()) {
+                    const data = snap.data();
+                    if (typeof data.coins === 'number') coins = data.coins;
+                    if (typeof data.game_coins === 'number') gameCoins = data.game_coins;
+                    if (typeof data.ltc === 'number') ltcCoins = data.ltc;
+                    if (typeof data.miner_nano === 'number') ownedNano = data.miner_nano;
+                    if (typeof data.miner_mega === 'number') ownedMega = data.miner_mega;
+
+                    // Обновляем локальный кэш, чтобы другие страницы (index.html и т.д.)
+                    // тоже видели актуальные серверные значения
+                    localStorage.setItem('miner_balance', coins);
+                    localStorage.setItem('game_coins', gameCoins);
+                    localStorage.setItem('ltc_balance', ltcCoins);
+                    localStorage.setItem('miner_nano', ownedNano);
+                    localStorage.setItem('miner_mega', ownedMega);
+                    if (typeof data.hashrate === 'number') localStorage.setItem('hashrate', data.hashrate);
+
+                    serverSynced = true;
+                    renderBalances();
+                    updateNanoUI();
+                    updateBoxUI();
+                }
+            } catch(e) {
+                console.log('server sync error:', e.message);
+            }
+        }
+
+        function renderBalances() {
+            document.getElementById('game-coins').innerText = gameCoins;
+            document.getElementById('balance').innerText = coins;
+            document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
+        }
 
         async function recalcTotalHashrate() {
             try {
@@ -214,17 +272,12 @@
             const lockedEmail = localStorage.getItem('locked_google_email');
             if (!lockedEmail || !currentUser) return;
             try {
-                const coins = Number(localStorage.getItem('miner_balance')) || 0;
-                const gc = Number(localStorage.getItem('game_coins')) || 0;
-                const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
                 const exp = Number(localStorage.getItem('player_exp')) || 0;
                 const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
-                const nano = Number(localStorage.getItem('miner_nano')) || 0;
-                const mega = Number(localStorage.getItem('miner_mega')) || 0;
 
                 await setDoc(doc(db, 'users', currentUser.uid), {
-                    coins, game_coins: gc, ltc, exp, hashrate,
-                    miner_nano: nano, miner_mega: mega,
+                    coins, game_coins: gameCoins, ltc: ltcCoins, exp, hashrate,
+                    miner_nano: ownedNano, miner_mega: ownedMega,
                     email: lockedEmail,
                     updatedAt: new Date()
                 }, { merge: true });
@@ -232,19 +285,6 @@
                 await recalcTotalHashrate();
             } catch(e) { console.log('save error:', e.message); }
         }
-
-        // Читаем из localStorage
-        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
-        let coins = Number(localStorage.getItem('miner_balance')) || 0;
-        let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-        let ownedNano = Number(localStorage.getItem('miner_nano')) || 0;
-        let ownedMega = Number(localStorage.getItem('miner_mega')) || 0;
-        const isLoggedIn = !!localStorage.getItem('locked_google_email');
-
-        // Отображаем балансы
-        document.getElementById('game-coins').innerText = gameCoins;
-        document.getElementById('balance').innerText = coins;
-        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
 
         // --- NanoMiner UI ---
         function updateNanoUI() {
@@ -280,136 +320,4 @@
 
         // --- Mystery Box UI ---
         function updateBoxUI() {
-            document.getElementById('owned-mega').innerText = `MegaMiner X2: ${ownedMega} / 2`;
-            const btn = document.getElementById('btn-box');
-            if (ownedMega >= 2) {
-                btn.innerText = '✅ All MegaMiners Unlocked!';
-                btn.disabled = true;
-                document.getElementById('card-box').style.opacity = '0.5';
-            } else if (!isLoggedIn) {
-                btn.innerText = '🔒 Login Required';
-                btn.style.background = '#ef4444';
-                btn.style.boxShadow = '0 3px 0 #991b1b';
-                btn.disabled = false;
-            } else if (gameCoins < 40) {
-                btn.innerText = 'Not Enough Game Coins';
-                btn.disabled = true;
-                btn.style.background = '';
-                btn.style.boxShadow = '';
-            } else {
-                btn.innerText = 'Open for 40 Game Coins';
-                btn.disabled = false;
-                btn.style.background = '';
-                btn.style.boxShadow = '';
-            }
-        }
-
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 2500);
-        }
-
-        function calcHashrate() {
-            const exp = Number(localStorage.getItem('player_exp')) || 0;
-            const expLevels = [50, 120, 250, 500, 1000];
-            let level = 1, tot = 0;
-            for (let i = 0; i < expLevels.length; i++) {
-                if (exp >= tot + expLevels[i]) { tot += expLevels[i]; level++; } else break;
-            }
-            const base = level >= 2 ? 0.5 : 0;
-            const bonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
-            const h = Math.round((base + bonus) * 10) / 10;
-            localStorage.setItem('hashrate', h);
-            return h;
-        }
-
-        // --- Buy NanoMiner ---
-        async function buyMiner(type) {
-            if (!isLoggedIn) { alert('❌ Login required! Go to Settings and sign in with Google.'); return; }
-            if (type === 'nano') {
-                if (ownedNano >= 10 || gameCoins < 50) return;
-                gameCoins -= 50;
-                ownedNano += 1;
-                localStorage.setItem('game_coins', gameCoins);
-                localStorage.setItem('miner_nano', ownedNano);
-                const bonus = Math.round(((parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0) + 0.1) * 10) / 10;
-                localStorage.setItem('task_bonus_hashrate', bonus);
-                calcHashrate();
-                document.getElementById('game-coins').innerText = gameCoins;
-                updateNanoUI();
-                updateBoxUI();
-                showToast('✅ NanoMiner X1 purchased! +0.1 GH/S');
-                await saveAfterPurchase();
-            }
-        }
-
-        // --- Open Mystery Box ---
-        function rollPrize() {
-            const r = Math.random() * 100;
-            if (r < 35) return { type: 'coins', amount: 10, icon: '🟢', title: '+10 Game Coins', sub: 'Better luck next time!' };
-            if (r < 65) return { type: 'coins', amount: 20, icon: '🟢', title: '+20 Game Coins', sub: 'Not bad!' };
-            if (r < 80) return { type: 'coins', amount: 40, icon: '🟢', title: '+40 Game Coins', sub: 'You got your money back!' };
-            return { type: 'mega', icon: '🔥', title: 'MegaMiner X2!', sub: '+0.2 GH/S added to your hashrate!' };
-        }
-
-        async function openBox() {
-            if (!isLoggedIn) { alert('❌ Login required!'); return; }
-            if (ownedMega >= 2 || gameCoins < 40) return;
-
-            gameCoins -= 40;
-            localStorage.setItem('game_coins', gameCoins);
-            document.getElementById('game-coins').innerText = gameCoins;
-            document.getElementById('btn-box').disabled = true;
-
-            // Показываем оверлей с анимацией
-            const overlay = document.getElementById('prize-overlay');
-            const boxAnim = document.getElementById('box-anim');
-            const reveal = document.getElementById('prize-reveal');
-            overlay.style.display = 'flex';
-            boxAnim.style.display = 'block';
-            reveal.style.display = 'none';
-            boxAnim.style.animation = 'none';
-            void boxAnim.offsetWidth;
-            boxAnim.style.animation = 'shake 0.4s ease-in-out 4';
-
-            setTimeout(async () => {
-                const prize = rollPrize();
-                boxAnim.style.display = 'none';
-                reveal.style.display = 'block';
-                document.getElementById('prize-icon').innerText = prize.icon;
-                document.getElementById('prize-title').innerText = prize.title;
-                document.getElementById('prize-sub').innerText = prize.sub;
-
-                if (prize.type === 'coins') {
-                    gameCoins += prize.amount;
-                    localStorage.setItem('game_coins', gameCoins);
-                    document.getElementById('game-coins').innerText = gameCoins;
-                } else {
-                    ownedMega += 1;
-                    localStorage.setItem('miner_mega', ownedMega);
-                    const bonus = Math.round(((parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0) + 0.2) * 10) / 10;
-                    localStorage.setItem('task_bonus_hashrate', bonus);
-                    calcHashrate();
-                }
-
-                updateNanoUI();
-                updateBoxUI();
-                await saveAfterPurchase();
-            }, 1700);
-        }
-
-        window.buyMiner = buyMiner;
-        window.openBox = openBox;
-        window.closePrize = function() {
-            document.getElementById('prize-overlay').style.display = 'none';
-            document.getElementById('box-anim').style.display = 'block';
-            document.getElementById('prize-reveal').style.display = 'none';
-        };
-
-        updateNanoUI();
-        updateBoxUI();
-    </script>
-</body>
-</html>
+            document.getElementById('owned-mega').innerText = `MegaMiner X2: ${o
