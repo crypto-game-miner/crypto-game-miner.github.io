@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -214,7 +214,7 @@
             const lockedEmail = localStorage.getItem('locked_google_email');
             if (!lockedEmail || !currentUser) return;
             try {
-                const coins = Number(localStorage.getItem('miner_balance')) || 0;
+                const coins = parseFloat(localStorage.getItem('miner_balance')) || 0;
                 const gc = Number(localStorage.getItem('game_coins')) || 0;
                 const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
                 const exp = Number(localStorage.getItem('player_exp')) || 0;
@@ -233,17 +233,17 @@
             } catch(e) { console.log('save error:', e.message); }
         }
 
-        // Читаем из localStorage — точно так же, как это делает index.html
+        // Читаем из localStorage — точно так же и в том же формате, как это делают index.html и home.html
         let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
-        let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let coins = parseFloat(localStorage.getItem('miner_balance')) || 0;
         let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
         let ownedNano = Number(localStorage.getItem('miner_nano')) || 0;
         let ownedMega = Number(localStorage.getItem('miner_mega')) || 0;
         const isLoggedIn = !!localStorage.getItem('locked_google_email');
 
-        // Отображаем балансы
+        // Отображаем балансы — тот же .toFixed(4), что и на других страницах
         document.getElementById('game-coins').innerText = gameCoins;
-        document.getElementById('balance').innerText = coins;
+        document.getElementById('balance').innerText = coins.toFixed(4);
         document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
 
         // --- NanoMiner UI ---
@@ -413,4 +413,6 @@
     </script>
 </body>
 </html>
+
+      
 
