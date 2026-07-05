@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -66,40 +66,59 @@
             <span>Menu</span>
             <button class="close-btn" onclick="closeMenu()">✕</button>
         </div>
-        <a href="store.html" class="side-menu-item"><span class="menu-icon">🛒</span>Store<span class="menu-badge">New</span></a>
-        <a href="miners.html" class="side-menu-item"><span class="menu-icon">⛏️</span>My Miners<span class="menu-badge purple" id="miners-badge" style="display:none;">0</span></a>
-        <a href="advertise.html" class="side-menu-item"><span class="menu-icon">📢</span>Advertise<span class="menu-badge" style="background:#22c55e;">$</span></a>
-        <a href="settings.html" class="side-menu-item"><span class="menu-icon">⚙️</span>Settings</a>
+        <a href="store.html" class="side-menu-item">
+            <span class="menu-icon">🛒</span>
+            Store
+            <span class="menu-badge">New</span>
+        </a>
+        <a href="miners.html" class="side-menu-item">
+            <span class="menu-icon">⛏️</span>
+            My Miners
+            <span class="menu-badge purple" id="miners-badge" style="display:none;">0</span>
+        </a>
+        <a href="advertise.html" class="side-menu-item">
+            <span class="menu-icon">📢</span>
+            Advertise
+            <span class="menu-badge" style="background:#22c55e;">$</span>
+        </a>
+        <a href="settings.html" class="side-menu-item">
+            <span class="menu-icon">⚙️</span>
+            Settings
+        </a>
     </div>
 
     <div id="main-content">
         <div class="header">
             <span>Home</span>
-            <button class="burger-btn" onclick="openMenu()"><span></span><span></span><span></span></button>
+            <button class="burger-btn" onclick="openMenu()">
+                <span></span><span></span><span></span>
+            </button>
         </div>
         <div class="balance-container">
             <div class="balance-row">
                 <span style="color:#22c55e;">Game Coins</span>
-                <span style="font-weight:bold; color:#22c55e;" id="game-coins">—</span>
+                <span style="font-weight:bold; color:#22c55e;" id="game-coins">0</span>
             </div>
             <div class="balance-row">
                 <span style="color:#facc15;">USDT Coins</span>
-                <span style="font-weight:bold;" id="balance">—</span>
+                <span style="font-weight:bold;" id="balance">0.000000</span>
             </div>
             <div class="balance-row">
                 <span style="color:#a78bfa;">LTC Coins</span>
-                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">—</span>
+                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0.000000</span>
             </div>
         </div>
 
         <div class="main-area">
             <div class="warning-card" id="warning-card">
                 <div class="warning-text">⚠️ Mining Paused!</div>
-                <div class="warning-sub">You Haven't Collected In 24H. Go To Faucet To Resume Mining.</div>
+                <div class="warning-sub">You Haven't Claimed Today. Go To Faucet To Resume Mining.</div>
             </div>
             <div class="level-card">
                 <div class="level-title">⚡ Level <span id="level-num">1</span></div>
-                <div class="exp-bar-bg"><div class="exp-bar-fill" id="exp-bar" style="width:0%"></div></div>
+                <div class="exp-bar-bg">
+                    <div class="exp-bar-fill" id="exp-bar" style="width: 0%;"></div>
+                </div>
                 <div class="exp-text"><span id="exp-current">0</span> / <span id="exp-needed">50</span> EXP</div>
             </div>
 
@@ -122,16 +141,36 @@
 
             <div class="mining-card">
                 <div class="mining-title">⛏️ Mining Power</div>
+
                 <div class="coin-switch">
                     <button class="switch-btn" id="btn-ltc" onclick="switchCoin('ltc')">LTC</button>
                     <button class="switch-btn" id="btn-usdt" onclick="switchCoin('usdt')">USDT</button>
                 </div>
-                <div class="mining-stat"><span class="mining-label">Base Hashrate</span><span class="mining-value" id="hashrate">0 GH/s</span></div>
-                <div class="mining-stat"><span class="mining-label">Claim Boost (24h)</span><span class="mining-value" id="boost-rate" style="color:#22c55e;">+0 GH/s</span></div>
-                <div class="mining-stat"><span class="mining-label">Total Hashrate</span><span class="mining-value" id="total-hashrate">0 GH/s</span></div>
-                <div class="mining-stat"><span class="mining-label" id="rate-label">LTC Coins / Hour</span><span class="mining-value" id="ltc-per-hour">0</span></div>
-                <div class="mining-stat"><span class="mining-label">Mined This Session</span><span class="mining-value" id="mined-session" style="color:#22c55e;">+0.0000</span></div>
-                <div class="mining-stat"><span class="mining-label">Status</span><span class="mining-value" id="mining-status" style="color:#ef4444;">Inactive</span></div>
+
+                <div class="mining-stat">
+                    <span class="mining-label">Base Hashrate</span>
+                    <span class="mining-value" id="hashrate">0 GH/s</span>
+                </div>
+                <div class="mining-stat">
+                    <span class="mining-label">Claim Boost (24h)</span>
+                    <span class="mining-value" id="boost-rate" style="color:#22c55e;">+0 GH/s</span>
+                </div>
+                <div class="mining-stat">
+                    <span class="mining-label">Total Hashrate</span>
+                    <span class="mining-value" id="total-hashrate">0 GH/s</span>
+                </div>
+                <div class="mining-stat">
+                    <span class="mining-label" id="rate-label">LTC Coins / Hour</span>
+                    <span class="mining-value" id="ltc-per-hour">0</span>
+                </div>
+                <div class="mining-stat">
+                    <span class="mining-label">Mined This Session</span>
+                    <span class="mining-value" id="mined-session" style="color:#22c55e;">+0.000000</span>
+                </div>
+                <div class="mining-stat">
+                    <span class="mining-label">Status</span>
+                    <span class="mining-value" id="mining-status" style="color:#ef4444;">Inactive</span>
+                </div>
             </div>
         </div>
 
@@ -145,8 +184,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
-        import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-        import { getFirestore, doc, onSnapshot, setDoc, getDocs, collection, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getFirestore, doc, setDoc, getDocs, collection, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -157,30 +195,19 @@
             appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
         };
 
-        const app  = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db   = getFirestore(app);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-        // ── Auth + live balance ───────────────────────────────────────
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                localStorage.setItem('firebase_uid', user.uid);
-                onSnapshot(doc(db, 'users', user.uid), (snap) => {
-                    const data = snap.exists() ? snap.data() : {};
-                    document.getElementById('balance').innerText     = parseFloat(data.coins || 0).toFixed(4);
-                    document.getElementById('game-coins').innerText  = data.game_coins || 0;
-                    document.getElementById('ltc-balance').innerText = parseFloat(data.ltc || 0).toFixed(4);
-                });
-            } else {
-                try { await signInAnonymously(auth); } catch(e) {}
-            }
-        });
-
-        // ── Paid banner ───────────────────────────────────────────────
         async function loadPaidBanner() {
             try {
                 const now = new Date();
-                const q = query(collection(db, 'ad_slots'), where('status','==','active'), where('paid_until','>=',now), orderBy('paid_until','asc'), limit(1));
+                const q = query(
+                    collection(db, 'ad_slots'),
+                    where('status', '==', 'active'),
+                    where('paid_until', '>=', now),
+                    orderBy('paid_until', 'asc'),
+                    limit(1)
+                );
                 const snap = await getDocs(q);
                 if (!snap.empty) {
                     const ad = snap.docs[0].data();
@@ -195,6 +222,20 @@
             }
         }
         loadPaidBanner();
+
+        async function recalcTotalHashrate() {
+            try {
+                const usersSnap = await getDocs(collection(db, 'users'));
+                let total = 0;
+                usersSnap.forEach(d => { total += d.data().hashrate || 0; });
+                await setDoc(doc(db, 'stats', 'global'), {
+                    totalHashrate: Math.round(total * 10) / 10,
+                    dailyRate: parseFloat(localStorage.getItem('dailyRate')) || 1.0,
+                    updatedAt: new Date()
+                }, { merge: true });
+            } catch(e) { console.log('recalc error:', e.message); }
+        }
+        recalcTotalHashrate();
     </script>
 
     <script>
@@ -210,36 +251,52 @@
             document.getElementById('overlay').classList.remove('open');
         }
 
-        const LTC_RATE  = 2.5;
+        const LTC_RATE = 2.5;
         const USDT_RATE = 1.1;
-        const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
+        // Активные claim-бусты (не старше 24ч) — влияют только на СКОРОСТЬ добычи
         function getClaimBoostTotal() {
             const now = Date.now();
             let boosts = [];
-            try { boosts = JSON.parse(localStorage.getItem('claimBoosts') || '[]'); } catch {}
+            try { boosts = JSON.parse(localStorage.getItem('claimBoosts') || '[]'); } catch { boosts = []; }
             const active = boosts.filter(b => (now - b.time) < 86400000);
             localStorage.setItem('claimBoosts', JSON.stringify(active));
-            return Math.round(active.reduce((s, b) => s + b.amount, 0) * 10) / 10;
+            return Math.round(active.reduce((sum, b) => sum + b.amount, 0) * 10) / 10;
         }
+
+        // Сколько раз клеймили СЕГОДНЯ (тот же счётчик, что и на Faucet) —
+        // именно от него теперь зависит, активен майнинг или нет
+        function getClaimsToday() {
+            const today = new Date().toDateString();
+            const lastDay = localStorage.getItem('lastClaimDay');
+            if (lastDay !== today) return 0;
+            return Number(localStorage.getItem('claimsToday')) || 0;
+        }
+
+        const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
         function getDailyRate() {
             const today = new Date().toDateString();
-            if (localStorage.getItem('rateDay') === today) return parseFloat(localStorage.getItem('dailyRate')) || 1.0;
+            const savedDay = localStorage.getItem('rateDay');
+            if (savedDay === today) return parseFloat(localStorage.getItem('dailyRate')) || 1.0;
             const rate = 0.98 + Math.random() * 0.025;
             localStorage.setItem('rateDay', today);
             localStorage.setItem('dailyRate', rate.toFixed(4));
             return rate;
         }
 
-        const dailyRate   = getDailyRate();
-        let miningCoin    = localStorage.getItem('miningCoin') || 'ltc';
-        let sessionMined  = 0;
-        let exp           = Number(localStorage.getItem('player_exp')) || 0;
+        const dailyRate = getDailyRate();
+        let coins = parseFloat(localStorage.getItem('miner_balance')) || 0;
+        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
+        let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+        let exp = Number(localStorage.getItem('player_exp')) || 0;
+        let sessionMined = 0;
 
-        // Mining display variables (for session ticker only)
-        let ltcDisplay  = parseFloat(localStorage.getItem('ltc_balance'))  || 0;
-        let usdtDisplay = parseFloat(localStorage.getItem('miner_balance')) || 0;
+        document.getElementById('balance').innerText = coins.toFixed(4);
+        document.getElementById('game-coins').innerText = gameCoins;
+
+        // Текущий выбранный режим майнинга
+        let miningCoin = localStorage.getItem('miningCoin') || 'ltc';
 
         function getLevel(exp) {
             let level = 1, totalExp = 0;
@@ -251,95 +308,117 @@
         }
 
         const { level, currentExp, needed } = getLevel(exp);
-        const baseHashrate  = level >= 2 ? 0.5 : 0;
-        const taskBonus     = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
-        const permHashrate  = Math.round((baseHashrate + taskBonus) * 10) / 10;
+        const baseHashrate = level >= 2 ? 0.5 : 0;
+        const taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
+        const permHashrate = Math.round((baseHashrate + taskBonus) * 10) / 10;
         localStorage.setItem('hashrate', permHashrate);
 
-        const claimBoost    = getClaimBoostTotal();
+        const claimBoost = getClaimBoostTotal();
         const totalHashrate = Math.round((permHashrate + claimBoost) * 10) / 10;
 
-        document.getElementById('level-num').innerText      = level;
-        document.getElementById('exp-current').innerText    = currentExp;
-        document.getElementById('exp-needed').innerText     = needed;
-        document.getElementById('hashrate').innerText       = permHashrate + ' GH/s';
-        document.getElementById('boost-rate').innerText     = '+' + claimBoost.toFixed(1) + ' GH/s';
+        document.getElementById('level-num').innerText = level;
+        document.getElementById('exp-current').innerText = currentExp;
+        document.getElementById('exp-needed').innerText = needed;
+        document.getElementById('hashrate').innerText = permHashrate + ' GH/s';
+        document.getElementById('boost-rate').innerText = '+' + claimBoost.toFixed(1) + ' GH/s';
         document.getElementById('total-hashrate').innerText = totalHashrate + ' GH/s';
         const pct = needed === 'MAX' ? 100 : (currentExp / needed * 100);
         document.getElementById('exp-bar').style.width = pct + '%';
 
-        const lastClaim       = Number(localStorage.getItem('lastClaimTime')) || 0;
-        const now             = Date.now();
-        const miningPaused    = lastClaim === 0 || (now - lastClaim) / 1000 / 3600 > 24;
+        // Майнинг активен, если сегодня был хотя бы 1 клейм (claimsToday >= 1)
+        const claimsToday = getClaimsToday();
+        const miningPaused = claimsToday < 1;
 
-        if (miningPaused && totalHashrate > 0) document.getElementById('warning-card').style.display = 'block';
+        if (miningPaused) document.getElementById('warning-card').style.display = 'block';
 
-        function getRatePerGH() { return miningCoin === 'ltc' ? LTC_RATE : USDT_RATE; }
+        function getRatePerGH() {
+            return miningCoin === 'ltc' ? LTC_RATE : USDT_RATE;
+        }
 
         function updateRateDisplay() {
-            const perHour = totalHashrate * getRatePerGH() * dailyRate;
-            document.getElementById('rate-label').innerText    = (miningCoin === 'ltc' ? 'LTC' : 'USDT') + ' Coins / Hour';
-            document.getElementById('ltc-per-hour').innerText  = totalHashrate > 0 ? perHour.toFixed(3) : 0;
+            const rate = getRatePerGH();
+            const perHour = totalHashrate * rate * dailyRate;
+            document.getElementById('rate-label').innerText = (miningCoin === 'ltc' ? 'LTC' : 'USDT') + ' Coins / Hour';
+            document.getElementById('ltc-per-hour').innerText = !miningPaused ? perHour.toFixed(3) : 0;
         }
 
         function updateSwitchButtons() {
-            document.getElementById('btn-ltc').className  = 'switch-btn' + (miningCoin === 'ltc'  ? ' active-ltc'  : '');
-            document.getElementById('btn-usdt').className = 'switch-btn' + (miningCoin === 'usdt' ? ' active-usdt' : '');
+            const btnLtc = document.getElementById('btn-ltc');
+            const btnUsdt = document.getElementById('btn-usdt');
+            btnLtc.classList.remove('active-ltc');
+            btnUsdt.classList.remove('active-usdt');
+            if (miningCoin === 'ltc') btnLtc.classList.add('active-ltc');
+            else btnUsdt.classList.add('active-usdt');
         }
 
         window.switchCoin = function(coin) {
-            // Sync before switching
-            const uid = localStorage.getItem('firebase_uid');
-            if (uid) fetch('/api/sync-mining', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ uid, miningCoin }) }).catch(()=>{});
-            miningCoin = coin;
-            localStorage.setItem('miningCoin', coin);
-            sessionMined = 0;
-            document.getElementById('mined-session').innerText = '+0.0000';
-            updateSwitchButtons();
-            updateRateDisplay();
-        };
+    miningCoin = coin;
+    localStorage.setItem('miningCoin', coin);
+    sessionMined = 0;
+    document.getElementById('mined-session').innerText = '+0.0000';
+    updateSwitchButtons();
+    updateRateDisplay();
 
-        updateSwitchButtons();
-        updateRateDisplay();
-
-        // Sync offline mining on page load
-        const uid = localStorage.getItem('firebase_uid');
-        if (uid && totalHashrate > 0 && !miningPaused) {
-            fetch('/api/sync-mining', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid, miningCoin }),
-            }).catch(() => {});
+        // Оффлайн начисление — только если майнинг активен (был клейм сегодня)
+        if (!miningPaused) {
+            const now = Date.now();
+            const lastVisit = Number(localStorage.getItem('lastVisitTime')) || now;
+            const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
+            const rate = getRatePerGH();
+            const offlineEarned = totalHashrate * rate * dailyRate / 3600 * secondsAway;
+            if (offlineEarned > 0) {
+                if (miningCoin === 'ltc') {
+                    ltcCoins += offlineEarned;
+                    localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
+                } else {
+                    coins += offlineEarned;
+                    localStorage.setItem('miner_balance', coins.toFixed(4));
+                    document.getElementById('balance').innerText = coins.toFixed(4);
+                }
+            }
         }
-        localStorage.setItem('lastVisitTime', now);
 
-        const active = totalHashrate > 0 && !miningPaused;
-        document.getElementById('mining-status').innerText  = active ? 'Active ✅' : (totalHashrate === 0 ? 'Inactive' : 'Paused ⚠️');
-        document.getElementById('mining-status').style.color = active ? '
-            
-            if (active) {
-            // Visual session ticker (display only, real balance in Firebase)
+        localStorage.setItem('lastVisitTime', Date.now());
+        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
+
+        const active = !miningPaused;
+        document.getElementById('mining-status').innerText = active ? 'Active ✅' : 'Paused ⚠️';
+        document.getElementById('mining-status').style.color = active ? '#22c55e' : '#ef4444';
+
+        if (active) {
             setInterval(() => {
                 const currentBoost = getClaimBoostTotal();
                 const currentTotal = permHashrate + currentBoost;
-                const rate  = getRatePerGH();
+                const rate = getRatePerGH();
                 const earned = currentTotal * rate * dailyRate / 3600;
-                sessionMined += earned;
-                document.getElementById('mined-session').innerText  = '+' + sessionMined.toFixed(4);
-                document.getElementById('boost-rate').innerText     = '+' + currentBoost.toFixed(1) + ' GH/s';
-                document.getElementById('total-hashrate').innerText = Math.round(currentTotal * 10) / 10 + ' GH/s';
-                document.getElementById('ltc-per-hour').innerText   = (currentTotal * rate * dailyRate).toFixed(3);
-            }, 1000);
 
-            // Sync with server every 60s
-            setInterval(() => {
-                const uid = localStorage.getItem('firebase_uid');
-                if (uid) fetch('/api/sync-mining', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ uid, miningCoin }) }).catch(()=>{});
-            }, 60000);
+                if (miningCoin === 'ltc') {
+                    ltcCoins += earned;
+                    sessionMined += earned;
+                    localStorage.setItem('ltc_balance', ltcCoins.toFixed(4));
+                    document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
+} else {
+    coins += earned;
+    sessionMined += earned;
+    localStorage.setItem('miner_balance', coins.toFixed(4));
+    document.getElementById('balance').innerText = coins.toFixed(4);
+}
+
+                document.getElementById('mined-session').innerText = '+' + sessionMined.toFixed(4);
+                document.getElementById('boost-rate').innerText = '+' + currentBoost.toFixed(1) + ' GH/s';
+                document.getElementById('total-hashrate').innerText = Math.round(currentTotal * 10) / 10 + ' GH/s';
+                const perHour = currentTotal * rate * dailyRate;
+                document.getElementById('ltc-per-hour').innerText = perHour.toFixed(3);
+            }, 1000);
         }
     </script>
 </body>
 </html>
+
+
+
+
+
 
 
 
