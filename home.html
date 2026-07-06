@@ -252,7 +252,16 @@
                 tickInterval = setInterval(() => {
                     const boost = getBoostTotal();
                     const total = permHashrate + boost;
-                    sessionMined += total * rate / 3600;
+                    const earned = total * rate / 3600;
+                    sessionMined += earned;
+                    // Visual balance update
+                    if (miningCoin === 'ltc') {
+                        userData.ltc = (userData.ltc || 0) + earned;
+                        document.getElementById('ltc-balance').innerText = parseFloat(userData.ltc).toFixed(4);
+                    } else {
+                        userData.coins = (userData.coins || 0) + earned;
+                        document.getElementById('balance').innerText = parseFloat(userData.coins).toFixed(4);
+                    }
                     document.getElementById('mined-session').innerText  = '+' + sessionMined.toFixed(4);
                     document.getElementById('boost-rate').innerText     = '+' + boost.toFixed(1) + ' GH/s';
                     document.getElementById('total-hashrate').innerText = Math.round(total * 10) / 10 + ' GH/s';
@@ -276,27 +285,7 @@
 
         function openMenu() { document.getElementById('side-menu').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
         function closeMenu() { document.getElementById('side-menu').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
-        window.openMenu = openMenu; window.closeMenu = closeMenu;
-
-        async function loadPaidBanner() {
-            try {
-                const now = new Date();
-                const q = query(collection(db, 'ad_slots'), where('status','==','active'), where('paid_until','>=',now), orderBy('paid_until','asc'), limit(1));
-                const snap = await getDocs(q);
-                if (!snap.empty) {
-                    const ad = snap.docs[0].data();
-                    document.getElementById('paid-banner-img').src = ad.banner_url;
-                    document.getElementById('paid-banner-link').href = ad.click_url;
-                    document.getElementById('paid-banner-slot').style.display = 'block';
-                } else {
-                    document.getElementById('advertise-promo').style.display = 'block';
-                }
-            } catch(e) { document.getElementById('advertise-promo').style.display = 'block'; }
-        }
-        loadPaidBanner();
-    </script>
-</body>
-</html>
+        window.openMenu = openMenu; window.closeMen
 
 
 
