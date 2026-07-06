@@ -167,11 +167,22 @@
 
         async function syncMining(uid) {
             try {
-                await fetch('/api/sync-mining', {
+                const resp = await fetch('/api/sync-mining', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ uid, miningCoin }),
                 });
+                const data = await resp.json();
+                if (data.success && data.earned > 0) {
+                    // Update userData locally so display refreshes immediately
+                    if (data.coin === 'ltc') {
+                        userData.ltc = (userData.ltc || 0) + data.earned;
+                        document.getElementById('ltc-balance').innerText = parseFloat(userData.ltc).toFixed(4);
+                    } else {
+                        userData.coins = (userData.coins || 0) + data.earned;
+                        document.getElementById('balance').innerText = parseFloat(userData.coins).toFixed(4);
+                    }
+                }
             } catch(e) {}
         }
 
@@ -286,6 +297,7 @@
     </script>
 </body>
 </html>
+
 
 
 
