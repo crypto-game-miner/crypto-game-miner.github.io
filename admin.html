@@ -56,6 +56,7 @@
 
 <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+    import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
     import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
     const ADMIN_PASSWORD = 'kr1stal2024'; // смени на свой пароль
@@ -69,14 +70,21 @@
         appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
 
     let currentTab = 'pending';
 
-    window.checkPwd = function() {
+    window.checkPwd = async function() {
         const pwd = document.getElementById('pwd').value;
         if (pwd === ADMIN_PASSWORD) {
+            try {
+                await signInAnonymously(auth); // satisfies "request.auth != null" in Firestore rules
+            } catch(e) {
+                alert('Auth error: ' + e.message);
+                return;
+            }
             document.getElementById('login-box').style.display = 'none';
             document.getElementById('panel').style.display = 'block';
             loadRequests('pending');
@@ -178,6 +186,7 @@
 </script>
 </body>
 </html>
+
 
 
 
