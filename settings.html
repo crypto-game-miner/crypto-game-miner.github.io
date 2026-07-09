@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -99,7 +99,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, linkWithPopup, signInWithCredential, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -225,11 +225,37 @@
         } else {
             btn.onclick = async () => {
                 try {
-                    const result = await signInWithPopup(auth, new GoogleAuthProvider());
-                    const user = result.user;
-                    const userRef = doc(db, 'users', user.uid);
-                    const userSnap = await getDoc(userRef);
-                    const isNewPlayer = !userSnap.exists();
+                    const provider = new GoogleAuthProvider();
+                    let user;
+                    let isNewPlayer;
+
+                    if (auth.currentUser) {
+                        // Есть активная (анонимная) сессия — привязываем Google к ней,
+                        // чтобы сохранить тот же uid и не потерять прогресс
+                        try {
+                            const linkResult = await linkWithPopup(auth.currentUser, provider);
+                            user = linkResult.user;
+                            const userSnap = await getDoc(doc(db, 'users', user.uid));
+                            isNewPlayer = !userSnap.exists();
+                        } catch (linkErr) {
+                            if (linkErr.code === 'auth/credential-already-in-use' || linkErr.code === 'auth/email-already-in-use') {
+                                // Этот Google-аккаунт уже зарегистрирован под другим uid —
+                                // логинимся в существующий аккаунт вместо привязки
+                                const cred = GoogleAuthProvider.credentialFromError(linkErr);
+                                const signInResult = await signInWithCredential(auth, cred);
+                                user = signInResult.user;
+                                isNewPlayer = false;
+                            } else {
+                                throw linkErr;
+                            }
+                        }
+                    } else {
+                        // Анонимной сессии нет — обычный вход
+                        const signInResult = await signInWithPopup(auth, provider);
+                        user = signInResult.user;
+                        const userSnap = await getDoc(doc(db, 'users', user.uid));
+                        isNewPlayer = !userSnap.exists();
+                    }
 
                     if (isNewPlayer) {
                         const bonusGiven = localStorage.getItem('task_register_bonus') === 'done';
@@ -244,6 +270,7 @@
                         updateStats();
                         alert('🎉 ACCOUNT CREATED! +0.3 GH/S BONUS ADDED!');
                     } else {
+                        const userSnap = await getDoc(doc(db, 'users', user.uid));
                         const data = userSnap.data();
                         localStorage.setItem('locked_google_email', user.email);
                         loadFromFirestore(data);
@@ -276,6 +303,7 @@
     </script>
 </body>
 </html>
+
 
 
 
