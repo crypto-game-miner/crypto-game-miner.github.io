@@ -6,7 +6,7 @@
     <title>Advertise - Crypto Miner</title>
     <style>
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; color: white; font-family: 'Courier New', Courier, monospace; }
-        body { text-transform: uppercase; padding-bottom: 370px; }
+        body { text-transform: uppercase; padding-bottom: 380px; }
         input, textarea { text-transform: none !important; }
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; }
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
@@ -254,34 +254,37 @@
         btnUsdt.disabled = true;
 
         try {
-            const userRef = doc(db, 'users', currentUser.uid);
+            const res = await fetch('/api/submit-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uid: currentUser.uid,
+                    currency,
+                    days,
+                    bannerUrl,
+                    clickUrl,
+                    contact
+                })
+            });
+            const data = await res.json();
 
-            // Deduct coins
+            if (!data.success) {
+                alert(data.error || 'Something went wrong.');
+                btnLtc.disabled  = false;
+                btnUsdt.disabled = false;
+                return;
+            }
+
+            // Server confirmed the deduction — reflect it locally
             if (currency === 'ltc') {
-                await updateDoc(userRef, { ltc: increment(-costLtc) });
-                userLtc -= costLtc;
-                document.getElementById('bal-ltc').innerText = userLtc;
+                userLtc = data.newBalance;
+                document.getElementById('bal-ltc').innerText = userLtc.toFixed(4);
                 localStorage.setItem('ltc_balance', userLtc.toFixed(4));
             } else {
-                await updateDoc(userRef, { coins: increment(-costUsdt) });
-                userCoins -= costUsdt;
+                userCoins = data.newBalance;
                 document.getElementById('bal-usdt').innerText = userCoins.toFixed(4);
                 localStorage.setItem('miner_balance', userCoins);
             }
-
-            // Save ad request
-            await addDoc(collection(db, 'ad_requests'), {
-                uid:        currentUser.uid,
-                contact,
-                banner_url: bannerUrl,
-                click_url:  clickUrl,
-                days,
-                currency,
-                cost:       currency === 'ltc' ? costLtc : costUsdt,
-                status:     'pending',
-                paid:       true,
-                createdAt:  new Date()
-            });
 
             document.getElementById('success-box').style.display = 'block';
             document.querySelector('.pay-btn-wrap').style.display = 'none';
@@ -340,6 +343,7 @@
 
 </body>
 </html>
+
 
 
 
