@@ -56,8 +56,8 @@
 
 <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
-    import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-    import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+    import { getAuth, signInAnonymously, inMemoryPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+    import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, deleteDoc, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
     const ADMIN_PASSWORD = 'kr1stal2024'; // смени на свой пароль
 
@@ -70,7 +70,13 @@
         appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
     };
 
-    const app  = initializeApp(firebaseConfig);
+    // ВАЖНО: именованный вторичный app ("admin-panel"), а НЕ default.
+    // Это изолирует Auth-сессию админки от игровой сессии игрока на этом
+    // же устройстве/браузере: раньше signInAnonymously() тут подменял
+    // (сбрасывал) залогиненную сессию игрока — гостевую или Google —
+    // потому что Firebase Auth хранит сессию на уровне origin, а не
+    // страницы, и оба файла использовали один и тот же default app.
+    const app  = initializeApp(firebaseConfig, 'admin-panel');
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
@@ -80,6 +86,9 @@
         const pwd = document.getElementById('pwd').value;
         if (pwd === ADMIN_PASSWORD) {
             try {
+                // Сессию админки не сохраняем на диск — только на время
+                // вкладки, и она живёт в отдельном app, не трогая игрока.
+                await setPersistence(auth, inMemoryPersistence);
                 await signInAnonymously(auth); // satisfies "request.auth != null" in Firestore rules
             } catch(e) {
                 alert('Auth error: ' + e.message);
@@ -138,6 +147,10 @@
                         <button class="btn-approve" onclick="approve('${id}', '${d.banner_url}', '${d.click_url}')">✅ Approve</button>
                         <button class="btn-reject" onclick="reject('${id}')">❌ Reject</button>
                     </div>` : ''}
+                    ${status === 'active' ? `
+                    <div class="btn-row">
+                        <button class="btn-reject" onclick="revoke('${id}')">↩️ Revoke (back to pending)</button>
+                    </div>` : ''}
                 `;
                 container.appendChild(card);
             });
@@ -148,24 +161,14 @@
 
     window.approve = async function(reqId, bannerUrl, clickUrl) {
         const days = parseInt(document.getElementById('days-' + reqId).value) || 1;
-        const paidUntil = new Date();
-        paidUntil.setDate(paidUntil.getDate() + days);
-
         try {
-            // Update request status
-            await updateDoc(doc(db, 'ad_requests', reqId), { status: 'active' });
-
-            // Create active ad slot
-            await addDoc(collection(db, 'ad_slots'), {
-                banner_url: bannerUrl,
-                click_url:  clickUrl,
-                status:     'active',
-                paid_until: paidUntil,
-                days,
-                req_id:     reqId,
-                createdAt:  new Date()
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'approve', reqId, days, bannerUrl, clickUrl })
             });
-
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error approving'); return; }
             alert('✅ Banner approved! Active for ' + days + ' days.');
             loadRequests(currentTab);
         } catch(e) {
@@ -176,8 +179,31 @@
     window.reject = async function(reqId) {
         if (!confirm('Reject this banner?')) return;
         try {
-            await updateDoc(doc(db, 'ad_requests', reqId), { status: 'rejected' });
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'reject', reqId })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error rejecting'); return; }
             alert('❌ Banner rejected.');
+            loadRequests(currentTab);
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    window.revoke = async function(reqId) {
+        if (!confirm('Revoke this approval? The banner will stop showing and the request goes back to Pending.')) return;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'revoke', reqId })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error revoking'); return; }
+            alert('↩️ Approval revoked, moved back to Pending.');
             loadRequests(currentTab);
         } catch(e) {
             alert('Error: ' + e.message);
@@ -186,7 +212,6 @@
 </script>
 </body>
 </html>
-
 
 
 
