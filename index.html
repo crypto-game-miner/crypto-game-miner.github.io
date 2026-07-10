@@ -12,9 +12,8 @@
         .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
         .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
         .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 220px; }
-        .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 14px 0; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 5px 0 #a16207; width: 60%; }
-        .collect-btn:disabled { background: #555; box-shadow: none; color: #999; }
-        .banner-area { position: fixed; bottom: 70px; left: 0; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; gap: 10px; padding: 8px 0; }
+        .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 14px 0; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 5px 0 #a16207; transition: transform 0.1s; width: 60%; }
+        .banner-area { position: fixed; bottom: 70px; left: 0; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; gap: 10px; padding: 8px 0; box-sizing: border-box; overflow: hidden; }
         .banner-scale { transform: scale(0.7); transform-origin: center center; display: block; }
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
@@ -22,37 +21,57 @@
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
         #ad-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; }
         body { text-transform: uppercase; }
+        input { text-transform: none !important; }
     </style>
 </head>
 <body>
     <div id="main-content">
         <div id="ad-overlay">
-            <div style="font-size:40px;">💎</div>
-            <h2 id="ad-status" style="color:#facc15;">VERIFYING...</h2>
-            <div style="margin:10px 0;">
+            <div style="font-size: 40px;">💎</div>
+            <h2 id="ad-status" style="color: #facc15;">VERIFYING...</h2>
+            <div style="margin: 10px 0;">
                 <iframe src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
             </div>
-            <p>Wait <span id="ad-timer" style="font-size:20px;color:#facc15;">10</span>s</p>
+            <p>Wait <span id="ad-timer" style="font-size: 20px; color: #facc15;">10</span>s</p>
         </div>
+
         <div class="header">Faucet</div>
         <div class="balance-container">
-            <div class="balance-row"><span style="color:#22c55e;">Game Coins</span><span style="font-weight:bold;color:#22c55e;" id="game-coins">—</span></div>
-            <div class="balance-row"><span style="color:#facc15;">USDT Coins</span><span style="font-weight:bold;" id="balance">—</span></div>
-            <div class="balance-row"><span style="color:#a78bfa;">LTC Coins</span><span style="font-weight:bold;color:#a78bfa;" id="ltc-balance">—</span></div>
+            <div class="balance-row">
+                <span style="color:#22c55e;">Game Coins</span>
+                <span style="font-weight:bold; color:#22c55e;" id="game-coins">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#facc15;">USDT Coins</span>
+                <span style="font-weight:bold;" id="balance">0</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#a78bfa;">LTC Coins</span>
+                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0</span>
+            </div>
         </div>
+
         <div class="game-area">
-            <div style="font-size:90px;margin-bottom:10px;">⛏️</div>
-            <button id="collect-btn" class="collect-btn" onclick="doClaim()" disabled>LOADING...</button>
-            <p id="claims-left" style="color:#8b949e;font-size:12px;margin-top:10px;"></p>
-            <p id="boost-info" style="font-size:11px;margin-top:4px;color:#a78bfa;"></p>
-            <p id="login-hint" style="font-size:11px;margin-top:4px;color:#facc15;"></p>
+            <div style="font-size: 90px; margin-bottom: 10px; filter: drop-shadow(0 0 15px rgba(250,204,21,0.2));">⛏️</div>
+            <button id="collect-btn" class="collect-btn" onclick="showAd()">CLAIM</button>
+            <p id="claims-left" style="color:#8b949e; font-size:12px; margin-top:10px;"></p>
+            <p id="boost-info" style="font-size:11px; margin-top:4px; color:#a78bfa;"></p>
+            <p id="login-hint" style="font-size:11px; margin-top:4px; color:#facc15;"></p>
         </div>
+
         <div class="banner-area">
+            <!-- BEGIN AADS AD UNIT 2447596 -->
+            <div id="frame" style="width: 320px; height: 50px; margin: auto; position: relative; z-index: 99998; overflow: hidden;">
+                      <iframe data-aa='2447596' src='//acceptable.a-ads.com/2447596/?size=320x50'
+                                        style='border:0; padding:0; width:320px; height:50px; overflow:hidden;display: block;margin: auto'></iframe>
+                    </div>
+            <!-- END AADS AD UNIT 2447596 -->
             <div class="banner-scale">
                 <iframe src="https://zerads.com/ad/ad.php?width=468&ref=11364" marginwidth="0" marginheight="0" width="468" height="60" scrolling="no" border="0" frameborder="0"></iframe>
             </div>
             <iframe src="//ads.coinserom.com/pub?adsunit=353639&size=320x50" style="width:320px;height:50px;border:0;padding:0;background-color:transparent;overflow:auto;"></iframe>
         </div>
+
         <div class="nav-bar">
             <a href="home.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
             <div class="nav-item active"><span class="nav-icon">🚰</span>Faucet</div>
@@ -60,10 +79,11 @@
             <a href="wallet.html" class="nav-item"><span class="nav-icon">👛</span>Wallet</a>
         </div>
     </div>
+
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
-        import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-        import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+        import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -77,126 +97,205 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const MAX_CLAIMS = 20;
-        const POPUP_ON = [1, 10];
-        let currentUser = null;
-        let userData = {};
 
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUser = user;
-                localStorage.setItem('firebase_uid', user.uid);
-                onSnapshot(doc(db, 'users', user.uid), (snap) => {
-                    userData = snap.exists() ? snap.data() : {};
-                    // Save lastClaimTime to localStorage so home.html can use it
-                    const lastClaimMs = userData.lastClaimTime?.toMillis ? userData.lastClaimTime.toMillis() : 0;
-                    if (lastClaimMs) localStorage.setItem('lastClaimTime', lastClaimMs);
-                    // Save claimBoosts to localStorage for home.html mining display
-                    const boosts = (userData.claimBoosts || []).map(b => ({
-                        time: b.time?.toMillis ? b.time.toMillis() : b.time,
-                        amount: b.amount
-                    }));
-                    localStorage.setItem('claimBoosts', JSON.stringify(boosts));
-                    renderUI();
-                });
-                syncMining(user.uid);
-            } else {
-                try { await signInAnonymously(auth); }
-                catch(e) { document.getElementById('collect-btn').innerText = 'CONNECTION ERROR'; }
-            }
-        });
-
-        function renderUI() {
-            document.getElementById('balance').innerText = parseFloat(userData.coins || 0).toFixed(4);
-            document.getElementById('game-coins').innerText = userData.game_coins || 0;
-            document.getElementById('ltc-balance').innerText = parseFloat(userData.ltc || 0).toFixed(4);
-
-            const today = new Date().toDateString();
-            const claimsToday = userData.claimsDay === today ? (userData.claimsToday || 0) : 0;
-            document.getElementById('claims-left').innerText = claimsToday < MAX_CLAIMS
-                ? `Claims Today: ${claimsToday}/${MAX_CLAIMS}`
-                : 'Daily Limit Reached! Come Back Tomorrow.';
-
+        // Получить активные claim-бонусы (не старше 24ч), отфильтровать устаревшие
+        function getActiveClaimBoosts() {
             const now = Date.now();
-            const boosts = (userData.claimBoosts || []).filter(b => {
-                const t = b.time?.toMillis ? b.time.toMillis() : b.time;
-                return now - t < 86400000;
-            });
-            const total = Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 10) / 10;
-            document.getElementById('boost-info').innerText = total > 0 ? `⚡ +${total.toFixed(1)} GH/s Boost Active` : '';
-            document.getElementById('login-hint').innerHTML = userData.email ? '' :
-                '🔒 <a href="settings.html" style="color:#facc15;">Sign in</a> for higher rewards!';
-
-            const btn = document.getElementById('collect-btn');
-            btn.disabled = false;
-            btn.innerText = 'CLAIM';
-        }
-
-        async function syncMining(uid) {
+            let boosts = [];
             try {
-                await fetch('/api/sync-mining', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid, miningCoin: localStorage.getItem('miningCoin') || 'ltc' }),
-                });
-            } catch(e) {}
+                boosts = JSON.parse(localStorage.getItem('claimBoosts') || '[]');
+            } catch { boosts = []; }
+            const active = boosts.filter(b => (now - b.time) < 86400000);
+            localStorage.setItem('claimBoosts', JSON.stringify(active));
+            return active;
         }
 
-        setInterval(() => { if (currentUser) syncMining(currentUser.uid); }, 60000);
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && currentUser) syncMining(currentUser.uid);
-        });
+        function getClaimBoostTotal() {
+            const active = getActiveClaimBoosts();
+            return Math.round(active.reduce((sum, b) => sum + b.amount, 0) * 10) / 10;
+        }
+
+        // Оффлайн начисление LTC (учитывая текущий буст приблизительно)
+        (function() {
+            const lastVisit = Number(localStorage.getItem('lastVisitTime')) || 0;
+            const now = Date.now();
+            const hashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+            const claimBoost = getClaimBoostTotal();
+            const totalHashrate = hashrate + claimBoost;
+            const lastClaim = Number(localStorage.getItem('lastClaimTime')) || 0;
+            const hoursSinceClaim = (now - lastClaim) / 1000 / 3600;
+            const miningPaused = lastClaim === 0 || hoursSinceClaim > 24;
+            if (totalHashrate > 0 && !miningPaused && lastVisit > 0) {
+                const secondsAway = Math.min((now - lastVisit) / 1000, 86400);
+                const miningCoin = localStorage.getItem('miningCoin') || 'ltc';
+const rate = miningCoin === 'ltc' ? 2.5 : 1.1;
+const earned = totalHashrate * rate / 3600 * secondsAway;
+if (earned > 0) {
+    if (miningCoin === 'ltc') {
+        let ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+        ltc += earned;
+        localStorage.setItem('ltc_balance', ltc.toFixed(4));
+    } else {
+        let coins = parseFloat(localStorage.getItem('miner_balance')) || 0;
+        coins += earned;
+        localStorage.setItem('miner_balance', coins.toFixed(4));
+    }
+}
+            }
+            localStorage.setItem('lastVisitTime', now);
+        })();
+
+        const POPUP_ON = [1, 10];
+        const MAX_CLAIMS = 20;
+        const CLAIM_COOLDOWN = 5000;
+        const CLAIM_BOOST_AMOUNT = 0.1;
+
+        let coins = Number(localStorage.getItem('miner_balance')) || 0;
+        let gameCoins = Number(localStorage.getItem('game_coins')) || 0;
+        let ltcCoins = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+        let exp = Number(localStorage.getItem('player_exp')) || 0;
+        let currentUser = null;
+
+        const isLoggedIn = !!localStorage.getItem('locked_google_email');
+        const hint = document.getElementById('login-hint');
+        if (!isLoggedIn) {
+            hint.innerHTML = '🔒 <a href="settings.html" style="color:#facc15;">Sign in</a> to get +1 bonus coin per claim!';
+        }
+
+        document.getElementById('balance').innerText = coins;
+        document.getElementById('game-coins').innerText = gameCoins;
+        document.getElementById('ltc-balance').innerText = ltcCoins.toFixed(4);
+        updateClaimsLeft();
+        updateBoostInfo();
+
+        function updateBoostInfo() {
+            const boostTotal = getClaimBoostTotal();
+            const el = document.getElementById('boost-info');
+            el.innerText = boostTotal > 0 ? `⚡ Active Claim Boost: +${boostTotal.toFixed(1)} GH/s (24h each)` : '';
+        }
+
+        function getClaimsToday() {
+            const today = new Date().toDateString();
+            const lastDay = localStorage.getItem('lastClaimDay');
+            if (lastDay !== today) {
+                localStorage.setItem('lastClaimDay', today);
+                localStorage.setItem('claimsToday', '0');
+                return 0;
+            }
+            return Number(localStorage.getItem('claimsToday')) || 0;
+        }
+
+        function updateClaimsLeft() {
+            const claimsToday = getClaimsToday();
+            const el = document.getElementById('claims-left');
+            if (el) el.innerText = claimsToday < MAX_CLAIMS
+                ? `Claims Today: ${claimsToday}/${MAX_CLAIMS}`
+                : "Daily Limit Reached! Come Back Tomorrow.";
+        }
 
         async function verifyAd() {
-            try { await fetch('https://zerads.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' }); return true; }
-            catch { return false; }
+            try {
+                await fetch('https://zerads.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' });
+                return true;
+            } catch { return false; }
         }
 
-        window.doClaim = async function() {
-            if (!currentUser) return;
-            const today = new Date().toDateString();
-            const claimsToday = userData.claimsDay === today ? (userData.claimsToday || 0) : 0;
-            if (claimsToday >= MAX_CLAIMS) return alert('Daily Limit Reached! Come Back Tomorrow.');
+        async function updateFirebase(c, gc, ltc, e) {
+            const lockedEmail = localStorage.getItem('locked_google_email');
+            if (!lockedEmail || !currentUser) return;
+            try {
+                const baseHashrate = parseFloat(localStorage.getItem('hashrate')) || 0;
+                let boosts = [];
+try { boosts = JSON.parse(localStorage.getItem('claimBoosts') || '[]'); } catch {}
+const claimBoost = Math.round(boosts.filter(b => (Date.now() - b.time) < 86400000).reduce((s, b) => s + b.amount, 0) * 10) / 10;
+                const totalHashrate = Math.round((baseHashrate + claimBoost) * 10) / 10;
+                const lastClaimTime = Number(localStorage.getItem('lastClaimTime')) || 0;
+                await setDoc(doc(db, 'users', currentUser.uid), {
+                    coins: c, game_coins: gc, ltc, exp: e, hashrate: totalHashrate,
+                    email: lockedEmail,
+                    lastClaimTime: lastClaimTime ? new Date(lastClaimTime) : null,
+                    updatedAt: new Date()
+                });
+            } catch(e) {
+                console.log('Firebase update skipped:', e.message);
+            }
+        }
 
+        async function showAd() {
             const btn = document.getElementById('collect-btn');
+            const today = new Date().toDateString();
+            const lastDay = localStorage.getItem('lastClaimDay');
+            let claimsToday = Number(localStorage.getItem('claimsToday')) || 0;
+            if (lastDay !== today) {
+                localStorage.setItem('lastClaimDay', today);
+                localStorage.setItem('claimsToday', '0');
+                claimsToday = 0;
+            }
+            if (claimsToday >= MAX_CLAIMS) return alert("Daily Limit Reached! Come Back Tomorrow.");
+
+            const lastClaimTs = Number(localStorage.getItem('lastClaimTs')) || 0;
+            const timeSinceLast = Date.now() - lastClaimTs;
+            if (lastClaimTs > 0 && timeSinceLast < CLAIM_COOLDOWN) {
+                const secsLeft = Math.ceil((CLAIM_COOLDOWN - timeSinceLast) / 1000);
+                return alert(`Please wait ${secsLeft}s before next claim.`);
+            }
+
             btn.disabled = true;
 
             const nextClaim = claimsToday + 1;
-            if (POPUP_ON.includes(nextClaim)) window.open('https://zerads.com/ad/pop.php?ref=11364', '_blank');
+            if (POPUP_ON.includes(nextClaim)) {
+                window.open('https://zerads.com/ad/pop.php?ref=11364', '_blank');
+            }
 
             const overlay = document.getElementById('ad-overlay');
+            const status = document.getElementById('ad-status');
             overlay.style.display = 'flex';
             const ok = await verifyAd();
-            const status = document.getElementById('ad-status');
-            status.innerText = ok ? 'AD LOADED ✅' : 'ADBLOCK DETECTED! ❌';
-            status.style.color = ok ? '#00ff00' : '#ff4444';
-
+            status.innerText = ok ? "AD LOADED ✅" : "ADBLOCK DETECTED! ❌";
+            status.style.color = ok ? "#00ff00" : "#ff4444";
             let timeLeft = 10;
-            const timer = setInterval(async () => {
+            const timerAd = setInterval(async () => {
                 timeLeft--;
                 document.getElementById('ad-timer').innerText = timeLeft;
                 if (timeLeft <= 0) {
-                    clearInterval(timer);
+                    clearInterval(timerAd);
                     overlay.style.display = 'none';
                     if (ok) {
-                        try {
-                            const resp = await fetch('/api/claim', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ uid: currentUser.uid }),
-                            });
-                            const result = await resp.json();
-                            if (!result.success) alert(result.error || 'Claim failed');
-                            else syncMining(currentUser.uid);
-                        } catch(e) { alert('Network error: ' + e.message); }
+                        const isLoggedIn = !!localStorage.getItem('locked_google_email');
+                        const usdtReward = isLoggedIn ? 5 : 4;
+                        coins += usdtReward;
+                        gameCoins += 7;
+                        exp += 8;
+
+                        // Добавляем claim-буст +0.1 GH/s на 24ч
+                        let boosts = [];
+                        try { boosts = JSON.parse(localStorage.getItem('claimBoosts') || '[]'); } catch { boosts = []; }
+                        boosts.push({ time: Date.now(), amount: CLAIM_BOOST_AMOUNT });
+                        localStorage.setItem('claimBoosts', JSON.stringify(boosts));
+
+                        localStorage.setItem('miner_balance', coins);
+                        localStorage.setItem('game_coins', gameCoins);
+                        localStorage.setItem('player_exp', exp);
+                        localStorage.setItem('lastClaimTime', Date.now());
+                        localStorage.setItem('lastClaimTs', Date.now());
+                        localStorage.setItem('claimsToday', String(nextClaim));
+                        document.getElementById('balance').innerText = coins;
+                        document.getElementById('game-coins').innerText = gameCoins;
+                        updateClaimsLeft();
+                        updateBoostInfo();
+                        const ltcNow = parseFloat(localStorage.getItem('ltc_balance')) || 0;
+                        await updateFirebase(coins, gameCoins, ltcNow, exp);
                     }
                     btn.disabled = false;
                 }
             }, 1000);
-        };
+        }
+
+        window.showAd = showAd;
     </script>
 </body>
 </html>
+
 
 
 
