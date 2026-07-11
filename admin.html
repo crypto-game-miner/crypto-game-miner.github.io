@@ -123,10 +123,20 @@
             }
 
             container.innerHTML = '';
-            snap.forEach(docSnap => {
+            for (const docSnap of snap.docs) {
                 const d = docSnap.data();
                 const id = docSnap.id;
                 const date = d.createdAt?.toDate?.()?.toLocaleDateString() || '—';
+
+                // Для активных баннеров подтягиваем счётчик просмотров из ad_slots
+                let viewsRow = '';
+                if (status === 'active') {
+                    try {
+                        const slotSnap = await getDocs(query(collection(db, 'ad_slots'), where('req_id', '==', id)));
+                        const views = slotSnap.empty ? 0 : (slotSnap.docs[0].data().views || 0);
+                        viewsRow = `<div class="info-row"><span>Views</span><span>${views}</span></div>`;
+                    } catch(e) { viewsRow = `<div class="info-row"><span>Views</span><span>—</span></div>`; }
+                }
 
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -140,6 +150,7 @@
                     <div class="info-row"><span>Days requested</span><span>${d.days}</span></div>
                     <div class="info-row"><span>Price</span><span>${d.cost} ${(d.currency || '').toUpperCase()} coins</span></div>
                     <div class="info-row"><span>Submitted</span><span>${date}</span></div>
+                    ${viewsRow}
                     ${status === 'pending' ? `
                     <div class="btn-row" style="align-items:center;">
                         <span style="font-size:11px; color:#8b949e;">Days to activate:</span>
@@ -153,7 +164,7 @@
                     </div>` : ''}
                 `;
                 container.appendChild(card);
-            });
+            }
         } catch(e) {
             container.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
         }
