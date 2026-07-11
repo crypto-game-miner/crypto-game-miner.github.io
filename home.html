@@ -301,16 +301,32 @@
         window.openMenu  = () => { document.getElementById('side-menu').classList.add('open');    document.getElementById('overlay').classList.add('open');    };
         window.closeMenu = () => { document.getElementById('side-menu').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); };
 
+        // Считаем показ баннера не чаще раза в 15 минут на одного юзера,
+        // чтобы обычные рефреши страницы не накручивали статистику.
+        function trackBannerView(slotId) {
+            const key = 'bannerViewTime_' + slotId;
+            const last = Number(localStorage.getItem(key)) || 0;
+            if (Date.now() - last < 15 * 60 * 1000) return;
+            localStorage.setItem(key, Date.now());
+            fetch('/api/track-view', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slotId })
+            }).catch(() => {});
+        }
+
         async function loadPaidBanner() {
             try {
                 const now = new Date();
                 const q = query(collection(db, 'ad_slots'), where('status','==','active'), where('paid_until','>=',now), orderBy('paid_until','asc'), limit(1));
                 const snap = await getDocs(q);
                 if (!snap.empty) {
-                    const ad = snap.docs[0].data();
+                    const docSnap = snap.docs[0];
+                    const ad = docSnap.data();
                     document.getElementById('paid-banner-img').src = ad.banner_url;
                     document.getElementById('paid-banner-link').href = ad.click_url;
                     document.getElementById('paid-banner-slot').style.display = 'block';
+                    trackBannerView(docSnap.id);
                 } else {
                     document.getElementById('advertise-promo').style.display = 'block';
                 }
