@@ -90,8 +90,12 @@
                 <div class="exp-text"><span id="exp-current">0</span> / <span id="exp-needed">50</span> EXP</div>
             </div>
             <div class="banner-slot">
-                <div id="paid-banner-slot"><a id="paid-banner-link" href="#" target="_blank" rel="noopener"><img id="paid-banner-img" src="" alt="Ad"></a></div>
-                <div id="advertise-promo"><a class="promo-banner" href="advertise.html"><span>📢</span><div><div class="promo-text">Place your banner here</div><div class="promo-price">from 220 LTC coins or 100 USDT coins / day</div></div></a></div>
+                <!-- BEGIN AADS AD UNIT 2447704 -->
+                <div id="frame" style="width: 320px; height: 50px; margin: auto; position: relative; z-index: 99998; overflow: hidden;">
+                          <iframe data-aa='2447704' src='//acceptable.a-ads.com/2447704/?size=320x50'
+                                            style='border:0; padding:0; width:320px; height:50px; overflow:hidden;display: block;margin: auto'></iframe>
+                        </div>
+                <!-- END AADS AD UNIT 2447704 -->
             </div>
             <div class="mining-card">
                 <div class="mining-title">⛏️ Mining Power</div>
@@ -119,7 +123,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
         import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-        import { getFirestore, doc, onSnapshot, getDocs, collection, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -300,43 +304,9 @@
 
         window.openMenu  = () => { document.getElementById('side-menu').classList.add('open');    document.getElementById('overlay').classList.add('open');    };
         window.closeMenu = () => { document.getElementById('side-menu').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); };
-
-        // Считаем показ баннера не чаще раза в 15 минут на одного юзера,
-        // чтобы обычные рефреши страницы не накручивали статистику.
-        function trackBannerView(slotId) {
-            const key = 'bannerViewTime_' + slotId;
-            const last = Number(localStorage.getItem(key)) || 0;
-            if (Date.now() - last < 15 * 60 * 1000) return;
-            localStorage.setItem(key, Date.now());
-            fetch('/api/track-view', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ slotId })
-            }).catch(() => {});
-        }
-
-        async function loadPaidBanner() {
-            try {
-                const now = new Date();
-                const q = query(collection(db, 'ad_slots'), where('status','==','active'), where('paid_until','>=',now), orderBy('paid_until','asc'), limit(1));
-                const snap = await getDocs(q);
-                if (!snap.empty) {
-                    const docSnap = snap.docs[0];
-                    const ad = docSnap.data();
-                    document.getElementById('paid-banner-img').src = ad.banner_url;
-                    document.getElementById('paid-banner-link').href = ad.click_url;
-                    document.getElementById('paid-banner-slot').style.display = 'block';
-                    trackBannerView(docSnap.id);
-                } else {
-                    document.getElementById('advertise-promo').style.display = 'block';
-                }
-            } catch(e) { document.getElementById('advertise-promo').style.display = 'block'; }
-        }
-        loadPaidBanner();
     </script>
 </body>
 </html>
-
 
 
 
