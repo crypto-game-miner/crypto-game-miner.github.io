@@ -27,7 +27,7 @@
         .btn-approve { background: #22c55e; color: #000; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; flex: 1; font-family: monospace; }
         .btn-reject  { background: #ef4444; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; flex: 1; font-family: monospace; }
         .btn-approve:disabled, .btn-reject:disabled { opacity: 0.5; cursor: not-allowed; }
-        .days-input { background: #0d0d0d; border: 1px solid #facc15; border-radius: 6px; color: white; padding: 6px 10px; font-size: 13px; font-family: monospace; width: 60px; outline: none; }
+        .views-input { background: #0d0d0d; border: 1px solid #facc15; border-radius: 6px; color: white; padding: 6px 10px; font-size: 13px; font-family: monospace; width: 70px; outline: none; }
         .empty { text-align: center; color: #555; padding: 40px 0; font-size: 14px; }
         .tab-row { display: flex; gap: 8px; margin-bottom: 16px; }
         .tab { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: 1px solid #3d2b1f; background: transparent; color: #8b949e; font-family: monospace; text-transform: uppercase; }
@@ -128,14 +128,21 @@
                 const id = docSnap.id;
                 const date = d.createdAt?.toDate?.()?.toLocaleDateString() || '—';
 
-                // Для активных баннеров подтягиваем счётчик просмотров из ad_slots
+                // Для активных баннеров подтягиваем views_shown/views_total из ad_slots
                 let viewsRow = '';
                 if (status === 'active') {
                     try {
                         const slotSnap = await getDocs(query(collection(db, 'ad_slots'), where('req_id', '==', id)));
-                        const views = slotSnap.empty ? 0 : (slotSnap.docs[0].data().views || 0);
-                        viewsRow = `<div class="info-row"><span>Views</span><span>${views}</span></div>`;
-                    } catch(e) { viewsRow = `<div class="info-row"><span>Views</span><span>—</span></div>`; }
+                        if (slotSnap.empty) {
+                            viewsRow = `<div class="info-row"><span>Views</span><span>—</span></div>`;
+                        } else {
+                            const slot = slotSnap.docs[0].data();
+                            const shown = slot.views_shown || 0;
+                            const total = slot.views_total || 0;
+                            const slotStatus = slot.status || 'active';
+                            viewsRow = `<div class="info-row"><span>Views shown</span><span>${shown} / ${total}${slotStatus === 'completed' ? ' (done)' : ''}</span></div>`;
+                        }
+                    } catch(e) { viewsRow = `<div class="info-row"><span>Views shown</span><span>—</span></div>`; }
                 }
 
                 const card = document.createElement('div');
@@ -147,14 +154,14 @@
                     </div>
                     <img class="banner-img" src="${d.banner_url}" onerror="this.src=''" alt="banner">
                     <div class="info-row"><span>Link</span><a href="${d.click_url}" target="_blank">Open ↗</a></div>
-                    <div class="info-row"><span>Days requested</span><span>${d.days}</span></div>
-                    <div class="info-row"><span>Price</span><span>${d.cost} ${(d.currency || '').toUpperCase()} coins</span></div>
+                    <div class="info-row"><span>Views requested</span><span>${d.views_purchased ?? '—'}</span></div>
+                    <div class="info-row"><span>Price</span><span>${d.cost} USDT coins</span></div>
                     <div class="info-row"><span>Submitted</span><span>${date}</span></div>
                     ${viewsRow}
                     ${status === 'pending' ? `
                     <div class="btn-row" style="align-items:center;">
-                        <span style="font-size:11px; color:#8b949e;">Days to activate:</span>
-                        <input type="number" class="days-input" id="days-${id}" value="${d.days}" min="1">
+                        <span style="font-size:11px; color:#8b949e;">Views to activate:</span>
+                        <input type="number" class="views-input" id="views-${id}" value="${d.views_purchased ?? 1}" min="1">
                         <button class="btn-approve" onclick="approve('${id}', '${d.banner_url}', '${d.click_url}')">✅ Approve</button>
                         <button class="btn-reject" onclick="reject('${id}')">❌ Reject</button>
                     </div>` : ''}
@@ -171,16 +178,16 @@
     }
 
     window.approve = async function(reqId, bannerUrl, clickUrl) {
-        const days = parseInt(document.getElementById('days-' + reqId).value) || 1;
+        const views = parseInt(document.getElementById('views-' + reqId).value) || 1;
         try {
             const res = await fetch('/api/moderate-ad', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'approve', reqId, days, bannerUrl, clickUrl })
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'approve', reqId, views, bannerUrl, clickUrl })
             });
             const data = await res.json();
             if (!data.success) { alert(data.error || 'Error approving'); return; }
-            alert('✅ Banner approved! Active for ' + days + ' days.');
+            alert('✅ Banner approved! Active for ' + views + ' views.');
             loadRequests(currentTab);
         } catch(e) {
             alert('Error: ' + e.message);
@@ -223,6 +230,7 @@
 </script>
 </body>
 </html>
+
 
 
 
