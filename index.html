@@ -88,6 +88,12 @@
         let currentUser = null;
         let userData = {};
 
+        // Matches the UTC date key used server-side in api/claim.js
+        // (must stay identical on both sides, or the daily counter desyncs).
+        function todayKey() {
+            return new Date().toISOString().slice(0, 10);
+        }
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
@@ -117,7 +123,7 @@
             document.getElementById('game-coins').innerText = userData.game_coins || 0;
             document.getElementById('ltc-balance').innerText = parseFloat(userData.ltc || 0).toFixed(4);
 
-            const today = new Date().toDateString();
+            const today = todayKey();
             const claimsToday = userData.claimsDay === today ? (userData.claimsToday || 0) : 0;
             document.getElementById('claims-left').innerText = claimsToday < MAX_CLAIMS
                 ? `Claims Today: ${claimsToday}/${MAX_CLAIMS}`
@@ -160,7 +166,7 @@
 
         window.doClaim = async function() {
             if (!currentUser) return;
-            const today = new Date().toDateString();
+            const today = todayKey();
             const claimsToday = userData.claimsDay === today ? (userData.claimsToday || 0) : 0;
             if (claimsToday >= MAX_CLAIMS) return alert('Daily Limit Reached! Come Back Tomorrow.');
 
@@ -203,6 +209,7 @@
     </script>
 </body>
 </html>
+
 
 
 
