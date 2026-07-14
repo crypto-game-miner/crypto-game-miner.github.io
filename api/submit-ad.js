@@ -1,13 +1,12 @@
 // api/submit-ad.js
-// The ONLY place allowed to deduct USDT/LTC coins for an ad purchase and
+// The ONLY place allowed to deduct USDT coins for an ad purchase and
 // create the ad_requests document. Client sends the form data + uid,
 // server verifies balance and does everything in a transaction.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
-const PRICE_LTC  = 220;
-const PRICE_USDT = 100;
+const PRICE_PER_VIEW = 7; // USDT coins per view
 
 function initFirebase() {
   if (!getApps().length) {
@@ -29,14 +28,11 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { uid, currency, days, bannerUrl, clickUrl, contact } = req.body || {};
+  const { uid, views, bannerUrl, clickUrl, contact } = req.body || {};
 
   if (!uid) return res.status(400).json({ error: 'Missing uid' });
-  if (currency !== 'ltc' && currency !== 'usdt') {
-    return res.status(400).json({ error: 'Invalid currency' });
-  }
-  const numDays = parseInt(days) || 1;
-  if (numDays < 1) return res.status(400).json({ error: 'Invalid days' });
+  const numViews = parseInt(views) || 0;
+  if (numViews < 1) return res.status(400).json({ error: 'Invalid views' });
   if (!bannerUrl || !bannerUrl.startsWith('http')) {
     return res.status(400).json({ error: 'Invalid banner URL' });
   }
@@ -58,20 +54,18 @@ export default async function handler(req, res) {
       }
       const data = snap.data();
 
-      const price   = currency === 'ltc' ? PRICE_LTC : PRICE_USDT;
-      const total   = price * numDays;
-      const field   = currency === 'ltc' ? 'ltc' : 'coins';
-      const balance = data[field] || 0;
+      const total   = PRICE_PER_VIEW * numViews;
+      const balance = data.coins || 0;
 
       if (balance < total) {
         throw {
           code: 'INSUFFICIENT_FUNDS',
-          message: `Not enough ${currency.toUpperCase()} coins. Need ${total}, you have ${balance}.`,
+          message: `Not enough USDT coins. Need ${total}, you have ${balance}.`,
         };
       }
 
       const newBalance = balance - total;
-      tx.update(userRef, { [field]: newBalance });
+      tx.update(userRef, { coins: newBalance });
 
       const adRef = db.collection('ad_requests').doc();
       tx.set(adRef, {
@@ -79,15 +73,14 @@ export default async function handler(req, res) {
         contact,
         banner_url: bannerUrl,
         click_url: clickUrl,
-        days: numDays,
-        currency,
+        views_purchased: numViews,
         cost: total,
         status: 'pending',
         paid: true,
         createdAt: Timestamp.now(),
       });
 
-      return { newBalance, field, total };
+      return { newBalance, total };
     });
 
     return res.status(200).json({ success: true, ...result });
@@ -100,4 +93,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 
