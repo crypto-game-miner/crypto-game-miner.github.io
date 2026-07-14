@@ -1,6 +1,7 @@
 // api/claim.js
 // The ONLY place that's allowed to credit USDT/Game coins for a faucet claim.
-// Client sends just { uid }, server decides everything else.
+// Also the only place allowed to consume a view from an active purchased
+// ad_slots document. Client sends just { uid }, server decides everything else.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -38,6 +39,13 @@ export default async function handler(req, res) {
 
   const db = initFirebase();
   const userRef = db.collection('users').doc(uid);
+
+  // Oldest active purchased ad slot with views remaining wins the slot
+  // (first-come-first-served if more than one is approved at once).
+  const adSlotQuery = db.collection('ad_slots')
+    .where('status', '==', 'active')
+    .orderBy('createdAt', 'asc')
+    .limit(1);
 
   try {
     const result = await db.runTransaction(async (tx) => {
@@ -89,6 +97,26 @@ export default async function handler(req, res) {
         updatedAt: Timestamp.fromMillis(now),
       }, { merge: true });
 
+      // ─── Consume a view from the active purchased ad slot, if any ──
+      let ad = null;
+      const slotSnap = await tx.get(adSlotQuery);
+      if (!slotSnap.empty) {
+        const slotDoc  = slotSnap.docs[0];
+        const slotData = slotDoc.data();
+        const newViewsShown = (slotData.views_shown || 0) + 1;
+        const exhausted = newViewsShown >= slotData.views_total;
+
+        tx.update(slotDoc.ref, {
+          views_shown: newViewsShown,
+          status: exhausted ? 'completed' : 'active',
+        });
+
+        ad = {
+          banner_url: slotData.banner_url,
+          click_url: slotData.click_url,
+        };
+      }
+
       return {
         coins: newCoins,
         game_coins: newGameCoins,
@@ -97,6 +125,7 @@ export default async function handler(req, res) {
         claimsRemaining: MAX_CLAIMS_PER_DAY - newClaims,
         usdtReward,
         gameCoinsReward: GAME_COINS_REWARD,
+        ad,
       };
     });
 
@@ -110,3 +139,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
