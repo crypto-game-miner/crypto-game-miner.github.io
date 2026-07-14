@@ -15,17 +15,14 @@
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
         .content { padding: 0 16px; }
 
-        .balance-bar { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; }
+        .balance-bar { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-around; }
         .bal-item { text-align: center; }
         .bal-label { font-size: 9px; color: #8b949e; }
         .bal-value { font-size: 13px; font-weight: bold; margin-top: 2px; }
 
-        .price-card { background: rgba(250,204,21,0.08); border: 2px solid #facc15; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
-        .price-row { display: flex; gap: 8px; margin-bottom: 8px; }
-        .price-opt { flex: 1; background: rgba(0,0,0,0.3); border: 1px solid #3d2b1f; border-radius: 8px; padding: 10px 6px; text-align: center; cursor: pointer; transition: all 0.2s; }
-        .price-opt.selected { border-color: #facc15; background: rgba(250,204,21,0.12); }
-        .price-opt .p-amount { font-size: 15px; font-weight: bold; color: #facc15; }
-        .price-opt .p-label  { font-size: 9px; color: #8b949e; margin-top: 3px; }
+        .price-card { background: rgba(250,204,21,0.08); border: 2px solid #facc15; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; text-align: center; }
+        .price-card .p-amount { font-size: 20px; font-weight: bold; color: #facc15; }
+        .price-card .p-label  { font-size: 10px; color: #8b949e; margin-top: 4px; }
 
         .section { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 10px; padding: 14px; margin-bottom: 14px; }
         .section-title { color: #facc15; font-size: 12px; margin-bottom: 12px; letter-spacing: 1px; }
@@ -43,14 +40,11 @@
 
         .total-box { background: rgba(250,204,21,0.1); border: 1px solid #facc15; border-radius: 8px; padding: 10px; text-align: center; margin-bottom: 14px; font-size: 13px; color: #facc15; font-weight: bold; }
 
-        .pay-btn { border: none; padding: 14px 0; border-radius: 12px; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; font-family: 'Courier New', monospace; text-transform: uppercase; margin-bottom: 8px; }
-        .pay-ltc  { background: #a78bfa; color: #1a1613; box-shadow: 0 4px 0 #6d28d9; }
-        .pay-usdt { background: #22c55e; color: #1a1613; box-shadow: 0 4px 0 #15803d; }
+        .pay-btn { border: none; padding: 14px 0; border-radius: 12px; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; font-family: 'Courier New', monospace; text-transform: uppercase; margin-bottom: 8px; background: #22c55e; color: #1a1613; box-shadow: 0 4px 0 #15803d; }
         .pay-btn:disabled { background: #555 !important; box-shadow: none !important; color: #999 !important; cursor: not-allowed; }
 
         .pay-btn-wrap { position: fixed; bottom: 70px; left: 0; right: 0; background: #1a1613; padding: 10px 16px; border-top: 1px solid #3d2b1f; z-index: 998; }
         .pay-btn-wrap .pay-btn { margin-bottom: 0; }
-        .pay-btn-wrap .pay-btn + .pay-btn { margin-top: 8px; }
 
         .not-logged { background: rgba(239,68,68,0.1); border: 1px solid #ef4444; border-radius: 10px; padding: 12px; text-align: center; font-size: 12px; color: #ef4444; margin-bottom: 14px; display: none; }
         .not-logged a { color: #facc15; }
@@ -79,10 +73,6 @@
             <div class="bal-value" id="bal-usdt" style="color:#facc15;">—</div>
         </div>
         <div class="bal-item">
-            <div class="bal-label">LTC Coins</div>
-            <div class="bal-value" id="bal-ltc" style="color:#a78bfa;">—</div>
-        </div>
-        <div class="bal-item">
             <div class="bal-label">Game Coins</div>
             <div class="bal-value" id="bal-game" style="color:#22c55e;">—</div>
         </div>
@@ -93,29 +83,21 @@
         🔒 <a href="settings.html">Sign in</a> to purchase a banner slot
     </div>
 
-    <!-- Price options -->
+    <!-- Price -->
     <div class="price-card">
-        <div style="font-size:11px; color:#8b949e; margin-bottom:10px; text-align:center;">Select payment currency</div>
-        <div class="price-row">
-            <div class="price-opt selected" id="opt-ltc" onclick="selectCurrency('ltc')">
-                <div class="p-amount">220 LTC</div>
-                <div class="p-label">Coins / day</div>
-            </div>
-            <div class="price-opt" id="opt-usdt" onclick="selectCurrency('usdt')">
-                <div class="p-amount">100 USDT</div>
-                <div class="p-label">Coins / day</div>
-            </div>
-        </div>
-        <div style="font-size:10px; color:#8b949e; text-align:center;">320×50 banner · Home page</div>
+        <div class="p-amount">7 USDT Coins</div>
+        <div class="p-label">per view</div>
+        <div style="font-size:10px; color:#8b949e; margin-top:8px;">320×50 banner · Shown during Faucet Claim</div>
     </div>
 
     <!-- What you get -->
     <div class="section">
         <div class="section-title">📦 What you get</div>
-        <div class="info-row"><span>Placement</span><span>Home</span></div>
+        <div class="info-row"><span>Placement</span><span>Faucet Claim screen</span></div>
         <div class="info-row"><span>Banner size</span><span>320×50 px</span></div>
         <div class="info-row"><span>Activation</span><span>After moderation</span></div>
         <div class="info-row"><span>Moderation</span><span>Up to 24h</span></div>
+        <div class="info-row"><span>Ends</span><span>When purchased views run out</span></div>
     </div>
 
     <!-- Form -->
@@ -132,8 +114,10 @@
         <label>Contact Email</label>
         <input type="text" id="contact" placeholder="you@email.com">
 
-        <label>Number of days</label>
-        <input type="number" id="days" value="1" min="1" oninput="updateTotal()">
+        <label>Number of views</label>
+        <input type="number" id="views" value="100" min="1" oninput="updateTotal()">
+
+        <div class="total-box" id="total-box">Total: 700 USDT Coins</div>
 
         <div class="note"><b>⚠️ Moderation:</b> Every banner is reviewed manually before going live. No adult, illegal, or misleading content allowed.</div>
     </div>
@@ -141,8 +125,7 @@
 </div>
 
 <div class="pay-btn-wrap">
-    <button class="pay-btn pay-ltc"  id="btn-ltc"  onclick="submitAd('ltc')" disabled>Pay 220 LTC Coins</button>
-    <button class="pay-btn pay-usdt" id="btn-usdt" onclick="submitAd('usdt')" style="display:none;" disabled>Pay 100 USDT Coins</button>
+    <button class="pay-btn" id="btn-pay" onclick="submitAd()" disabled>Pay 700 USDT Coins</button>
 </div>
 
 <div class="content">
@@ -162,7 +145,7 @@
 <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
     import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-    import { getFirestore, doc, getDoc, updateDoc, collection, addDoc, increment } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+    import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
     const firebaseConfig = {
         apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -177,45 +160,39 @@
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
+    const PRICE_PER_VIEW = 7; // USDT coins
+
     let currentUser = null;
     let userCoins   = 0;
-    let userLtc     = 0;
 
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             currentUser = user;
             document.getElementById('not-logged').style.display = 'none';
 
-            // Load balances from Firebase
             try {
                 const snap = await getDoc(doc(db, 'users', user.uid));
                 if (snap.exists()) {
                     const d = snap.data();
                     userCoins = d.coins || 0;
-                    userLtc   = d.ltc   || 0;
                     const gameCoins = d.game_coins || 0;
-                    document.getElementById('bal-usdt').innerText  = userCoins.toFixed(4);
-                    document.getElementById('bal-ltc').innerText   = userLtc.toFixed(4);
-                    document.getElementById('bal-game').innerText  = gameCoins;
+                    document.getElementById('bal-usdt').innerText = userCoins.toFixed(4);
+                    document.getElementById('bal-game').innerText = gameCoins;
                 }
             } catch(e) {
-                // fallback to localStorage
                 userCoins = Number(localStorage.getItem('miner_balance')) || 0;
-                userLtc   = parseFloat(localStorage.getItem('ltc_balance')) || 0;
                 document.getElementById('bal-usdt').innerText = userCoins.toFixed(4);
-                document.getElementById('bal-ltc').innerText  = userLtc.toFixed(4);
             }
         } else {
             currentUser = null;
             document.getElementById('not-logged').style.display = 'block';
-            // Show localStorage balances for guests
-            document.getElementById('bal-usdt').innerText  = parseFloat(localStorage.getItem('miner_balance') || 0).toFixed(4);
-            document.getElementById('bal-ltc').innerText   = parseFloat(localStorage.getItem('ltc_balance') || 0).toFixed(4);
-            document.getElementById('bal-game').innerText  = localStorage.getItem('game_coins') || 0;
+            document.getElementById('bal-usdt').innerText = parseFloat(localStorage.getItem('miner_balance') || 0).toFixed(4);
+            document.getElementById('bal-game').innerText = localStorage.getItem('game_coins') || 0;
         }
+        validateForm();
     });
 
-    window.submitAd = async function(currency) {
+    window.submitAd = async function() {
         if (!currentUser) {
             alert('Please sign in first!');
             return;
@@ -224,9 +201,9 @@
         const bannerUrl = document.getElementById('banner-url').value.trim();
         const clickUrl  = document.getElementById('click-url').value.trim();
         const contact   = document.getElementById('contact').value.trim();
-        const days      = parseInt(document.getElementById('days').value) || 1;
+        const views     = parseInt(document.getElementById('views').value) || 0;
 
-        if (!bannerUrl || !clickUrl || !contact) {
+        if (!bannerUrl || !clickUrl || !contact || views < 1) {
             alert('Please fill in all fields!');
             return;
         }
@@ -235,23 +212,15 @@
             return;
         }
 
-        const costLtc  = 220 * days;
-        const costUsdt = 100 * days;
+        const cost = PRICE_PER_VIEW * views;
 
-        // Check balance
-        if (currency === 'ltc' && userLtc < costLtc) {
-            alert(`Not enough LTC Coins! You have ${userLtc}, need ${costLtc}.`);
-            return;
-        }
-        if (currency === 'usdt' && userCoins < costUsdt) {
-            alert(`Not enough USDT Coins! You have ${userCoins}, need ${costUsdt}.`);
+        if (userCoins < cost) {
+            alert(`Not enough USDT Coins! You have ${userCoins}, need ${cost}.`);
             return;
         }
 
-        const btnLtc  = document.getElementById('btn-ltc');
-        const btnUsdt = document.getElementById('btn-usdt');
-        btnLtc.disabled  = true;
-        btnUsdt.disabled = true;
+        const btn = document.getElementById('btn-pay');
+        btn.disabled = true;
 
         try {
             const res = await fetch('/api/submit-ad', {
@@ -259,8 +228,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     uid: currentUser.uid,
-                    currency,
-                    days,
+                    views,
                     bannerUrl,
                     clickUrl,
                     contact
@@ -270,51 +238,30 @@
 
             if (!data.success) {
                 alert(data.error || 'Something went wrong.');
-                btnLtc.disabled  = false;
-                btnUsdt.disabled = false;
+                btn.disabled = false;
                 return;
             }
 
-            // Server confirmed the deduction — reflect it locally
-            if (currency === 'ltc') {
-                userLtc = data.newBalance;
-                document.getElementById('bal-ltc').innerText = userLtc.toFixed(4);
-                localStorage.setItem('ltc_balance', userLtc.toFixed(4));
-            } else {
-                userCoins = data.newBalance;
-                document.getElementById('bal-usdt').innerText = userCoins.toFixed(4);
-                localStorage.setItem('miner_balance', userCoins);
-            }
+            userCoins = data.newBalance;
+            document.getElementById('bal-usdt').innerText = userCoins.toFixed(4);
+            localStorage.setItem('miner_balance', userCoins);
 
             document.getElementById('success-box').style.display = 'block';
             document.querySelector('.pay-btn-wrap').style.display = 'none';
         } catch(e) {
             alert('Error: ' + e.message);
-            btnLtc.disabled  = false;
-            btnUsdt.disabled = false;
+            btn.disabled = false;
         }
     };
 </script>
 
 <script>
-    let selectedCurrency = 'ltc';
-
-    function selectCurrency(cur) {
-        selectedCurrency = cur;
-        document.getElementById('opt-ltc').classList.toggle('selected', cur === 'ltc');
-        document.getElementById('opt-usdt').classList.toggle('selected', cur === 'usdt');
-        document.getElementById('btn-ltc').style.display  = cur === 'ltc'  ? 'block' : 'none';
-        document.getElementById('btn-usdt').style.display = cur === 'usdt' ? 'block' : 'none';
-        updateTotal();
-    }
-
     function updateTotal() {
-        const days = parseInt(document.getElementById('days').value) || 1;
-        if (selectedCurrency === 'ltc') {
-            document.getElementById('btn-ltc').innerText = `Pay ${220 * days} LTC Coins`;
-        } else {
-            document.getElementById('btn-usdt').innerText = `Pay ${100 * days} USDT Coins`;
-        }
+        const views = parseInt(document.getElementById('views').value) || 0;
+        const total = 7 * views;
+        document.getElementById('total-box').innerText = `Total: ${total} USDT Coins`;
+        document.getElementById('btn-pay').innerText = `Pay ${total} USDT Coins`;
+        validateForm();
     }
 
     function previewBanner() {
@@ -331,18 +278,21 @@
         const bannerUrl = document.getElementById('banner-url').value.trim();
         const clickUrl  = document.getElementById('click-url').value.trim();
         const contact   = document.getElementById('contact').value.trim();
-        const valid = bannerUrl.startsWith('http') && clickUrl.startsWith('http') && contact.includes('@');
-        document.getElementById('btn-ltc').disabled  = !valid;
-        document.getElementById('btn-usdt').disabled = !valid;
+        const views     = parseInt(document.getElementById('views').value) || 0;
+        const valid = bannerUrl.startsWith('http') && clickUrl.startsWith('http') && contact.includes('@') && views >= 1;
+        document.getElementById('btn-pay').disabled = !valid;
     }
 
     document.getElementById('banner-url').addEventListener('input', validateForm);
     document.getElementById('click-url').addEventListener('input', validateForm);
     document.getElementById('contact').addEventListener('input', validateForm);
+
+    updateTotal();
 </script>
 
 </body>
 </html>
+
 
 
 
