@@ -31,7 +31,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { secret, action, reqId, days, bannerUrl, clickUrl } = req.body || {};
+  const { secret, action, reqId, views, bannerUrl, clickUrl } = req.body || {};
 
   if (secret !== ADMIN_SECRET) {
     return res.status(403).json({ success: false, error: 'Invalid admin password' });
@@ -45,12 +45,10 @@ export default async function handler(req, res) {
 
   try {
     if (action === 'approve') {
-      const numDays = parseInt(days) || 1;
+      const numViews = parseInt(views) || 1;
       if (!bannerUrl || !clickUrl) {
         return res.status(400).json({ success: false, error: 'Missing bannerUrl/clickUrl' });
       }
-      const paidUntil = new Date();
-      paidUntil.setDate(paidUntil.getDate() + numDays);
 
       const slotRef = db.collection('ad_slots').doc();
       await db.runTransaction(async (tx) => {
@@ -59,8 +57,8 @@ export default async function handler(req, res) {
           banner_url: bannerUrl,
           click_url: clickUrl,
           status: 'active',
-          paid_until: Timestamp.fromDate(paidUntil),
-          days: numDays,
+          views_total: numViews,
+          views_shown: 0,
           req_id: reqId,
           createdAt: Timestamp.now(),
         });
