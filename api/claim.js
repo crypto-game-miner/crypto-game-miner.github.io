@@ -64,7 +64,9 @@ export default async function handler(req, res) {
       const now = Date.now();
 
       // ─── Daily claim limit (server-side, based on stored date) ──────
-      const today = new Date().toDateString();
+      // Uses a UTC date key (YYYY-MM-DD) instead of toDateString(), so it
+      // matches regardless of the server's or the client's local timezone.
+      const today = new Date().toISOString().slice(0, 10);
       let claimsToday = data.claimsToday || 0;
       if (data.claimsDay !== today) {
         claimsToday = 0;
@@ -153,4 +155,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 
