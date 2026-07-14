@@ -52,6 +52,15 @@ export default async function handler(req, res) {
       const snap = await tx.get(userRef);
       const data = snap.exists ? snap.data() : {};
 
+      // Read the ad slot query up front too — Firestore transactions
+      // require ALL reads to happen before ANY writes.
+      let slotSnap = null;
+      try {
+        slotSnap = await tx.get(adSlotQuery);
+      } catch (adErr) {
+        console.error('Ad slot lookup failed (claim still succeeds):', adErr.message || adErr);
+      }
+
       const now = Date.now();
 
       // ─── Daily claim limit (server-side, based on stored date) ──────
@@ -98,23 +107,28 @@ export default async function handler(req, res) {
       }, { merge: true });
 
       // ─── Consume a view from the active purchased ad slot, if any ──
+      // Uses slotSnap read earlier (before any writes). Wrapped so that
+      // any failure here never blocks the coin reward above.
       let ad = null;
-      const slotSnap = await tx.get(adSlotQuery);
-      if (!slotSnap.empty) {
-        const slotDoc  = slotSnap.docs[0];
-        const slotData = slotDoc.data();
-        const newViewsShown = (slotData.views_shown || 0) + 1;
-        const exhausted = newViewsShown >= slotData.views_total;
+      try {
+        if (slotSnap && !slotSnap.empty) {
+          const slotDoc  = slotSnap.docs[0];
+          const slotData = slotDoc.data();
+          const newViewsShown = (slotData.views_shown || 0) + 1;
+          const exhausted = newViewsShown >= slotData.views_total;
 
-        tx.update(slotDoc.ref, {
-          views_shown: newViewsShown,
-          status: exhausted ? 'completed' : 'active',
-        });
+          tx.update(slotDoc.ref, {
+            views_shown: newViewsShown,
+            status: exhausted ? 'completed' : 'active',
+          });
 
-        ad = {
-          banner_url: slotData.banner_url,
-          click_url: slotData.click_url,
-        };
+          ad = {
+            banner_url: slotData.banner_url,
+            click_url: slotData.click_url,
+          };
+        }
+      } catch (adErr) {
+        console.error('Ad slot update failed (claim still succeeds):', adErr.message || adErr);
       }
 
       return {
