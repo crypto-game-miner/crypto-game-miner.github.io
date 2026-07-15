@@ -21,6 +21,7 @@
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
         #ad-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; }
+        #ad-content img { width: 300px; max-width: 90vw; height: auto; background: #0d0d0d; border-radius: 8px; border: 1px solid #3d2b1f; }
         body { text-transform: uppercase; }
     </style>
 </head>
@@ -29,8 +30,8 @@
         <div id="ad-overlay">
             <div style="font-size:40px;">💎</div>
             <h2 id="ad-status" style="color:#facc15;">VERIFYING...</h2>
-            <div style="margin:10px 0;">
-                <iframe src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
+            <div style="margin:10px 0;" id="ad-content">
+                <iframe id="zerads-frame" src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
             </div>
             <p>Wait <span id="ad-timer" style="font-size:20px;color:#facc15;">10</span>s</p>
         </div>
@@ -69,7 +70,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
         import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-        import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getFirestore, doc, onSnapshot, collection, query, where, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -85,6 +86,13 @@
         const db = getFirestore(app);
         const MAX_CLAIMS = 20;
         const POPUP_ON = [1, 10];
+
+        // Must mirror api/claim.js exactly, or the banner shown to the user
+        // won't match the campaign the server actually deducts a view from.
+        const MAX_CONCURRENT_ADS = 5;
+        const AD_CLAIM_BASE_A = 2;  // campaign 0 on claims 2 & 7
+        const AD_CLAIM_BASE_B = 7;  // campaign 1 on claims 3 & 8, etc.
+
         let currentUser = null;
         let userData = {};
 
@@ -92,6 +100,39 @@
         // (must stay identical on both sides, or the daily counter desyncs).
         function todayKey() {
             return new Date().toISOString().slice(0, 10);
+        }
+
+        function adPositionForClaim(claimNum) {
+            if (claimNum >= AD_CLAIM_BASE_A && claimNum < AD_CLAIM_BASE_A + MAX_CONCURRENT_ADS) {
+                return claimNum - AD_CLAIM_BASE_A;
+            }
+            if (claimNum >= AD_CLAIM_BASE_B && claimNum < AD_CLAIM_BASE_B + MAX_CONCURRENT_ADS) {
+                return claimNum - AD_CLAIM_BASE_B;
+            }
+            return null;
+        }
+
+        // Looks up the purchased banner (if any) that should show for this
+        // claim number. Returns null on any error/no match — caller falls
+        // back to zerads.
+        async function fetchAdForClaim(claimNum) {
+            const position = adPositionForClaim(claimNum);
+            if (position === null) return null;
+            try {
+                const q = query(
+                    collection(db, 'ad_slots'),
+                    where('status', '==', 'active'),
+                    orderBy('createdAt', 'asc'),
+                    limit(MAX_CONCURRENT_ADS)
+                );
+                const snap = await getDocs(q);
+                if (snap.docs.length <= position) return null;
+                const d = snap.docs[position].data();
+                return { banner_url: d.banner_url, click_url: d.click_url };
+            } catch (e) {
+                console.error('Ad lookup failed, falling back to zerads:', e.message);
+                return null;
+            }
         }
 
         onAuthStateChanged(auth, async (user) => {
@@ -174,14 +215,36 @@
             btn.disabled = true;
 
             const nextClaim = claimsToday + 1;
-            if (POPUP_ON.includes(nextClaim)) window.open('https://zerads.com/ad/pop.php?ref=11364', '_blank');
+            const purchasedAd = await fetchAdForClaim(nextClaim);
 
-            const overlay = document.getElementById('ad-overlay');
+            if (!purchasedAd && POPUP_ON.includes(nextClaim)) {
+                window.open('https://zerads.com/ad/pop.php?ref=11364', '_blank');
+            }
+
+            const overlay   = document.getElementById('ad-overlay');
+            const adContent = document.getElementById('ad-content');
+            const status    = document.getElementById('ad-status');
+
+            let ok = true;
+
+            if (purchasedAd) {
+                // Show the purchased banner instead of zerads.
+                adContent.innerHTML = `<a href="${purchasedAd.click_url}" target="_blank" rel="noopener"><img src="${purchasedAd.banner_url}" alt="ad"></a>`;
+                status.innerText = 'SPONSORED';
+                status.style.color = '#facc15';
+            } else {
+                adContent.innerHTML = `<iframe id="zerads-frame" src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>`;
+                status.innerText = 'VERIFYING...';
+                status.style.color = '#facc15';
+            }
+
             overlay.style.display = 'flex';
-            const ok = await verifyAd();
-            const status = document.getElementById('ad-status');
-            status.innerText = ok ? 'AD LOADED ✅' : 'ADBLOCK DETECTED! ❌';
-            status.style.color = ok ? '#00ff00' : '#ff4444';
+
+            if (!purchasedAd) {
+                ok = await verifyAd();
+                status.innerText = ok ? 'AD LOADED ✅' : 'ADBLOCK DETECTED! ❌';
+                status.style.color = ok ? '#00ff00' : '#ff4444';
+            }
 
             let timeLeft = 10;
             const timer = setInterval(async () => {
@@ -209,6 +272,7 @@
     </script>
 </body>
 </html>
+
 
 
 
