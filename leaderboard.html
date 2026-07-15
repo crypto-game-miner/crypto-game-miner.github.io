@@ -72,7 +72,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
-        import { getFirestore, getDocs, collection, doc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getFirestore, getDocs, collection, query, orderBy, limit, doc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -86,46 +86,38 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // NOTE: this reads the public-safe `leaderboard_public` collection —
+        // no email, no coins/ltc balances. That data is mirrored there by
+        // api/sync-mining.js. No Firebase Auth/sign-in is needed here since
+        // the collection is meant to be openly readable.
         async function load() {
             document.getElementById('main-area').innerHTML = '<div class="loading">Loading...</div>';
 
             try {
-                // Загружаем всех юзеров
-                const snap = await getDocs(collection(db, 'users'));
+                const q = query(collection(db, 'leaderboard_public'), orderBy('hashrate', 'desc'), limit(100));
+                const snap = await getDocs(q);
                 const now = Date.now();
                 const users = [];
 
                 snap.forEach(d => {
                     const data = d.data();
                     if (!data.hashrate || data.hashrate <= 0) return;
-                    const lastClaim = data.lastClaimTime ? data.lastClaimTime.toDate().getTime() : 0;
-                    const isActive = lastClaim > 0 && (now - lastClaim) < 86400000;
                     users.push({
-                        email: data.email || 'unknown',
+                        name: data.display_name || 'Player',
                         hashrate: data.hashrate || 0,
-                        coins: data.coins || 0,
-                        game_coins: data.game_coins || 0,
-                        nano: (data.miner_nano != null)
-                            ? data.miner_nano
-                            : Math.max(0, Math.round(((data.hashrate || 0) - 1.0) / 0.1)),
-                        isActive,
-                        lastClaim
+                        nano: data.miner_nano || 0,
+                        isActive: !!data.is_active,
                     });
                 });
-
-                // Сортируем по hashrate
-                users.sort((a, b) => b.hashrate - a.hashrate);
 
                 const maxHash = users[0]?.hashrate || 1;
                 const totalHash = users.reduce((s, u) => s + u.hashrate, 0);
                 const activeHash = users.filter(u => u.isActive).reduce((s, u) => s + u.hashrate, 0);
 
-                // Глобальная статистика
                 document.getElementById('s-players').innerText = users.length;
                 document.getElementById('s-total').innerText = Math.round(totalHash * 10) / 10;
                 document.getElementById('s-active').innerText = Math.round(activeHash * 10) / 10;
 
-                // Читаем dailyRate из stats/global или берём среднее
                 try {
                     const globalSnap = await getDoc(doc(db, 'stats', 'global'));
                     const dailyRate = globalSnap.exists() && globalSnap.data().dailyRate
@@ -140,9 +132,6 @@
                     document.getElementById('s-rate-day').innerText = '60 LTC / DAY';
                 }
 
-                // Текущий курс LTC (dailyRate хранится в localStorage, но тут читаем из Firebase или считаем)
-                // dailyRate = 0.98..1.005, LTC_PER_GH = 2.5
-                // Берём среднее или просто показываем диапазон 2.45–2.5
                 const rateMin = parseFloat((2.5 * 0.98).toFixed(3));
                 const rateMax = parseFloat((2.5 * 1.005).toFixed(3));
                 document.getElementById('s-rate').innerText = `${rateMin}–${rateMax}`;
@@ -160,16 +149,15 @@
                     const rank = i < 3 ? medals[i] : `#${i + 1}`;
                     const cls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
                     const pct = Math.round(u.hashrate / maxHash * 100);
-                    const emailShort = u.email.length > 28 ? u.email.substring(0, 25) + '...' : u.email;
-                    const ago = u.lastClaim ? Math.floor((now - u.lastClaim) / 3600000) + 'h ago' : 'never';
+                    const nameShort = u.name.length > 28 ? u.name.substring(0, 25) + '...' : u.name;
                     const activeDot = u.isActive ? '<span style="color:#22c55e;">● Active</span>' : '<span style="color:#ef4444;">● Inactive</span>';
 
                     html += `
                     <div class="row ${cls}">
                         <div class="rank">${rank}</div>
                         <div class="info">
-                            <div class="email">${emailShort}</div>
-                            <div class="sub">${activeDot} · Last claim: ${ago} · Miners: ${u.nano}</div>
+                            <div class="email">${nameShort}</div>
+                            <div class="sub">${activeDot} · Miners: ${u.nano}</div>
                             <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
                         </div>
                         <div class="hashrate">
@@ -188,37 +176,11 @@
         }
 
         window.load = load;
-
-        // Проверка пароля
-        const saved = sessionStorage.getItem('lb_auth');
-        if (saved === 'ok') {
-            load();
-        } else {
-            document.getElementById('main-area').innerHTML = `
-                <div style="text-align:center; padding: 40px 20px;">
-                    <div style="font-size:36px; margin-bottom:16px;">🔒</div>
-                    <div style="color:#8b949e; font-size:12px; margin-bottom:16px;">ADMIN ACCESS ONLY</div>
-                    <input id="pwd-input" type="password" placeholder="Enter password"
-                        style="background:#1a1613;border:1px solid #3d2b1f;color:white;padding:10px 14px;border-radius:8px;font-family:monospace;font-size:14px;width:200px;outline:none;text-transform:none;"
-                        onkeydown="if(event.key==='Enter') checkPwd()">
-                    <br><br>
-                    <button onclick="checkPwd()" style="background:#facc15;color:#1a1613;border:none;padding:10px 24px;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;font-family:monospace;text-transform:uppercase;">Enter</button>
-                    <div id="pwd-err" style="color:#ef4444;font-size:11px;margin-top:10px;"></div>
-                </div>`;
-        }
-
-        window.checkPwd = function() {
-            const val = document.getElementById('pwd-input').value;
-            if (val === 'admin1337') {
-                sessionStorage.setItem('lb_auth', 'ok');
-                load();
-            } else {
-                document.getElementById('pwd-err').innerText = 'Wrong password!';
-            }
-        }
+        load();
     </script>
 </body>
 </html>
+
 
 
 
