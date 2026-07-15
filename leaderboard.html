@@ -64,6 +64,21 @@
         </div>
     </div>
 
+    <div class="stats-row">
+        <div class="stat-box">
+            <div class="stat-label">0–1 GH/S</div>
+            <div class="stat-value" id="s-bucket-0" style="color:#8b949e;">—</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">1–2 GH/S</div>
+            <div class="stat-value" id="s-bucket-1" style="color:#a78bfa;">—</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">2+ GH/S</div>
+            <div class="stat-value" id="s-bucket-2" style="color:#22c55e;">—</div>
+        </div>
+    </div>
+
     <div class="main-area" id="main-area">
         <div class="loading">Loading...</div>
     </div>
@@ -117,6 +132,13 @@
                 document.getElementById('s-players').innerText = users.length;
                 document.getElementById('s-total').innerText = Math.round(totalHash * 10) / 10;
                 document.getElementById('s-active').innerText = Math.round(activeHash * 10) / 10;
+
+                const bucket0 = users.filter(u => u.hashrate >= 0 && u.hashrate < 1).length;
+                const bucket1 = users.filter(u => u.hashrate >= 1 && u.hashrate < 2).length;
+                const bucket2 = users.filter(u => u.hashrate >= 2).length;
+                document.getElementById('s-bucket-0').innerText = bucket0;
+                document.getElementById('s-bucket-1').innerText = bucket1;
+                document.getElementById('s-bucket-2').innerText = bucket2;
 
                 try {
                     const globalSnap = await getDoc(doc(db, 'stats', 'global'));
@@ -209,6 +231,7 @@
     </script>
 </body>
 </html>
+
 
 
 
