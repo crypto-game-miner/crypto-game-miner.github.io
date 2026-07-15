@@ -176,10 +176,40 @@
         }
 
         window.load = load;
-        load();
+
+        // Простой пароль для доступа к странице (не защита данных — они и
+        // так публично-безопасны, просто чтобы посторонние не заходили).
+        const LB_PASSWORD = 'kr1stal2024';
+        const saved = sessionStorage.getItem('lb_auth');
+        if (saved === 'ok') {
+            load();
+        } else {
+            document.getElementById('main-area').innerHTML = `
+                <div style="text-align:center; padding: 40px 20px;">
+                    <div style="font-size:36px; margin-bottom:16px;">🔒</div>
+                    <div style="color:#8b949e; font-size:12px; margin-bottom:16px;">ENTER PASSWORD</div>
+                    <input id="pwd-input" type="password" placeholder="Password"
+                        style="background:#1a1613;border:1px solid #3d2b1f;color:white;padding:10px 14px;border-radius:8px;font-family:monospace;font-size:14px;width:200px;outline:none;text-transform:none;"
+                        onkeydown="if(event.key==='Enter') checkPwd()">
+                    <br><br>
+                    <button onclick="checkPwd()" style="background:#facc15;color:#1a1613;border:none;padding:10px 24px;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;font-family:monospace;text-transform:uppercase;">Enter</button>
+                    <div id="pwd-err" style="color:#ef4444;font-size:11px;margin-top:10px;"></div>
+                </div>`;
+        }
+
+        window.checkPwd = function() {
+            const val = document.getElementById('pwd-input').value;
+            if (val === LB_PASSWORD) {
+                sessionStorage.setItem('lb_auth', 'ok');
+                load();
+            } else {
+                document.getElementById('pwd-err').innerText = 'Wrong password!';
+            }
+        }
     </script>
 </body>
 </html>
+
 
 
 
