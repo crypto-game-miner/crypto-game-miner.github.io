@@ -8,6 +8,9 @@ import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const MAX_CLAIMS_PER_DAY = 20;
 const CLAIM_COOLDOWN_MS  = 5000;
+const MAX_CONCURRENT_ADS = 5;         // campaign #1 shows on claims 2&7, #2 on 3&8, #3 on 4&9, #4 on 5&10, #5 on 6&11
+const AD_CLAIM_BASE_A    = 2;         // first window start (2,3,4,5,6)
+const AD_CLAIM_BASE_B    = 7;         // second window start (7,8,9,10,11)
 const CLAIM_BOOST_AMOUNT = 0.1;       // +0.1 GH/s per claim, expires in 24h
 const USDT_REWARD_GUEST  = 4;
 const USDT_REWARD_LOGGED = 5;         // for users who linked a real (non-anonymous) provider
@@ -40,12 +43,16 @@ export default async function handler(req, res) {
   const db = initFirebase();
   const userRef = db.collection('users').doc(uid);
 
-  // Oldest active purchased ad slot with views remaining wins the slot
-  // (first-come-first-served if more than one is approved at once).
+  // Up to 5 concurrent active campaigns can run at once. They're ordered
+  // oldest-first, and that order determines which pair of daily claim
+  // numbers each one occupies (see MAX_CONCURRENT_ADS below). When the
+  // oldest one runs out of views it disappears from this query, and the
+  // next one automatically shifts up to take its position — no extra
+  // bookkeeping field needed.
   const adSlotQuery = db.collection('ad_slots')
     .where('status', '==', 'active')
     .orderBy('createdAt', 'asc')
-    .limit(1);
+    .limit(5);
 
   try {
     const result = await db.runTransaction(async (tx) => {
@@ -108,13 +115,25 @@ export default async function handler(req, res) {
         updatedAt: Timestamp.fromMillis(now),
       }, { merge: true });
 
-      // ─── Consume a view from the active purchased ad slot, if any ──
+      // ─── Consume a view from a purchased ad slot, if this claim number
+      // falls on one of the ad windows ─────────────────────────────────
+      // newClaims is this user's Nth claim TODAY (1-indexed). Position 0
+      // = the oldest active campaign, shown on claims 2 & 7. Position 1 =
+      // the next campaign in line, shown on claims 3 & 8. And so on, up
+      // to MAX_CONCURRENT_ADS. All other claim numbers show zerads.
       // Uses slotSnap read earlier (before any writes). Wrapped so that
       // any failure here never blocks the coin reward above.
       let ad = null;
       try {
-        if (slotSnap && !slotSnap.empty) {
-          const slotDoc  = slotSnap.docs[0];
+        let adPosition = null;
+        if (newClaims >= AD_CLAIM_BASE_A && newClaims < AD_CLAIM_BASE_A + MAX_CONCURRENT_ADS) {
+          adPosition = newClaims - AD_CLAIM_BASE_A;
+        } else if (newClaims >= AD_CLAIM_BASE_B && newClaims < AD_CLAIM_BASE_B + MAX_CONCURRENT_ADS) {
+          adPosition = newClaims - AD_CLAIM_BASE_B;
+        }
+
+        if (adPosition !== null && slotSnap && slotSnap.docs.length > adPosition) {
+          const slotDoc  = slotSnap.docs[adPosition];
           const slotData = slotDoc.data();
           const newViewsShown = (slotData.views_shown || 0) + 1;
           const exhausted = newViewsShown >= slotData.views_total;
@@ -155,5 +174,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 
 
