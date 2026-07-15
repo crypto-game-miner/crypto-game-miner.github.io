@@ -23,6 +23,15 @@ function getLevel(exp) {
   return level;
 }
 
+// Public display name that never leaks the real email — just the part
+// before '@', or a stable Guest_XXXX tag derived from the uid.
+function publicDisplayName(data, uid) {
+  if (data.email && typeof data.email === 'string' && data.email.includes('@')) {
+    return data.email.split('@')[0];
+  }
+  return 'Guest_' + uid.slice(-4).toUpperCase();
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -36,6 +45,7 @@ export default async function handler(req, res) {
 
   const db = initFirebase();
   const userRef = db.collection('users').doc(uid);
+  const leaderboardRef = db.collection('leaderboard_public').doc(uid);
 
   try {
     const result = await db.runTransaction(async (tx) => {
@@ -74,6 +84,20 @@ export default async function handler(req, res) {
       }
 
       tx.set(userRef, updates, { merge: true });
+
+      // ─── Mirror safe, public-only fields for the leaderboard ────────
+      // Never write email, coins, ltc, or anything sensitive here — this
+      // collection is publicly readable by design.
+      tx.set(leaderboardRef, {
+        display_name: publicDisplayName(data, uid),
+        hashrate: totalHashrate,
+        miner_nano: data.miner_nano != null
+          ? data.miner_nano
+          : Math.max(0, Math.round((totalHashrate - 1.0) / 0.1)),
+        is_active: !miningPaused,
+        updatedAt: Timestamp.fromMillis(now),
+      }, { merge: true });
+
       return {
         earned,
         coin,
