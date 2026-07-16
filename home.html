@@ -27,9 +27,13 @@
         .switch-btn { flex: 1; padding: 8px 0; border: none; background: transparent; color: #8b949e; font-size: 12px; font-family: 'Courier New', monospace; cursor: pointer; border-radius: 6px; font-weight: bold; text-transform: uppercase; }
         .switch-btn.active-ltc { background: #a78bfa; color: #1a1613; }
         .switch-btn.active-usdt { background: #facc15; color: #1a1613; }
-        .warning-card { background: rgba(239,68,68,0.15); border: 2px solid #ef4444; border-radius: 12px; padding: 12px 15px; margin-bottom: 15px; display: none; }
-        .warning-text { color: #ef4444; font-size: 13px; font-weight: bold; }
-        .warning-sub { color: #8b949e; font-size: 11px; margin-top: 4px; }
+        .health-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; }
+        .health-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .health-title { color: #facc15; font-size: 14px; font-weight: bold; }
+        .health-pct { font-size: 15px; font-weight: bold; }
+        .health-bar-bg { background: #3d2b1f; border-radius: 10px; height: 14px; width: 100%; overflow: hidden; }
+        .health-bar-fill { height: 100%; border-radius: 10px; transition: width 0.6s ease, background-color 0.6s ease; }
+        .health-sub { font-size: 11px; color: #ef4444; margin-top: 8px; display: none; }
         .banner-slot { margin-bottom: 15px; }
         #paid-banner-slot { display: none; width: 100%; border-radius: 8px; overflow: hidden; }
         #paid-banner-slot a { display: block; }
@@ -80,9 +84,13 @@
         </div>
 
         <div class="main-area">
-            <div class="warning-card" id="warning-card">
-                <div class="warning-text">⚠️ Mining Paused!</div>
-                <div class="warning-sub">You Haven't Collected In 24H. Go To Faucet To Resume Mining.</div>
+            <div class="health-card" id="health-card">
+                <div class="health-header">
+                    <span class="health-title">🔧 Equipment Health</span>
+                    <span class="health-pct" id="health-pct">100.0%</span>
+                </div>
+                <div class="health-bar-bg"><div class="health-bar-fill" id="health-bar" style="width:100%; background:#22c55e;"></div></div>
+                <div class="health-sub" id="health-sub">⚠️ Mining stopped! Go to Faucet to claim and restore equipment.</div>
             </div>
             <div class="level-card">
                 <div class="level-title">⚡ Level <span id="level-num">1</span></div>
@@ -221,11 +229,41 @@
             return Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 10) / 10;
         }
 
+        // 100% right when you claim, decays linearly to 0% over 24h.
+        // 0% == equipment stopped == same moment mining would've paused.
+        function getHealthPct() {
+            const lastClaimMs = userData.lastClaimTime?.toMillis ? userData.lastClaimTime.toMillis() : 0;
+            if (!lastClaimMs) return 0;
+            const hoursSinceClaim = (Date.now() - lastClaimMs) / 3600000;
+            const pct = 100 - (hoursSinceClaim / 24 * 100);
+            return Math.max(0, Math.min(100, pct));
+        }
+
+        function renderHealthBar() {
+            const pct = getHealthPct();
+            const bar    = document.getElementById('health-bar');
+            const pctEl  = document.getElementById('health-pct');
+            const subEl  = document.getElementById('health-sub');
+
+            let color;
+            if (pct >= 50)      color = '#22c55e';
+            else if (pct >= 20) color = '#facc15';
+            else                color = '#ef4444';
+
+            bar.style.width = pct + '%';
+            bar.style.background = color;
+            pctEl.innerText = pct.toFixed(1) + '%';
+            pctEl.style.color = color;
+            subEl.style.display = pct <= 0 ? 'block' : 'none';
+        }
+
         function renderHome() {
             // Balances
             document.getElementById('balance').innerText     = visualCoins.toFixed(4);
             document.getElementById('game-coins').innerText  = userData.game_coins || 0;
             document.getElementById('ltc-balance').innerText = visualLtc.toFixed(4);
+
+            renderHealthBar();
 
             // Level
             const exp = userData.exp || 0;
@@ -248,11 +286,8 @@
             document.getElementById('boost-rate').innerText     = '+' + boostTotal.toFixed(1) + ' GH/s';
             document.getElementById('total-hashrate').innerText = totalHashrate + ' GH/s';
 
-            // Mining status from Firebase lastClaimTime
-            const lastClaimMs = userData.lastClaimTime?.toMillis ? userData.lastClaimTime.toMillis() : 0;
-            const miningPaused = lastClaimMs === 0 || (Date.now() - lastClaimMs) / 3600000 > 24;
-
-            document.getElementById('warning-card').style.display = (miningPaused && totalHashrate > 0) ? 'block' : 'none';
+            // Mining status from Firebase lastClaimTime — paused once equipment health hits 0
+            const miningPaused = getHealthPct() <= 0;
 
             const rate = miningCoin === 'ltc' ? LTC_RATE : USDT_RATE;
             document.getElementById('ltc-per-hour').innerText = totalHashrate > 0 ? (totalHashrate * rate).toFixed(3) : 0;
@@ -283,6 +318,7 @@
                     document.getElementById('mined-session').innerText  = '+' + sessionMined.toFixed(4);
                     document.getElementById('boost-rate').innerText     = '+' + boost.toFixed(1) + ' GH/s';
                     document.getElementById('total-hashrate').innerText = Math.round(total * 10) / 10 + ' GH/s';
+                    renderHealthBar();
                 }, 1000);
             }
         }
@@ -302,8 +338,14 @@
         document.getElementById('btn-ltc').className  = 'switch-btn' + (miningCoin === 'ltc'  ? ' active-ltc'  : '');
         document.getElementById('btn-usdt').className = 'switch-btn' + (miningCoin === 'usdt' ? ' active-usdt' : '');
 
-        window.openMenu  = () => { document.getElementById('side-menu').classList.add('open');    document.getElementById('overlay').classList.add('open');    };
-        window.closeMenu = () => { document.getElementById('side-menu').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); };
+        window.openMenu = function() {
+            document.getElementById('side-menu').classList.add('open');
+            document.getElementById('overlay').classList.add('open');
+        };
+        window.closeMenu = function() {
+            document.getElementById('side-menu').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        };
     </script>
 </body>
 </html>
