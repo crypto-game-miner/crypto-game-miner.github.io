@@ -91,6 +91,7 @@ export default async function handler(req, res) {
       tx.set(leaderboardRef, {
         display_name: publicDisplayName(data, uid),
         hashrate: totalHashrate,
+        level,
         miner_nano: data.miner_nano != null
           ? data.miner_nano
           : Math.max(0, Math.round((totalHashrate - 1.0) / 0.1)),
