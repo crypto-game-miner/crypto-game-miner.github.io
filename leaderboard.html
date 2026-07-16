@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -119,6 +119,7 @@
                     if (!data.hashrate || data.hashrate <= 0) return;
                     users.push({
                         name: data.display_name || 'Player',
+                        level: data.level || 1,
                         hashrate: data.hashrate || 0,
                         nano: data.miner_nano || 0,
                         isActive: !!data.is_active,
@@ -178,7 +179,7 @@
                     <div class="row ${cls}">
                         <div class="rank">${rank}</div>
                         <div class="info">
-                            <div class="email">${nameShort}</div>
+                            <div class="email">${nameShort} <span style="color:#facc15;">· LVL ${u.level}</span></div>
                             <div class="sub">${activeDot} · Miners: ${u.nano}</div>
                             <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
                         </div>
@@ -239,6 +240,7 @@
     </script>
 </body>
 </html>
+
 
 
 
