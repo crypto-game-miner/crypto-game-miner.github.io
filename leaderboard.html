@@ -34,7 +34,7 @@
 <body>
     <div class="header">
         <span>⚡ Hashrate Top</span>
-        <button class="refresh-btn" onclick="load()">↻ Refresh</button>
+        <button class="refresh-btn" onclick="safeLoad()">↻ Refresh</button>
     </div>
 
     <div class="stats-row">
@@ -199,6 +199,14 @@
 
         window.load = load;
 
+        // Refresh button in the header calls this instead of load() directly,
+        // so it can never be used to skip the password gate below.
+        window.safeLoad = function() {
+            if (sessionStorage.getItem('lb_auth') === 'ok') {
+                load();
+            }
+        };
+
         // Простой пароль для доступа к странице (не защита данных — они и
         // так публично-безопасны, просто чтобы посторонние не заходили).
         const LB_PASSWORD = 'kr1stal2024';
@@ -231,6 +239,7 @@
     </script>
 </body>
 </html>
+
 
 
 
