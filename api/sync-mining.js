@@ -108,6 +108,12 @@ export default async function handler(req, res) {
       };
     });
 
+    try {
+      await refreshGlobalStats(db);
+    } catch (e) {
+      console.error('Global stats refresh failed (sync still succeeds):', e.message || e);
+    }
+
     return res.status(200).json({ success: true, ...result });
   } catch (e) {
     console.error('Sync mining error:', e.message || e);
@@ -115,4 +121,27 @@ export default async function handler(req, res) {
   }
 }
 
+// Recomputes stats/global (totalPlayers, totalHashrate, activeHashrate)
+// from leaderboard_public — cheap since it only has the few public fields,
+// not the full users collection. Runs after the main response so it never
+// delays the claim/sync itself; failure here is non-fatal.
+async function refreshGlobalStats(db) {
+  const snap = await db.collection('leaderboard_public').get();
+  let totalPlayers = 0, totalHashrate = 0, activeHashrate = 0;
+
+  snap.forEach(d => {
+    const data = d.data();
+    if (!data.hashrate || data.hashrate <= 0) return;
+    totalPlayers++;
+    totalHashrate += data.hashrate;
+    if (data.is_active) activeHashrate += data.hashrate;
+  });
+
+  await db.collection('stats').doc('global').set({
+    totalPlayers,
+    totalHashrate: Math.round(totalHashrate * 10) / 10,
+    activeHashrate: Math.round(activeHashrate * 10) / 10,
+    updatedAt: Timestamp.fromMillis(Date.now()),
+  }, { merge: true });
+}
 
