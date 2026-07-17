@@ -165,7 +165,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
         import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-        import { getFirestore, doc, onSnapshot, setDoc, getDocs, collection } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -185,13 +185,31 @@
             if (user) {
                 currentUser = user;
                 localStorage.setItem('firebase_uid', user.uid);
-                // Live balance from Firebase
+                // Live balance from Firebase — also keep miner counts/task
+                // bonus in sync from the source of truth (server writes).
                 onSnapshot(doc(db, 'users', user.uid), (snap) => {
                     const data = snap.exists() ? snap.data() : {};
                     document.getElementById('balance').innerText     = parseFloat(data.coins || 0).toFixed(4);
                     document.getElementById('ltc-balance').innerText = parseFloat(data.ltc || 0).toFixed(4);
-                    // game_coins from localStorage since store uses it locally
-                    document.getElementById('game-coins').innerText  = Number(localStorage.getItem('game_coins')) || 0;
+
+                    if (data.game_coins != null) {
+                        gameCoins = data.game_coins;
+                        localStorage.setItem('game_coins', gameCoins);
+                    }
+                    if (data.miner_nano != null) {
+                        ownedNano = data.miner_nano;
+                        localStorage.setItem('miner_nano', ownedNano);
+                    }
+                    if (data.miner_mega != null) {
+                        ownedMega = data.miner_mega;
+                        localStorage.setItem('miner_mega', ownedMega);
+                    }
+                    if (data.task_bonus_hashrate != null) {
+                        localStorage.setItem('task_bonus_hashrate', data.task_bonus_hashrate);
+                    }
+
+                    document.getElementById('game-coins').innerText = gameCoins;
+                    updateNanoUI(); updateBoxUI();
                 });
             } else {
                 try { await signInAnonymously(auth); } catch(e) {}
@@ -201,34 +219,6 @@
                 document.getElementById('game-coins').innerText  = Number(localStorage.getItem('game_coins')) || 0;
             }
         });
-
-        async function recalcTotalHashrate() {
-            try {
-                const usersSnap = await getDocs(collection(db, 'users'));
-                let total = 0;
-                usersSnap.forEach(d => { total += d.data().hashrate || 0; });
-                await setDoc(doc(db, 'stats', 'global'), { totalHashrate: Math.round(total*10)/10, updatedAt: new Date() }, { merge: true });
-            } catch(e) {}
-        }
-
-        async function saveAfterPurchase() {
-            const lockedEmail = localStorage.getItem('locked_google_email');
-            if (!lockedEmail || !currentUser) return;
-            try {
-                await setDoc(doc(db, 'users', currentUser.uid), {
-                    coins:      Number(localStorage.getItem('miner_balance')) || 0,
-                    game_coins: Number(localStorage.getItem('game_coins')) || 0,
-                    ltc:        parseFloat(localStorage.getItem('ltc_balance')) || 0,
-                    exp:        Number(localStorage.getItem('player_exp')) || 0,
-                    hashrate:   parseFloat(localStorage.getItem('hashrate')) || 0,
-                    miner_nano: Number(localStorage.getItem('miner_nano')) || 0,
-                    miner_mega: Number(localStorage.getItem('miner_mega')) || 0,
-                    email:      lockedEmail,
-                    updatedAt:  new Date()
-                }, { merge: true });
-                await recalcTotalHashrate();
-            } catch(e) {}
-        }
 
         let gameCoins  = Number(localStorage.getItem('game_coins')) || 0;
         let ownedNano  = Number(localStorage.getItem('miner_nano')) || 0;
@@ -240,20 +230,6 @@
             t.innerText = msg;
             t.style.display = 'block';
             setTimeout(() => t.style.display = 'none', 2500);
-        }
-
-        function calcHashrate() {
-            const exp = Number(localStorage.getItem('player_exp')) || 0;
-            const levels = [50,120,250,500,1000];
-            let level = 1, tot = 0;
-            for (let i = 0; i < levels.length; i++) {
-                if (exp >= tot + levels[i]) { tot += levels[i]; level++; } else break;
-            }
-            const base  = level >= 2 ? 0.5 : 0;
-            const bonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
-            const h = Math.round((base + bonus) * 10) / 10;
-            localStorage.setItem('hashrate', h);
-            return h;
         }
 
         function updateNanoUI() {
@@ -300,27 +276,44 @@
 
         window.buyMiner = async function(type) {
             if (!isLoggedIn) { alert('❌ Login required! Go to Settings.'); return; }
-            if (type === 'nano') {
-                if (ownedNano >= 10 || gameCoins < 50) return;
-                gameCoins -= 50; ownedNano++;
+            if (type !== 'nano') return;
+            if (ownedNano >= 10 || gameCoins < 50 || !currentUser) return;
+
+            const btn = document.getElementById('btn-nano');
+            btn.disabled = true;
+
+            try {
+                const resp = await fetch('/api/buy-miner', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: currentUser.uid }),
+                });
+                const result = await resp.json();
+                if (!result.success) {
+                    alert(result.error || 'Purchase failed');
+                    updateNanoUI();
+                    return;
+                }
+
+                gameCoins = result.game_coins;
+                ownedNano = result.miner_nano;
                 localStorage.setItem('game_coins', gameCoins);
                 localStorage.setItem('miner_nano', ownedNano);
-                const bonus = Math.round(((parseFloat(localStorage.getItem('task_bonus_hashrate'))||0)+0.1)*10)/10;
-                localStorage.setItem('task_bonus_hashrate', bonus);
-                calcHashrate();
+                localStorage.setItem('task_bonus_hashrate', result.task_bonus_hashrate);
+
                 document.getElementById('game-coins').innerText = gameCoins;
                 updateNanoUI(); updateBoxUI();
                 showToast('✅ NanoMiner X1 purchased! +0.1 GH/S');
-                await saveAfterPurchase();
+            } catch(e) {
+                alert('Network error: ' + e.message);
+                updateNanoUI();
             }
         };
 
         window.openBox = async function() {
             if (!isLoggedIn) { alert('❌ Login required!'); return; }
-            if (ownedMega >= 2 || gameCoins < 40) return;
-            gameCoins -= 40;
-            localStorage.setItem('game_coins', gameCoins);
-            document.getElementById('game-coins').innerText = gameCoins;
+            if (ownedMega >= 2 || gameCoins < 40 || !currentUser) return;
+
             document.getElementById('btn-box').disabled = true;
 
             const overlay = document.getElementById('prize-overlay');
@@ -333,33 +326,55 @@
             void boxAnim.offsetWidth;
             boxAnim.style.animation = 'shake 0.4s ease-in-out 4';
 
-            setTimeout(async () => {
-                const r = Math.random() * 100;
-                let prize;
-                if (r < 35) prize = { type:'coins', amount:10, icon:'🟢', title:'+10 Game Coins', sub:'Better luck next time!' };
-                else if (r < 65) prize = { type:'coins', amount:20, icon:'🟢', title:'+20 Game Coins', sub:'Not bad!' };
-                else if (r < 80) prize = { type:'coins', amount:40, icon:'🟢', title:'+40 Game Coins', sub:'You got your money back!' };
-                else prize = { type:'mega', icon:'🔥', title:'MegaMiner X2!', sub:'+0.2 GH/S added!' };
+            let result;
+            try {
+                const resp = await fetch('/api/open-box', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: currentUser.uid }),
+                });
+                result = await resp.json();
+            } catch(e) {
+                overlay.style.display = 'none';
+                alert('Network error: ' + e.message);
+                updateBoxUI();
+                return;
+            }
+
+            setTimeout(() => {
+                if (!result.success) {
+                    overlay.style.display = 'none';
+                    alert(result.error || 'Open failed');
+                    updateBoxUI();
+                    return;
+                }
+
+                const prize = result.prize;
+                let icon, title, sub;
+                if (prize.type === 'coins') {
+                    icon = '🟢';
+                    title = `+${prize.amount} Game Coins`;
+                    sub = prize.amount >= 40 ? 'You got your money back!' : (prize.amount >= 20 ? 'Not bad!' : 'Better luck next time!');
+                } else {
+                    icon = '🔥';
+                    title = 'MegaMiner X2!';
+                    sub = '+0.2 GH/S added!';
+                }
 
                 boxAnim.style.display = 'none';
                 reveal.style.display  = 'block';
-                document.getElementById('prize-icon').innerText  = prize.icon;
-                document.getElementById('prize-title').innerText = prize.title;
-                document.getElementById('prize-sub').innerText   = prize.sub;
+                document.getElementById('prize-icon').innerText  = icon;
+                document.getElementById('prize-title').innerText = title;
+                document.getElementById('prize-sub').innerText   = sub;
 
-                if (prize.type === 'coins') {
-                    gameCoins += prize.amount;
-                    localStorage.setItem('game_coins', gameCoins);
-                    document.getElementById('game-coins').innerText = gameCoins;
-                } else {
-                    ownedMega++;
-                    localStorage.setItem('miner_mega', ownedMega);
-                    const bonus = Math.round(((parseFloat(localStorage.getItem('task_bonus_hashrate'))||0)+0.2)*10)/10;
-                    localStorage.setItem('task_bonus_hashrate', bonus);
-                    calcHashrate();
-                }
+                gameCoins = result.game_coins;
+                ownedMega = result.miner_mega;
+                localStorage.setItem('game_coins', gameCoins);
+                localStorage.setItem('miner_mega', ownedMega);
+                localStorage.setItem('task_bonus_hashrate', result.task_bonus_hashrate);
+                document.getElementById('game-coins').innerText = gameCoins;
+
                 updateNanoUI(); updateBoxUI();
-                await saveAfterPurchase();
             }, 1700);
         };
 
@@ -374,6 +389,7 @@
     </script>
 </body>
 </html>
+
 
 
       
