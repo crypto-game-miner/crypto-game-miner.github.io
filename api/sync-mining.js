@@ -92,9 +92,7 @@ export default async function handler(req, res) {
         display_name: publicDisplayName(data, uid),
         hashrate: totalHashrate,
         level,
-        miner_nano: data.miner_nano != null
-          ? data.miner_nano
-          : Math.max(0, Math.round((totalHashrate - 1.0) / 0.1)),
+        miner_nano: (data.miner_nano || 0) + (data.miner_mega || 0),
         is_active: !miningPaused,
         updatedAt: Timestamp.fromMillis(now),
       }, { merge: true });
@@ -116,4 +114,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 
