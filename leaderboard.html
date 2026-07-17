@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -121,7 +121,7 @@
                         name: data.display_name || 'Player',
                         level: data.level || 1,
                         hashrate: data.hashrate || 0,
-                        nano: data.miner_nano || 0,
+                        nano: data.miner_nano != null ? data.miner_nano : null,
                         isActive: !!data.is_active,
                     });
                 });
@@ -180,7 +180,7 @@
                         <div class="rank">${rank}</div>
                         <div class="info">
                             <div class="email">${nameShort} <span style="color:#facc15;">· LVL ${u.level}</span></div>
-                            <div class="sub">${activeDot} · Miners: ${u.nano}</div>
+                            <div class="sub">${activeDot}${u.nano != null ? ' · Miners: ' + u.nano : ''}</div>
                             <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
                         </div>
                         <div class="hashrate">
@@ -240,6 +240,7 @@
     </script>
 </body>
 </html>
+
 
 
 
