@@ -1,5 +1,5 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const LTC_RATE  = 2.5;
 const USDT_RATE = 1.1;
@@ -52,8 +52,18 @@ export default async function handler(req, res) {
       const snap = await tx.get(userRef);
       if (!snap.exists) throw { code: 'NO_USER' };
 
+      // Admin-adjustable payout multiplier — read here (before any writes,
+      // Firestore transactions require all reads first) so it actually
+      // scales earnings, not just the cosmetic leaderboard display.
+      const statsGlobalRef = db.collection('stats').doc('global');
+      const statsGlobalSnap = await tx.get(statsGlobalRef);
+      const dailyRate = statsGlobalSnap.exists() && statsGlobalSnap.data().dailyRate
+        ? statsGlobalSnap.data().dailyRate
+        : 1.0;
+
       const data = snap.data();
       const now = Date.now();
+      const today = new Date().toISOString().slice(0, 10);
 
       const lastClaimMs = data.lastClaimTime?.toMillis ? data.lastClaimTime.toMillis() : 0;
       const miningPaused = lastClaimMs === 0 || (now - lastClaimMs) / 1000 / 3600 > 24;
@@ -78,13 +88,25 @@ export default async function handler(req, res) {
       let earned = 0;
 
       if (!miningPaused && totalHashrate > 0 && secondsElapsed > 0) {
-        const rate = coin === 'usdt' ? USDT_RATE : LTC_RATE;
+        const baseRate = coin === 'usdt' ? USDT_RATE : LTC_RATE;
+        const rate = baseRate * dailyRate;
         earned = totalHashrate * rate / 3600 * secondsElapsed;
         if (coin === 'usdt') updates.coins = (data.coins || 0) + earned;
         else updates.ltc = (data.ltc || 0) + earned;
       }
 
       tx.set(userRef, updates, { merge: true });
+
+      // Daily site-wide stats — how much is being mined out today, split
+      // by which coin track it came from.
+      if (earned > 0) {
+        const dailyStatsRef = db.collection('stats').doc('daily_' + today);
+        const field = coin === 'usdt' ? 'usdt_from_mining' : 'ltc_from_mining';
+        tx.set(dailyStatsRef, {
+          [field]: FieldValue.increment(earned),
+          updatedAt: Timestamp.fromMillis(now),
+        }, { merge: true });
+      }
 
       // ─── Mirror safe, public-only fields for the leaderboard ────────
       // Never write email, coins, ltc, or anything sensitive here — this
@@ -145,4 +167,5 @@ async function refreshGlobalStats(db) {
     updatedAt: Timestamp.fromMillis(Date.now()),
   }, { merge: true });
 }
+
 
