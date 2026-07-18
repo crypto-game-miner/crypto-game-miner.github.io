@@ -298,10 +298,10 @@
         const usdtVal = document.getElementById('usdt-pool-input').value;
         const ltcVal  = document.getElementById('ltc-pool-input').value;
         try {
-            const res = await fetch('/api/admin-set-rate', {
+            const res = await fetch('/api/moderate-ad', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret: ADMIN_PASSWORD, usdtPool: usdtVal, ltcPool: ltcVal })
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_pools', usdtPool: usdtVal, ltcPool: ltcVal })
             });
             const data = await res.json();
             if (!data.success) { alert(data.error || 'Error saving pools'); return; }
@@ -314,6 +314,7 @@
 </script>
 </body>
 </html>
+
 
 
 
