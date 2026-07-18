@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crypto Miner — Season Pass</title>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
+        #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
+        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .main-area { flex: 1; padding: 15px 20px; overflow-y: auto; padding-bottom: 40px; }
+        .section-title { color: #facc15; font-size: 14px; font-weight: bold; margin-bottom: 12px; text-align: left; text-transform: uppercase; }
+        .xp-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 15px; margin-bottom: 18px; text-align: left; }
+        .xp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .xp-title { color: #a78bfa; font-size: 15px; font-weight: bold; }
+        .xp-value { color: #facc15; font-size: 13px; font-weight: bold; }
+        .xp-bar-bg { background: #3d2b1f; border-radius: 10px; height: 12px; width: 100%; overflow: hidden; }
+        .xp-bar-fill { background: linear-gradient(90deg, #a78bfa, #facc15); height: 100%; border-radius: 10px; transition: width 0.4s ease; }
+
+        .track-row { display: flex; gap: 10px; margin-bottom: 20px; }
+        .level-card { flex: 1; background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 14px; text-align: center; }
+        .level-card.unlocked { border-color: #facc15; }
+        .level-card.locked { opacity: 0.55; }
+        .level-num { color: #8b949e; font-size: 11px; margin-bottom: 8px; }
+        .level-icon { font-size: 40px; margin-bottom: 8px; }
+        .level-reward { color: #facc15; font-size: 11px; margin-bottom: 12px; min-height: 28px; }
+        .level-btn { border: none; padding: 10px 0; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; width: 100%; font-family: 'Courier New', monospace; text-transform: uppercase; }
+        .level-btn.claim { background: #22c55e; color: #1a1613; box-shadow: 0 3px 0 #15803d; }
+        .level-btn.locked { background: #3d2b1f; color: #8b949e; box-shadow: none; cursor: default; }
+        .level-btn.claimed { background: #a78bfa; color: #1a1613; box-shadow: 0 3px 0 #7c3aed; cursor: default; }
+
+        .quest-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; text-align: left; }
+        .quest-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .quest-name { font-size: 13px; font-weight: bold; color: white; }
+        .quest-xp { color: #facc15; font-size: 11px; font-weight: bold; flex-shrink: 0; margin-left: 10px; }
+        .quest-daily { color: #8b949e; font-size: 9px; margin-bottom: 8px; text-transform: uppercase; }
+        .quest-btn { border: none; padding: 8px 0; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; width: 100%; font-family: 'Courier New', monospace; text-transform: uppercase; }
+        .quest-btn.claim { background: #22c55e; color: #1a1613; }
+        .quest-btn.locked { background: #3d2b1f; color: #8b949e; cursor: default; }
+        .quest-btn.claimed { background: #a78bfa; color: #1a1613; cursor: default; }
+
+        .not-linked-note { font-size: 10px; color: #8b949e; text-align: center; margin-top: 20px; line-height: 1.6; }
+        body { text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <div id="main-content">
+        <div class="header">
+            <a href="home.html" style="color:#facc15;text-decoration:none;font-size:20px;">←</a>
+            <span>🎫 Season Pass</span>
+            <span style="width:20px;"></span>
+        </div>
+
+        <div class="main-area">
+            <div class="xp-card">
+                <div class="xp-row">
+                    <span class="xp-title">Season XP</span>
+                    <span class="xp-value" id="xp-text">0 / 100</span>
+                </div>
+                <div class="xp-bar-bg"><div class="xp-bar-fill" id="xp-bar" style="width:0%"></div></div>
+            </div>
+
+            <div class="section-title">🏆 Reward Track</div>
+            <div class="track-row">
+                <div class="level-card" id="lvl1-card">
+                    <div class="level-num">LEVEL 1</div>
+                    <div class="level-icon">🟢</div>
+                    <div class="level-reward">+20 Game Coins</div>
+                    <button class="level-btn" id="lvl1-btn" onclick="claimAction('lvl1')">Claim</button>
+                </div>
+                <div class="level-card" id="lvl2-card">
+                    <div class="level-num">LEVEL 2 · 100 XP</div>
+                    <div class="level-icon">⚙️</div>
+                    <div class="level-reward">QuantumMiner S3<br>+0.23 GH/S</div>
+                    <button class="level-btn" id="lvl2-btn" onclick="claimAction('lvl2')">Locked</button>
+                </div>
+            </div>
+
+            <div class="section-title">📋 Quests</div>
+            <div id="quests-container"></div>
+
+            <div class="not-linked-note">This page is not linked from the app menu yet — testing only.</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+        import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+        import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+            authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+            projectId: "crypto-miner-game-f45dc",
+            storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+            messagingSenderId: "33690622473",
+            appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+        };
+
+        const app  = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db   = getFirestore(app);
+
+        const LVL2_XP_REQUIRED = 100;
+        const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
+
+        // Must mirror api/season-claim.js — used only for showing progress,
+        // the server re-validates everything before actually granting XP.
+        const QUESTS = [
+            { id: 'quest_level2', xp: 30, daily: false, label: 'Reach Account Level 2',
+              progress: (d, ctx) => `${ctx.level} / 2` , done: (d, ctx) => ctx.level >= 2 },
+            { id: 'quest_owner', xp: 20, daily: false, label: 'Own at least 1 Miner',
+              progress: (d) => `${(d.miner_nano||0)+(d.miner_mega||0)} / 1`, done: (d) => (d.miner_nano||0)+(d.miner_mega||0) >= 1 },
+            { id: 'quest_coins', xp: 25, daily: false, label: 'Reach 100 Game Coins',
+              progress: (d) => `${d.game_coins||0} / 100`, done: (d) => (d.game_coins||0) >= 100 },
+            { id: 'quest_claims', xp: 15, daily: true, label: 'Claim from Faucet 5 times today',
+              progress: (d, ctx) => `${ctx.claimsToday} / 5`, done: (d, ctx) => ctx.claimsToday >= 5 },
+        ];
+
+        let currentUser = null;
+        let userData = {};
+
+        function todayKey() { return new Date().toISOString().slice(0, 10); }
+
+        function getLevel(exp) {
+            let level = 1, total = 0;
+            for (let i = 0; i < EXP_PER_LEVEL.length; i++) {
+                if (exp >= total + EXP_PER_LEVEL[i]) { total += EXP_PER_LEVEL[i]; level++; }
+                else return level;
+            }
+            return level;
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                onSnapshot(doc(db, 'users', user.uid), (snap) => {
+                    userData = snap.exists() ? snap.data() : {};
+                    render();
+                });
+            } else {
+                try { await signInAnonymously(auth); } catch(e) {}
+            }
+        });
+
+        function render() {
+            const today = todayKey();
+            const ctx = {
+                level: getLevel(userData.exp || 0),
+                claimsToday: userData.claimsDay === today ? (userData.claimsToday || 0) : 0,
+            };
+            const xp = userData.season_xp || 0;
+
+            document.getElementById('xp-text').innerText = `${xp} / ${LVL2_XP_REQUIRED}`;
+            document.getElementById('xp-bar').style.width = Math.min(100, xp / LVL2_XP_REQUIRED * 100) + '%';
+
+            // Level 1
+            const lvl1Card = document.getElementById('lvl1-card');
+            const lvl1Btn  = document.getElementById('lvl1-btn');
+            if (userData.season_lvl1_claimed) {
+                lvl1Btn.innerText = '✅ Claimed'; lvl1Btn.className = 'level-btn claimed';
+                lvl1Card.className = 'level-card unlocked';
+            } else {
+                lvl1Btn.innerText = 'Claim'; lvl1Btn.className = 'level-btn claim';
+                lvl1Card.className = 'level-card unlocked';
+            }
+
+            // Level 2
+            const lvl2Card = document.getElementById('lvl2-card');
+            const lvl2Btn  = document.getElementById('lvl2-btn');
+            if (userData.season_lvl2_claimed) {
+                lvl2Btn.innerText = '✅ Claimed'; lvl2Btn.className = 'level-btn claimed';
+                lvl2Card.className = 'level-card unlocked';
+            } else if (xp >= LVL2_XP_REQUIRED) {
+                lvl2Btn.innerText = 'Claim'; lvl2Btn.className = 'level-btn claim';
+                lvl2Card.className = 'level-card unlocked';
+            } else {
+                lvl2Btn.innerText = 'Locked'; lvl2Btn.className = 'level-btn locked';
+                lvl2Card.className = 'level-card locked';
+            }
+
+            // Quests
+            const container = document.getElementById('quests-container');
+            container.innerHTML = '';
+            QUESTS.forEach(q => {
+                const claimedField = 'season_' + q.id + '_claimed';
+                const claimedDateField = 'season_' + q.id + '_date';
+                const claimedToday = q.daily ? userData[claimedDateField] === today : !!userData[claimedField];
+                const done = q.done(userData, ctx);
+
+                let btnHtml;
+                if (claimedToday) btnHtml = `<button class="quest-btn claimed" disabled>✅ ${q.daily ? 'Claimed Today' : 'Claimed'}</button>`;
+                else if (done) btnHtml = `<button class="quest-btn claim" onclick="claimAction('${q.id}')">Claim +${q.xp} XP</button>`;
+                else btnHtml = `<button class="quest-btn locked" disabled>In Progress: ${q.progress(userData, ctx)}</button>`;
+
+                const card = document.createElement('div');
+                card.className = 'quest-card';
+                card.innerHTML = `
+                    <div class="quest-top">
+                        <span class="quest-name">${q.label}</span>
+                        <span class="quest-xp">+${q.xp} XP</span>
+                    </div>
+                    <div class="quest-daily">${q.daily ? 'Daily Quest' : 'One-time Quest'}</div>
+                    ${btnHtml}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        window.claimAction = async function(action) {
+            if (!currentUser) return;
+            try {
+                const resp = await fetch('/api/season-claim', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: currentUser.uid, action }),
+                });
+                const result = await resp.json();
+                if (!result.success) {
+                    alert(result.error || 'Claim failed');
+                    return;
+                }
+                if (result.reward) {
+                    alert('🎉 Reward claimed: ' + (result.reward.label || ''));
+                } else if (result.xpGained) {
+                    alert('✅ +' + result.xpGained + ' Season XP!');
+                }
+            } catch(e) {
+                alert('Network error: ' + e.message);
+            }
+        };
+    </script>
+</body>
+</html>
+
