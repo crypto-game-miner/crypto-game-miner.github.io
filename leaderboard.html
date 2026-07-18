@@ -58,7 +58,7 @@
                 <div class="stat-value" id="s-rate" style="color:#a78bfa;">— LTC / GH/S / HR</div>
             </div>
             <div style="text-align:right;">
-                <div class="stat-label">Per Day / GH/S</div>
+                <div class="stat-label">Today's USDT Rate</div>
                 <div class="stat-value" id="s-rate-day" style="color:#22c55e; font-size:13px;">—</div>
             </div>
         </div>
@@ -146,19 +146,14 @@
                     const dailyRate = globalSnap.exists() && globalSnap.data().dailyRate
                         ? globalSnap.data().dailyRate
                         : 1.0;
-                    const ltcPerHour = Math.round(2.5 * dailyRate * 1000) / 1000;
-                    const ltcPerDay = Math.round(2.5 * dailyRate * 24 * 1000) / 1000;
+                    const ltcPerHour  = Math.round(2.5 * dailyRate * 1000) / 1000;
+                    const usdtPerHour = Math.round(1.1 * dailyRate * 1000) / 1000;
                     document.getElementById('s-rate').innerText = ltcPerHour + ' LTC / GH/S / HR';
-                    document.getElementById('s-rate-day').innerText = ltcPerDay + ' LTC / DAY';
+                    document.getElementById('s-rate-day').innerText = usdtPerHour + ' USDT / GH/S / HR';
                 } catch(e) {
                     document.getElementById('s-rate').innerText = '2.5 LTC / GH/S / HR';
-                    document.getElementById('s-rate-day').innerText = '60 LTC / DAY';
+                    document.getElementById('s-rate-day').innerText = '1.1 USDT / GH/S / HR';
                 }
-
-                const rateMin = parseFloat((2.5 * 0.98).toFixed(3));
-                const rateMax = parseFloat((2.5 * 1.005).toFixed(3));
-                document.getElementById('s-rate').innerText = `${rateMin}–${rateMax}`;
-                document.getElementById('s-rate-day').innerText = `${(rateMin * 24).toFixed(2)}–${(rateMax * 24).toFixed(2)}`;
 
                 if (users.length === 0) {
                     document.getElementById('main-area').innerHTML = '<div class="loading">No players yet</div>';
@@ -240,6 +235,7 @@
     </script>
 </body>
 </html>
+
 
 
 
