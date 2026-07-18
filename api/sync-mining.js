@@ -61,7 +61,8 @@ export default async function handler(req, res) {
       const level = getLevel(data.exp || 0);
       const baseHashrate = level >= 2 ? 0.5 : 0;
       const taskBonus = data.task_bonus_hashrate || 0;
-      const permHashrate = Math.round((baseHashrate + taskBonus) * 10) / 10;
+      const seasonBonus = data.season_bonus_hashrate || 0;
+      const permHashrate = Math.round((baseHashrate + taskBonus + seasonBonus) * 10) / 10;
 
       const boosts = (data.claimBoosts || []).filter(b => {
         const t = b.time?.toMillis ? b.time.toMillis() : b.time;
