@@ -141,11 +141,14 @@
 
                 try {
                     const globalSnap = await getDoc(doc(db, 'stats', 'global'));
-                    const dailyRate = globalSnap.exists() && globalSnap.data().dailyRate
-                        ? globalSnap.data().dailyRate
-                        : 1.0;
-                    const ltcPerHour  = Math.round(2.5 * dailyRate * 1000) / 1000;
-                    const usdtPerHour = Math.round(1.1 * dailyRate * 1000) / 1000;
+                    const g = globalSnap.exists() ? globalSnap.data() : {};
+                    const usdtPool = g.usdt_pool != null ? g.usdt_pool : null;
+                    const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
+                    const activeUsdt = g.activeHashrateUsdt || 0;
+                    const activeLtc  = g.activeHashrateLtc  || 0;
+
+                    const ltcPerHour  = (ltcPool  != null && activeLtc  > 0) ? Math.round(ltcPool  / (24 * activeLtc)  * 1000) / 1000 : 2.5;
+                    const usdtPerHour = (usdtPool != null && activeUsdt > 0) ? Math.round(usdtPool / (24 * activeUsdt) * 1000) / 1000 : 1.1;
                     document.getElementById('s-rate').innerText = ltcPerHour + ' LTC/GH/S/HR';
                     document.getElementById('s-rate-day').innerText = usdtPerHour + ' USDT/GH/S/HR';
                 } catch(e) {
@@ -233,6 +236,7 @@
     </script>
 </body>
 </html>
+
 
 
 
