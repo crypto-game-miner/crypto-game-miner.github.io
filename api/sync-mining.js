@@ -52,14 +52,18 @@ export default async function handler(req, res) {
       const snap = await tx.get(userRef);
       if (!snap.exists) throw { code: 'NO_USER' };
 
-      // Admin-adjustable payout multiplier — read here (before any writes,
-      // Firestore transactions require all reads first) so it actually
-      // scales earnings, not just the cosmetic leaderboard display.
+      // Admin-adjustable daily pools — read here (before any writes,
+      // Firestore transactions require all reads first) so the effective
+      // per-GH/S/hour rate is derived live: pool / (24h * active hashrate
+      // currently mining that coin). Falls back to the flat base rate if
+      // no pool is configured or nobody's mining that track yet.
       const statsGlobalRef = db.collection('stats').doc('global');
       const statsGlobalSnap = await tx.get(statsGlobalRef);
-      const dailyRate = statsGlobalSnap.exists() && statsGlobalSnap.data().dailyRate
-        ? statsGlobalSnap.data().dailyRate
-        : 1.0;
+      const g = statsGlobalSnap.exists() ? statsGlobalSnap.data() : {};
+      const usdtPool = g.usdt_pool != null ? g.usdt_pool : null;
+      const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
+      const activeHashrateUsdt = g.activeHashrateUsdt || 0;
+      const activeHashrateLtc  = g.activeHashrateLtc  || 0;
 
       const data = snap.data();
       const now = Date.now();
@@ -84,12 +88,16 @@ export default async function handler(req, res) {
       const lastSyncMs = data.lastMiningSync?.toMillis ? data.lastMiningSync.toMillis() : now;
       const secondsElapsed = Math.min(Math.max((now - lastSyncMs) / 1000, 0), MAX_SECONDS);
 
-      const updates = { lastMiningSync: Timestamp.fromMillis(now), claimBoosts: boosts };
+      const updates = { lastMiningSync: Timestamp.fromMillis(now), claimBoosts: boosts, mining_coin: coin };
       let earned = 0;
 
       if (!miningPaused && totalHashrate > 0 && secondsElapsed > 0) {
-        const baseRate = coin === 'usdt' ? USDT_RATE : LTC_RATE;
-        const rate = baseRate * dailyRate;
+        let rate;
+        if (coin === 'usdt') {
+          rate = (usdtPool != null && activeHashrateUsdt > 0) ? (usdtPool / (24 * activeHashrateUsdt)) : USDT_RATE;
+        } else {
+          rate = (ltcPool != null && activeHashrateLtc > 0) ? (ltcPool / (24 * activeHashrateLtc)) : LTC_RATE;
+        }
         earned = totalHashrate * rate / 3600 * secondsElapsed;
         if (coin === 'usdt') updates.coins = (data.coins || 0) + earned;
         else updates.ltc = (data.ltc || 0) + earned;
@@ -117,6 +125,7 @@ export default async function handler(req, res) {
         level,
         miner_nano: (data.miner_nano || 0) + (data.miner_mega || 0),
         is_active: !miningPaused,
+        mining_coin: coin,
         updatedAt: Timestamp.fromMillis(now),
       }, { merge: true });
 
@@ -151,19 +160,26 @@ export default async function handler(req, res) {
 async function refreshGlobalStats(db) {
   const snap = await db.collection('leaderboard_public').get();
   let totalPlayers = 0, totalHashrate = 0, activeHashrate = 0;
+  let activeHashrateUsdt = 0, activeHashrateLtc = 0;
 
   snap.forEach(d => {
     const data = d.data();
     if (!data.hashrate || data.hashrate <= 0) return;
     totalPlayers++;
     totalHashrate += data.hashrate;
-    if (data.is_active) activeHashrate += data.hashrate;
+    if (data.is_active) {
+      activeHashrate += data.hashrate;
+      if (data.mining_coin === 'usdt') activeHashrateUsdt += data.hashrate;
+      else activeHashrateLtc += data.hashrate; // default to ltc if unset (legacy docs)
+    }
   });
 
   await db.collection('stats').doc('global').set({
     totalPlayers,
     totalHashrate: Math.round(totalHashrate * 10) / 10,
     activeHashrate: Math.round(activeHashrate * 10) / 10,
+    activeHashrateUsdt: Math.round(activeHashrateUsdt * 10) / 10,
+    activeHashrateLtc: Math.round(activeHashrateLtc * 10) / 10,
     updatedAt: Timestamp.fromMillis(Date.now()),
   }, { merge: true });
 }
