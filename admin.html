@@ -259,8 +259,13 @@
             const ltcMining  = d.ltc_from_mining  || 0;
 
             const g = globalSnap.exists() ? globalSnap.data() : {};
-            const currentRate    = g.dailyRate != null ? g.dailyRate : 1.0;
-            const activeHashrate = g.activeHashrate || 0;
+            const usdtPool = g.usdt_pool != null ? g.usdt_pool : null;
+            const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
+            const activeUsdt = g.activeHashrateUsdt || 0;
+            const activeLtc  = g.activeHashrateLtc  || 0;
+
+            const effUsdtRate = (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : BASE_USDT_RATE;
+            const effLtcRate  = (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : BASE_LTC_RATE;
 
             container.innerHTML = `
                 <div class="card">
@@ -271,18 +276,17 @@
                     <div class="info-row"><span>LTC from Mining</span><span>${ltcMining.toFixed(4)}</span></div>
                 </div>
                 <div class="card">
-                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⚙️ PAYOUT RATE</div>
-                    <div class="info-row"><span>Active Hashrate</span><span>${activeHashrate.toFixed(1)} GH/S</span></div>
-                    <div class="info-row"><span>Current Rate Multiplier</span><span>${currentRate}x</span></div>
-                    <div class="info-row"><span>Base rates</span><span>${BASE_USDT_RATE} USDT · ${BASE_LTC_RATE} LTC /GH/S/HR</span></div>
-                    <div class="info-row"><span>Max daily payout at current rate</span><span>≈${(BASE_USDT_RATE*currentRate*activeHashrate*24).toFixed(0)} USDT <i>or</i> ${(BASE_LTC_RATE*currentRate*activeHashrate*24).toFixed(1)} LTC</span></div>
-                    <div style="font-size:10px; color:#8b949e; margin:10px 0;">
-                        ⚠️ "Max daily payout" assumes ALL active hashrate mines that one coin — actual total is split between whoever picked USDT vs LTC, so real payout is somewhere between 0 and this ceiling for each.
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⚙️ DAILY POOLS</div>
+                    <div class="info-row"><span>Active USDT-track Hashrate</span><span>${activeUsdt.toFixed(1)} GH/S</span></div>
+                    <div class="info-row"><span>Active LTC-track Hashrate</span><span>${activeLtc.toFixed(1)} GH/S</span></div>
+                    <div style="font-size:10px; color:#8b949e; margin:10px 0 4px;">
+                        Set a daily budget per coin — it's divided across everyone currently mining that track, live. Leave blank to use the flat base rate (${BASE_USDT_RATE} USDT / ${BASE_LTC_RATE} LTC per GH/S/hr) instead of a budget.
                     </div>
-                    <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
-                        <input type="number" id="rate-input" class="days-input" style="width:90px;" step="0.05" min="0" max="10" value="${currentRate}">
-                        <button class="btn-approve" style="flex:1;" onclick="saveRate()">💾 Save Rate</button>
-                    </div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT Pool / day (effective rate: ${effUsdtRate.toFixed(3)}/GH/S/hr)</label>
+                    <input type="number" id="usdt-pool-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${usdtPool != null ? usdtPool : ''}" placeholder="blank = base rate">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC Pool / day (effective rate: ${effLtcRate.toFixed(3)}/GH/S/hr)</label>
+                    <input type="number" id="ltc-pool-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1" min="0" value="${ltcPool != null ? ltcPool : ''}" placeholder="blank = base rate">
+                    <button class="btn-approve" style="width:100%;" onclick="savePools()">💾 Save Pools</button>
                 </div>
             `;
         } catch(e) {
@@ -290,18 +294,18 @@
         }
     }
 
-    window.saveRate = async function() {
-        const val = parseFloat(document.getElementById('rate-input').value);
-        if (!isFinite(val) || val < 0 || val > 10) { alert('Enter a number between 0 and 10'); return; }
+    window.savePools = async function() {
+        const usdtVal = document.getElementById('usdt-pool-input').value;
+        const ltcVal  = document.getElementById('ltc-pool-input').value;
         try {
             const res = await fetch('/api/admin-set-rate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret: ADMIN_PASSWORD, dailyRate: val })
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, usdtPool: usdtVal, ltcPool: ltcVal })
             });
             const data = await res.json();
-            if (!data.success) { alert(data.error || 'Error saving rate'); return; }
-            alert('✅ Rate updated to ' + val + 'x');
+            if (!data.success) { alert(data.error || 'Error saving pools'); return; }
+            alert('✅ Pools updated.');
             loadStats();
         } catch(e) {
             alert('Error: ' + e.message);
@@ -310,6 +314,7 @@
 </script>
 </body>
 </html>
+
 
 
 
