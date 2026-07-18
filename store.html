@@ -283,10 +283,10 @@
             btn.disabled = true;
 
             try {
-                const resp = await fetch('/api/buy-miner', {
+                const resp = await fetch('/api/store', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: currentUser.uid }),
+                    body: JSON.stringify({ uid: currentUser.uid, action: 'buy_miner' }),
                 });
                 const result = await resp.json();
                 if (!result.success) {
@@ -328,10 +328,10 @@
 
             let result;
             try {
-                const resp = await fetch('/api/open-box', {
+                const resp = await fetch('/api/store', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: currentUser.uid }),
+                    body: JSON.stringify({ uid: currentUser.uid, action: 'open_box' }),
                 });
                 result = await resp.json();
             } catch(e) {
@@ -389,6 +389,7 @@
     </script>
 </body>
 </html>
+
 
 
 
