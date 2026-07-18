@@ -31,16 +31,44 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { secret, action, reqId, views, bannerUrl, clickUrl } = req.body || {};
+  const { secret, action, reqId, views, bannerUrl, clickUrl, usdtPool, ltcPool } = req.body || {};
 
   if (secret !== ADMIN_SECRET) {
     return res.status(403).json({ success: false, error: 'Invalid admin password' });
   }
+
+  const db = initFirebase();
+
+  // set_pools doesn't touch ad_requests, so it's handled before the reqId check.
+  if (action === 'set_pools') {
+    function parsePool(val) {
+      if (val === null || val === undefined || val === '') return null;
+      const n = parseFloat(val);
+      if (!isFinite(n) || n < 0) return undefined;
+      return n;
+    }
+    const usdt = parsePool(usdtPool);
+    const ltc  = parsePool(ltcPool);
+    if (usdt === undefined || ltc === undefined) {
+      return res.status(400).json({ success: false, error: 'Pools must be non-negative numbers, or blank to disable.' });
+    }
+    try {
+      await db.collection('stats').doc('global').set({
+        usdt_pool: usdt,
+        ltc_pool: ltc,
+        poolsUpdatedAt: Timestamp.now(),
+      }, { merge: true });
+      return res.status(200).json({ success: true, usdt_pool: usdt, ltc_pool: ltc });
+    } catch (e) {
+      console.error('Set-pools error:', e.message || e);
+      return res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
   if (!reqId) {
     return res.status(400).json({ success: false, error: 'Missing reqId' });
   }
 
-  const db = initFirebase();
   const reqRef = db.collection('ad_requests').doc(reqId);
 
   try {
@@ -89,4 +117,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 
