@@ -115,6 +115,13 @@ export default async function handler(req, res) {
         updatedAt: Timestamp.fromMillis(now),
       }, { merge: true });
 
+      // Daily site-wide stats — how much USDT is being handed out via claims today.
+      const dailyStatsRef = db.collection('stats').doc('daily_' + today);
+      tx.set(dailyStatsRef, {
+        usdt_from_claims: FieldValue.increment(usdtReward),
+        updatedAt: Timestamp.fromMillis(now),
+      }, { merge: true });
+
       // ─── Consume a view from a purchased ad slot, if this claim number
       // falls on one of the ad windows ─────────────────────────────────
       // newClaims is this user's Nth claim TODAY (1-indexed). Position 0
@@ -174,6 +181,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 
 
 
