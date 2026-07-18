@@ -51,16 +51,14 @@
             <div class="stat-value" id="s-active">—</div>
         </div>
     </div>
-    <div style="padding: 0 20px 10px;">
-        <div class="stat-box" style="display:flex; justify-content:space-between; align-items:center; padding: 10px 14px;">
-            <div>
-                <div class="stat-label">Today's LTC Rate</div>
-                <div class="stat-value" id="s-rate" style="color:#a78bfa;">— LTC / GH/S / HR</div>
-            </div>
-            <div style="text-align:right;">
-                <div class="stat-label">Today's USDT Rate</div>
-                <div class="stat-value" id="s-rate-day" style="color:#22c55e; font-size:13px;">—</div>
-            </div>
+    <div class="stats-row" style="padding: 0 20px 10px;">
+        <div class="stat-box">
+            <div class="stat-label">Today's LTC Rate</div>
+            <div class="stat-value" id="s-rate" style="color:#a78bfa; font-size:13px;">— LTC / GH/S / HR</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Today's USDT Rate</div>
+            <div class="stat-value" id="s-rate-day" style="color:#22c55e; font-size:13px;">—</div>
         </div>
     </div>
 
@@ -148,11 +146,11 @@
                         : 1.0;
                     const ltcPerHour  = Math.round(2.5 * dailyRate * 1000) / 1000;
                     const usdtPerHour = Math.round(1.1 * dailyRate * 1000) / 1000;
-                    document.getElementById('s-rate').innerText = ltcPerHour + ' LTC / GH/S / HR';
-                    document.getElementById('s-rate-day').innerText = usdtPerHour + ' USDT / GH/S / HR';
+                    document.getElementById('s-rate').innerText = ltcPerHour + ' LTC/GH/S/HR';
+                    document.getElementById('s-rate-day').innerText = usdtPerHour + ' USDT/GH/S/HR';
                 } catch(e) {
-                    document.getElementById('s-rate').innerText = '2.5 LTC / GH/S / HR';
-                    document.getElementById('s-rate-day').innerText = '1.1 USDT / GH/S / HR';
+                    document.getElementById('s-rate').innerText = '2.5 LTC/GH/S/HR';
+                    document.getElementById('s-rate-day').innerText = '1.1 USDT/GH/S/HR';
                 }
 
                 if (users.length === 0) {
@@ -235,6 +233,7 @@
     </script>
 </body>
 </html>
+
 
 
 
