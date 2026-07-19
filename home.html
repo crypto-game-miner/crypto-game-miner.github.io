@@ -135,7 +135,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
         import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-        import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getFirestore, doc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -153,6 +153,27 @@
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
         const LTC_RATE  = 2.5;
         const USDT_RATE = 1.1;
+
+        // Live effective rate — mirrors the same pool math api/sync-mining.js
+        // actually uses for real earnings, instead of always assuming the
+        // flat base rate. Refreshed alongside syncMining().
+        let currentRate = { ltc: LTC_RATE, usdt: USDT_RATE };
+
+        async function refreshRates() {
+            try {
+                const snap = await getDoc(doc(db, 'stats', 'global'));
+                const g = snap.exists() ? snap.data() : {};
+                const usdtPool = g.usdt_pool != null ? g.usdt_pool : null;
+                const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
+                const activeUsdt = g.activeHashrateUsdt || 0;
+                const activeLtc  = g.activeHashrateLtc  || 0;
+                currentRate = {
+                    usdt: (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : USDT_RATE,
+                    ltc:  (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : LTC_RATE,
+                };
+                renderHome();
+            } catch(e) {}
+        }
 
         let userData     = {};
         let miningCoin   = localStorage.getItem('miningCoin') || 'ltc';
@@ -190,8 +211,9 @@
                     renderHome();
                 });
 
+                refreshRates();
                 syncMining(user.uid);
-                setInterval(() => syncMining(user.uid), 60000);
+                setInterval(() => { refreshRates(); syncMining(user.uid); }, 60000);
             } else {
                 try { await signInAnonymously(auth); } catch(e) {}
             }
@@ -297,7 +319,7 @@
             // Mining status from Firebase lastClaimTime — paused once equipment health hits 0
             const miningPaused = getHealthPct() <= 0;
 
-            const rate = miningCoin === 'ltc' ? LTC_RATE : USDT_RATE;
+            const rate = miningCoin === 'ltc' ? currentRate.ltc : currentRate.usdt;
             document.getElementById('ltc-per-hour').innerText = totalHashrate > 0 ? (totalHashrate * rate).toFixed(3) : 0;
             document.getElementById('rate-label').innerText   = (miningCoin === 'ltc' ? 'LTC' : 'USDT') + ' Coins / Hour';
 
@@ -357,6 +379,7 @@
     </script>
 </body>
 </html>
+
 
 
 
