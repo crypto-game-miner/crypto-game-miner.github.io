@@ -31,7 +31,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { secret, action, reqId, views, bannerUrl, clickUrl, usdtPool, ltcPool } = req.body || {};
+  const { secret, action, reqId, views, bannerUrl, clickUrl, usdtPool, ltcPool, rewardGuest, rewardLogged } = req.body || {};
 
   if (secret !== ADMIN_SECRET) {
     return res.status(403).json({ success: false, error: 'Invalid admin password' });
@@ -61,6 +61,25 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, usdt_pool: usdt, ltc_pool: ltc });
     } catch (e) {
       console.error('Set-pools error:', e.message || e);
+      return res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
+  if (action === 'set_claim_rewards') {
+    const g = parseFloat(rewardGuest);
+    const l = parseFloat(rewardLogged);
+    if (!isFinite(g) || g < 0 || !isFinite(l) || l < 0) {
+      return res.status(400).json({ success: false, error: 'Rewards must be non-negative numbers.' });
+    }
+    try {
+      await db.collection('stats').doc('global').set({
+        usdt_reward_guest: g,
+        usdt_reward_logged: l,
+        rewardsUpdatedAt: Timestamp.now(),
+      }, { merge: true });
+      return res.status(200).json({ success: true, usdt_reward_guest: g, usdt_reward_logged: l });
+    } catch (e) {
+      console.error('Set-claim-rewards error:', e.message || e);
       return res.status(500).json({ success: false, error: 'Server error' });
     }
   }
@@ -117,5 +136,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 
 
