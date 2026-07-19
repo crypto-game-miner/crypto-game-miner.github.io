@@ -120,7 +120,10 @@
                         level: data.level || 1,
                         hashrate: data.hashrate || 0,
                         nano: data.miner_nano != null ? data.miner_nano : null,
-                        isActive: !!data.is_active,
+                        // Computed live (claimed within last 24h) instead of
+                        // trusting a stored is_active flag that only updates
+                        // when that player happens to sync again.
+                        isActive: !!data.last_claim_ms && (now - data.last_claim_ms) < 86400000,
                     });
                 });
 
@@ -236,6 +239,7 @@
     </script>
 </body>
 </html>
+
 
 
 
