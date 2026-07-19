@@ -270,6 +270,8 @@
             const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
             const activeUsdt = g.activeHashrateUsdt || 0;
             const activeLtc  = g.activeHashrateLtc  || 0;
+            const rewardGuest  = g.usdt_reward_guest  != null ? g.usdt_reward_guest  : 4;
+            const rewardLogged = g.usdt_reward_logged != null ? g.usdt_reward_logged : 5;
 
             const effUsdtRate = (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : BASE_USDT_RATE;
             const effLtcRate  = (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : BASE_LTC_RATE;
@@ -279,22 +281,33 @@
                     <div style="color:#8b949e; font-size:13px; font-weight:bold; margin-bottom:10px;">✅ YESTERDAY (${yesterdayKey()}) — complete day</div>
                     <div class="info-row"><span>USDT from Claims</span><span>${yUsdtClaims.toFixed(2)}</span></div>
                     <div class="info-row"><span>USDT from Mining</span><span>${yUsdtMining.toFixed(2)}</span></div>
-                    <div class="info-row"><span>Total USDT paid out</span><span style="color:#facc15;">${(yUsdtClaims + yUsdtMining).toFixed(2)}</span></div>
+                    <div class="info-row"><span>Total USDT earned (claims+mining)</span><span style="color:#facc15;">${(yUsdtClaims + yUsdtMining).toFixed(2)}</span></div>
                     <div class="info-row"><span>LTC from Mining</span><span>${yLtcMining.toFixed(4)}</span></div>
                 </div>
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">📅 TODAY (${todayKey()}) — live, still counting</div>
                     <div class="info-row"><span>USDT from Claims</span><span>${usdtClaims.toFixed(2)}</span></div>
                     <div class="info-row"><span>USDT from Mining</span><span>${usdtMining.toFixed(2)}</span></div>
-                    <div class="info-row"><span>Total USDT paid out</span><span style="color:#facc15;">${(usdtClaims + usdtMining).toFixed(2)}</span></div>
+                    <div class="info-row"><span>Total USDT earned (claims+mining)</span><span style="color:#facc15;">${(usdtClaims + usdtMining).toFixed(2)}</span></div>
                     <div class="info-row"><span>LTC from Mining</span><span>${ltcMining.toFixed(4)}</span></div>
                 </div>
                 <div class="card">
-                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⚙️ DAILY POOLS</div>
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">🎟️ CLAIM REWARDS</div>
+                    <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
+                        USDT paid out per faucet claim. Guests (no Google linked) get one rate, logged-in users get another. This is usually the biggest cost driver — bigger than mining.
+                    </div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Guest reward (per claim)</label>
+                    <input type="number" id="reward-guest-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.5" min="0" value="${rewardGuest}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Logged-in reward (per claim)</label>
+                    <input type="number" id="reward-logged-input" class="days-input" style="width:100%; margin-bottom:12px;" step="0.5" min="0" value="${rewardLogged}">
+                    <button class="btn-approve" style="width:100%;" onclick="saveClaimRewards()">💾 Save Rewards</button>
+                </div>
+                <div class="card">
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⚙️ DAILY POOLS (Mining only)</div>
                     <div class="info-row"><span>Active USDT-track Hashrate</span><span>${activeUsdt.toFixed(1)} GH/S</span></div>
                     <div class="info-row"><span>Active LTC-track Hashrate</span><span>${activeLtc.toFixed(1)} GH/S</span></div>
                     <div style="font-size:10px; color:#8b949e; margin:10px 0 4px;">
-                        Set a daily budget per coin — it's divided across everyone currently mining that track, live. Leave blank to use the flat base rate (${BASE_USDT_RATE} USDT / ${BASE_LTC_RATE} LTC per GH/S/hr) instead of a budget.
+                        Set a daily budget per coin — it's divided across everyone currently mining that track, live. Leave blank to use the flat base rate (${BASE_USDT_RATE} USDT / ${BASE_LTC_RATE} LTC per GH/S/hr) instead of a budget. Does NOT affect claim rewards above.
                     </div>
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT Pool / day (effective rate: ${effUsdtRate.toFixed(3)}/GH/S/hr)</label>
                     <input type="number" id="usdt-pool-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${usdtPool != null ? usdtPool : ''}" placeholder="blank = base rate">
@@ -307,6 +320,24 @@
             container.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
         }
     }
+
+    window.saveClaimRewards = async function() {
+        const guestVal  = document.getElementById('reward-guest-input').value;
+        const loggedVal = document.getElementById('reward-logged-input').value;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_claim_rewards', rewardGuest: guestVal, rewardLogged: loggedVal })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving rewards'); return; }
+            alert('✅ Claim rewards updated.');
+            loadStats();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
 
     window.savePools = async function() {
         const usdtVal = document.getElementById('usdt-pool-input').value;
@@ -328,6 +359,7 @@
 </script>
 </body>
 </html>
+
 
 
 
