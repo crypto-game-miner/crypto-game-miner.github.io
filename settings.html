@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -100,7 +100,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, linkWithPopup, signInWithCredential, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -160,60 +160,39 @@
             document.getElementById('bonus-banner').style.display = 'block';
         }
 
-        function loadFromFirestore(data) {
+        // Pulls the canonical server state into localStorage. Read-only —
+        // never writes to Firestore from the client (that's what caused
+        // the whole-document overwrite bug this replaces).
+        function loadFromServerData(data) {
             localStorage.setItem('miner_balance', data.coins || 0);
             localStorage.setItem('game_coins', data.game_coins || 0);
             localStorage.setItem('ltc_balance', ((data.ltc || 0)).toFixed(6));
             localStorage.setItem('player_exp', data.exp || 0);
             localStorage.setItem('miner_nano', data.miner_nano || 0);
             localStorage.setItem('miner_mega', data.miner_mega || 0);
+            localStorage.setItem('task_bonus_hashrate', data.task_bonus_hashrate || 0);
 
-            const nano = data.miner_nano || 0;
-            const mega = data.miner_mega || 0;
             const exp = data.exp || 0;
             const { level } = getLevel(exp);
             const baseHashrate = level >= 2 ? 0.5 : 0;
-            const savedHashrate = data.hashrate || 0;
-            const taskBonus = Math.max(
-                Math.round((nano * 0.1 + mega * 0.2) * 10) / 10,
-                Math.max(0, Math.round((savedHashrate - baseHashrate) * 10) / 10)
-            );
-            localStorage.setItem('task_bonus_hashrate', taskBonus);
-            localStorage.setItem('hashrate', Math.round((baseHashrate + taskBonus) * 10) / 10);
+            localStorage.setItem('hashrate', Math.round((baseHashrate + (data.task_bonus_hashrate || 0)) * 10) / 10);
 
             if (data.registerBonusGiven) localStorage.setItem('task_register_bonus', 'done');
             if (data.zeradsBonusGiven) localStorage.setItem('task_zerads', 'done');
             updateStats();
         }
 
-        async function saveToFirestore(uid, email, isNew) {
-            const coins = Number(localStorage.getItem('miner_balance')) || 0;
-            const gc = Number(localStorage.getItem('game_coins')) || 0;
-            const ltc = parseFloat(localStorage.getItem('ltc_balance')) || 0;
-            const exp = Number(localStorage.getItem('player_exp')) || 0;
-            const hashrate = getCurrentHashrate();
-            const nano = Number(localStorage.getItem('miner_nano')) || 0;
-            const mega = Number(localStorage.getItem('miner_mega')) || 0;
-            const registerBonusGiven = localStorage.getItem('task_register_bonus') === 'done';
-            const zeradsBonusGiven = localStorage.getItem('task_zerads') === 'done';
-
-            await setDoc(doc(db, 'users', uid), {
-                coins, game_coins: gc, ltc, exp, hashrate,
-                miner_nano: nano, miner_mega: mega,
-                email, registerBonusGiven, zeradsBonusGiven,
-                updatedAt: new Date()
+        // The ONLY write path now: server decides everything (defaults for
+        // new accounts, one-time bonus, email) and returns canonical state.
+        async function linkGoogleAccount(uid, email) {
+            const resp = await fetch('/api/link-google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid, email }),
             });
-
-            if (isNew) {
-                const globalRef = doc(db, 'stats', 'global');
-                const globalSnap = await getDoc(globalRef);
-                const globalData = globalSnap.exists() ? globalSnap.data() : { totalHashrate: 0, totalPlayers: 0 };
-                await setDoc(globalRef, {
-                    totalHashrate: Math.round(((globalData.totalHashrate || 0) + hashrate) * 10) / 10,
-                    totalPlayers: (globalData.totalPlayers || 0) + 1,
-                    updatedAt: new Date()
-                }, { merge: true });
-            }
+            const result = await resp.json();
+            if (!result.success) throw new Error(result.error || 'Link failed');
+            return result;
         }
 
         const btn = document.getElementById('google-btn');
@@ -227,7 +206,6 @@
                 try {
                     const provider = new GoogleAuthProvider();
                     let user;
-                    let isNewPlayer;
 
                     if (auth.currentUser) {
                         // Есть активная (анонимная) сессия — привязываем Google к ней,
@@ -235,8 +213,6 @@
                         try {
                             const linkResult = await linkWithPopup(auth.currentUser, provider);
                             user = linkResult.user;
-                            const userSnap = await getDoc(doc(db, 'users', user.uid));
-                            isNewPlayer = !userSnap.exists();
                         } catch (linkErr) {
                             if (linkErr.code === 'auth/credential-already-in-use' || linkErr.code === 'auth/email-already-in-use') {
                                 // Этот Google-аккаунт уже зарегистрирован под другим uid —
@@ -244,7 +220,6 @@
                                 const cred = GoogleAuthProvider.credentialFromError(linkErr);
                                 const signInResult = await signInWithCredential(auth, cred);
                                 user = signInResult.user;
-                                isNewPlayer = false;
                             } else {
                                 throw linkErr;
                             }
@@ -253,33 +228,21 @@
                         // Анонимной сессии нет — обычный вход
                         const signInResult = await signInWithPopup(auth, provider);
                         user = signInResult.user;
-                        const userSnap = await getDoc(doc(db, 'users', user.uid));
-                        isNewPlayer = !userSnap.exists();
                     }
 
-                    if (isNewPlayer) {
-                        const bonusGiven = localStorage.getItem('task_register_bonus') === 'done';
-                        if (!bonusGiven) {
-                            let taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
-                            taskBonus = Math.round((taskBonus + 0.3) * 10) / 10;
-                            localStorage.setItem('task_bonus_hashrate', taskBonus);
-                            localStorage.setItem('task_register_bonus', 'done');
-                        }
-                        localStorage.setItem('locked_google_email', user.email);
-                        await saveToFirestore(user.uid, user.email, true);
-                        updateStats();
-                        alert('🎉 ACCOUNT CREATED! +0.3 GH/S BONUS ADDED!');
-                    } else {
-                        const userSnap = await getDoc(doc(db, 'users', user.uid));
-                        const data = userSnap.data();
-                        localStorage.setItem('locked_google_email', user.email);
-                        loadFromFirestore(data);
-                        alert('✅ PROGRESS RESTORED! WELCOME BACK!');
-                    }
+                    const result = await linkGoogleAccount(user.uid, user.email);
+                    localStorage.setItem('locked_google_email', user.email);
+                    loadFromServerData(result);
 
                     btn.style.display = 'none';
                     document.getElementById('bonus-banner').style.display = 'none';
                     desc.innerHTML = `<span style="color:#22c55e;">✅ ACCOUNT LINKED</span><br><span style="font-size:10px; text-transform:none;">${user.email}</span>`;
+
+                    if (result.bonusGranted) {
+                        alert(result.isNew ? '🎉 ACCOUNT CREATED! +0.3 GH/S BONUS ADDED!' : '✅ PROGRESS RESTORED! +0.3 GH/S BONUS ADDED!');
+                    } else {
+                        alert('✅ PROGRESS RESTORED! WELCOME BACK!');
+                    }
 
                 } catch(e) {
                     alert('ERROR: ' + e.message);
@@ -287,9 +250,15 @@
             };
         }
 
+        // Re-confirms the email link on every visit — safe to call
+        // repeatedly now since /api/link-google only ever merges and the
+        // bonus grant is idempotent server-side.
         onAuthStateChanged(auth, async (user) => {
             if (user && lockedEmail) {
-                await saveToFirestore(user.uid, lockedEmail, false);
+                try {
+                    const result = await linkGoogleAccount(user.uid, lockedEmail);
+                    loadFromServerData(result);
+                } catch(e) {}
             }
         });
 
@@ -303,6 +272,7 @@
     </script>
 </body>
 </html>
+
 
 
 
