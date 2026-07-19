@@ -33,8 +33,8 @@
         <div class="settings-area">
 
             <div id="bonus-banner" class="bonus-banner" style="display:none;">
-                🎁 Sign in with Google and get <strong>+1 bonus USDT coin</strong> per every claim!<br>
-                <span style="color:#8b949e; font-size:10px;">Guests: 4 coins · Registered: 5 coins per claim</span>
+                🎁 Sign in with Google and get <strong>bonus USDT coins</strong> per every claim!<br>
+                <span style="color:#8b949e; font-size:10px;">Guests: <span id="reward-guest-text">4</span> coins · Registered: <span id="reward-logged-text">5</span> coins per claim</span>
             </div>
 
             <div class="settings-section">
@@ -100,7 +100,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, linkWithPopup, signInWithCredential, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -159,6 +159,19 @@
         if (!lockedEmail) {
             document.getElementById('bonus-banner').style.display = 'block';
         }
+
+        // Pulls the admin-configured claim rewards (set from admin.html's
+        // Stats tab) so the banner never shows stale hardcoded numbers.
+        (async () => {
+            try {
+                const snap = await getDoc(doc(db, 'stats', 'global'));
+                const g = snap.exists() ? snap.data() : {};
+                const rewardGuest  = g.usdt_reward_guest  != null ? g.usdt_reward_guest  : 4;
+                const rewardLogged = g.usdt_reward_logged != null ? g.usdt_reward_logged : 5;
+                document.getElementById('reward-guest-text').innerText = rewardGuest;
+                document.getElementById('reward-logged-text').innerText = rewardLogged;
+            } catch(e) {}
+        })();
 
         // Pulls the canonical server state into localStorage. Read-only —
         // never writes to Firestore from the client (that's what caused
@@ -272,6 +285,7 @@
     </script>
 </body>
 </html>
+
 
 
 
