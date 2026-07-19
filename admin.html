@@ -242,14 +242,16 @@
     const BASE_LTC_RATE  = 2.5;
 
     function todayKey() { return new Date().toISOString().slice(0, 10); }
+    function yesterdayKey() { return new Date(Date.now() - 86400000).toISOString().slice(0, 10); }
 
     async function loadStats() {
         const container = document.getElementById('stats-container');
         container.innerHTML = '<div class="empty">Loading...</div>';
 
         try {
-            const [dailySnap, globalSnap] = await Promise.all([
+            const [dailySnap, yesterdaySnap, globalSnap] = await Promise.all([
                 getDoc(doc(db, 'stats', 'daily_' + todayKey())),
+                getDoc(doc(db, 'stats', 'daily_' + yesterdayKey())),
                 getDoc(doc(db, 'stats', 'global')),
             ]);
 
@@ -257,6 +259,11 @@
             const usdtClaims = d.usdt_from_claims || 0;
             const usdtMining = d.usdt_from_mining || 0;
             const ltcMining  = d.ltc_from_mining  || 0;
+
+            const y = yesterdaySnap.exists() ? yesterdaySnap.data() : {};
+            const yUsdtClaims = y.usdt_from_claims || 0;
+            const yUsdtMining = y.usdt_from_mining || 0;
+            const yLtcMining  = y.ltc_from_mining  || 0;
 
             const g = globalSnap.exists() ? globalSnap.data() : {};
             const usdtPool = g.usdt_pool != null ? g.usdt_pool : null;
@@ -269,7 +276,14 @@
 
             container.innerHTML = `
                 <div class="card">
-                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">📅 TODAY (${todayKey()})</div>
+                    <div style="color:#8b949e; font-size:13px; font-weight:bold; margin-bottom:10px;">✅ YESTERDAY (${yesterdayKey()}) — complete day</div>
+                    <div class="info-row"><span>USDT from Claims</span><span>${yUsdtClaims.toFixed(2)}</span></div>
+                    <div class="info-row"><span>USDT from Mining</span><span>${yUsdtMining.toFixed(2)}</span></div>
+                    <div class="info-row"><span>Total USDT paid out</span><span style="color:#facc15;">${(yUsdtClaims + yUsdtMining).toFixed(2)}</span></div>
+                    <div class="info-row"><span>LTC from Mining</span><span>${yLtcMining.toFixed(4)}</span></div>
+                </div>
+                <div class="card">
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">📅 TODAY (${todayKey()}) — live, still counting</div>
                     <div class="info-row"><span>USDT from Claims</span><span>${usdtClaims.toFixed(2)}</span></div>
                     <div class="info-row"><span>USDT from Mining</span><span>${usdtMining.toFixed(2)}</span></div>
                     <div class="info-row"><span>Total USDT paid out</span><span style="color:#facc15;">${(usdtClaims + usdtMining).toFixed(2)}</span></div>
@@ -314,6 +328,7 @@
 </script>
 </body>
 </html>
+
 
 
 
