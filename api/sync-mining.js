@@ -59,7 +59,7 @@ export default async function handler(req, res) {
       // no pool is configured or nobody's mining that track yet.
       const statsGlobalRef = db.collection('stats').doc('global');
       const statsGlobalSnap = await tx.get(statsGlobalRef);
-      const g = statsGlobalSnap.exists() ? statsGlobalSnap.data() : {};
+      const g = statsGlobalSnap.exists ? statsGlobalSnap.data() : {};
       const usdtPool = g.usdt_pool != null ? g.usdt_pool : null;
       const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
       const activeHashrateUsdt = g.activeHashrateUsdt || 0;
@@ -183,5 +183,6 @@ async function refreshGlobalStats(db) {
     updatedAt: Timestamp.fromMillis(Date.now()),
   }, { merge: true });
 }
+
 
 
