@@ -59,6 +59,15 @@ export default async function handler(req, res) {
       const snap = await tx.get(userRef);
       const data = snap.exists ? snap.data() : {};
 
+      // Admin-adjustable claim reward amounts — read here (before any
+      // writes) so budget stays controllable from admin.html, just like
+      // the mining pools. Falls back to the flat defaults if unset.
+      const statsGlobalRef = db.collection('stats').doc('global');
+      const statsGlobalSnap = await tx.get(statsGlobalRef);
+      const g = statsGlobalSnap.exists ? statsGlobalSnap.data() : {};
+      const rewardGuest  = g.usdt_reward_guest  != null ? g.usdt_reward_guest  : USDT_REWARD_GUEST;
+      const rewardLogged = g.usdt_reward_logged != null ? g.usdt_reward_logged : USDT_REWARD_LOGGED;
+
       // Read the ad slot query up front too — Firestore transactions
       // require ALL reads to happen before ANY writes.
       let slotSnap = null;
@@ -91,7 +100,7 @@ export default async function handler(req, res) {
 
       // ─── Determine reward (real login = signed in with Google, not anonymous) ──
       const isRealLogin = !!data.email; // email only set once user links Google
-      const usdtReward = isRealLogin ? USDT_REWARD_LOGGED : USDT_REWARD_GUEST;
+      const usdtReward = isRealLogin ? rewardLogged : rewardGuest;
 
       // ─── Update claim boosts array (each claim = +0.1 GH/s for 24h) ─
       let boosts = data.claimBoosts || [];
