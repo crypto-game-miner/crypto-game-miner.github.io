@@ -124,7 +124,10 @@ export default async function handler(req, res) {
         hashrate: totalHashrate,
         level,
         miner_nano: (data.miner_nano || 0) + (data.miner_mega || 0),
-        is_active: !miningPaused,
+        // last_claim_ms lets readers compute "is active" live (claimed
+        // within the last 24h) instead of trusting a stale is_active flag
+        // that only updates when this user happens to sync again.
+        last_claim_ms: lastClaimMs,
         mining_coin: coin,
         updatedAt: Timestamp.fromMillis(now),
       }, { merge: true });
@@ -159,6 +162,7 @@ export default async function handler(req, res) {
 // delays the claim/sync itself; failure here is non-fatal.
 async function refreshGlobalStats(db) {
   const snap = await db.collection('leaderboard_public').get();
+  const now = Date.now();
   let totalPlayers = 0, totalHashrate = 0, activeHashrate = 0;
   let activeHashrateUsdt = 0, activeHashrateLtc = 0;
 
@@ -167,7 +171,14 @@ async function refreshGlobalStats(db) {
     if (!data.hashrate || data.hashrate <= 0) return;
     totalPlayers++;
     totalHashrate += data.hashrate;
-    if (data.is_active) {
+
+    // Computed live from last_claim_ms every time, so a player who claimed
+    // >24h ago and never came back to sync again correctly drops out of
+    // "active" instead of staying stuck at whatever it was last synced.
+    const lastClaimMs = data.last_claim_ms || 0;
+    const isActiveNow = lastClaimMs > 0 && (now - lastClaimMs) < 86400000;
+
+    if (isActiveNow) {
       activeHashrate += data.hashrate;
       if (data.mining_coin === 'usdt') activeHashrateUsdt += data.hashrate;
       else activeHashrateLtc += data.hashrate; // default to ltc if unset (legacy docs)
@@ -183,6 +194,7 @@ async function refreshGlobalStats(db) {
     updatedAt: Timestamp.fromMillis(Date.now()),
   }, { merge: true });
 }
+
 
 
 
