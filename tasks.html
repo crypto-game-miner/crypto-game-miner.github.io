@@ -20,6 +20,7 @@
         .task-desc { color: #8b949e; font-size: 11px; margin-bottom: 10px; }
         .task-btn { background: #facc15; color: #1a1613; border: none; padding: 8px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; width: 100%; }
         .task-btn.done { background: #22c55e; color: white; cursor: not-allowed; }
+        .task-btn:disabled { background: #555; color: #999; cursor: not-allowed; }
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
@@ -67,6 +68,15 @@
                 <button class="task-btn" id="task-zerads-btn" onclick="doTask('zerads', 'https://zerads.com/e3AhcEW', 0.2)">Start Task</button>
             </div>
 
+            <div class="task-card" id="task-daily-link">
+                <div class="task-header">
+                    <span class="task-title">🔗 Daily Bonus Link</span>
+                    <span class="task-reward">+0.17 GH/s</span>
+                </div>
+                <div class="task-desc">Visit The Link Once A Day For A 24-Hour Mining Power Boost!</div>
+                <button class="task-btn" id="task-daily-link-btn" onclick="doDailyLink()" disabled>Loading...</button>
+            </div>
+
             <!-- BEGIN AADS AD UNIT 2447216 -->
             <div id="frame" style="width: 100%;margin: auto;position: relative; z-index: 99998;">
                       <iframe data-aa='2447216' src='//acceptable.a-ads.com/2447216/?size=Adaptive'
@@ -102,15 +112,20 @@
         const auth = getAuth(app);
         const db   = getFirestore(app);
 
+        const DAILY_LINK_URL = 'https://za.gl/qLw9k2';
+        let currentUser = null;
+
         // ── Auth + live balance ───────────────────────────────────────
         onAuthStateChanged(auth, async (user) => {
             if (user) {
+                currentUser = user;
                 localStorage.setItem('firebase_uid', user.uid);
                 onSnapshot(doc(db, 'users', user.uid), (snap) => {
                     const data = snap.exists() ? snap.data() : {};
                     document.getElementById('balance').innerText     = parseFloat(data.coins || 0).toFixed(4);
                     document.getElementById('game-coins').innerText  = data.game_coins || 0;
                     document.getElementById('ltc-balance').innerText = parseFloat(data.ltc || 0).toFixed(4);
+                    renderDailyLink(data.dailyLinkTs);
                 });
             } else {
                 try { await signInAnonymously(auth); } catch(e) {}
@@ -168,6 +183,55 @@
                     localStorage.setItem('task_' + taskId, 'done');
                     setDone(taskId);
                     alert('🎉 +' + ghReward + ' GH/s Added To Your Mining Power!');
+                }
+            }, 1000);
+        };
+
+        // ── Daily bonus link ────────────────────────────────────────────
+        function renderDailyLink(dailyLinkTs) {
+            const btn = document.getElementById('task-daily-link-btn');
+            const ms = dailyLinkTs?.toMillis ? dailyLinkTs.toMillis() : 0;
+            const hoursLeft = 24 - (Date.now() - ms) / 3600000;
+            if (ms && hoursLeft > 0) {
+                btn.disabled = true;
+                btn.innerText = 'Come Back In ' + Math.ceil(hoursLeft) + 'h';
+            } else {
+                btn.disabled = false;
+                btn.innerText = 'Claim';
+            }
+        }
+
+        window.doDailyLink = function() {
+            if (!currentUser) return;
+            const btn = document.getElementById('task-daily-link-btn');
+            if (btn.disabled) return;
+
+            window.open(DAILY_LINK_URL, '_blank');
+            btn.disabled = true;
+            let t = 15;
+            btn.innerText = 'Verifying... ' + t + 's';
+            const timer = setInterval(async () => {
+                t--;
+                if (t > 0) { btn.innerText = 'Verifying... ' + t + 's'; return; }
+                clearInterval(timer);
+                try {
+                    const resp = await fetch('/api/claim', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ uid: currentUser.uid, action: 'daily_link' }),
+                    });
+                    const result = await resp.json();
+                    if (!result.success) {
+                        alert(result.error || 'Claim failed');
+                        btn.disabled = false;
+                        btn.innerText = 'Claim';
+                    } else {
+                        alert('🎉 +0.17 GH/s Added For 24 Hours!');
+                    }
+                } catch(e) {
+                    alert('Network error: ' + e.message);
+                    btn.disabled = false;
+                    btn.innerText = 'Claim';
                 }
             }, 1000);
         };
