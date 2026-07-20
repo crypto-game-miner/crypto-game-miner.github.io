@@ -12,6 +12,10 @@
         .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
         .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
         .tasks-area { padding: 15px 20px; overflow-y: auto; padding-bottom: 90px; flex: 1; }
+        .section-divider { display: flex; align-items: center; gap: 10px; margin: 22px 0 12px; text-align: left; }
+        .section-divider:first-of-type { margin-top: 0; }
+        .section-divider .line { flex: 1; height: 1px; background: #3d2b1f; }
+        .section-divider .label { color: #facc15; font-size: 12px; font-weight: bold; letter-spacing: 1px; white-space: nowrap; }
         .task-card { background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px; padding: 14px; margin-bottom: 12px; text-align: left; }
         .task-card.done { border-color: #22c55e; opacity: 0.6; }
         .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
@@ -50,6 +54,12 @@
         <div class="tasks-area">
             <p style="color:#8b949e; font-size:12px; margin-bottom:15px; text-align:left;">Complete Tasks To Earn Mining Power!</p>
 
+            <div class="section-divider">
+                <span class="line"></span>
+                <span class="label">⭐ ONE-TIME TASKS</span>
+                <span class="line"></span>
+            </div>
+
             <div class="task-card" id="task-register-bonus">
                 <div class="task-header">
                     <span class="task-title">🔑 Register Account</span>
@@ -66,6 +76,12 @@
                 </div>
                 <div class="task-desc">Visit Our Partner Site And Claim Your Mining Power Boost. One-Time Reward!</div>
                 <button class="task-btn" id="task-zerads-btn" onclick="doTask('zerads', 'https://zerads.com/e3AhcEW', 0.2)">Start Task</button>
+            </div>
+
+            <div class="section-divider">
+                <span class="line"></span>
+                <span class="label">🔄 DAILY TASKS</span>
+                <span class="line"></span>
             </div>
 
             <div class="task-card" id="task-daily-link">
@@ -238,3 +254,4 @@
     </script>
 </body>
 </html>
+
