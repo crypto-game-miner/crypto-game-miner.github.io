@@ -1,7 +1,8 @@
 // api/claim.js
 // The ONLY place that's allowed to credit USDT/Game coins for a faucet claim.
 // Also the only place allowed to consume a view from an active purchased
-// ad_slots document. Client sends just { uid }, server decides everything else.
+// ad_slots document. Client sends { uid } for a faucet claim, or
+// { uid, action: 'daily_link' } for the daily bonus-link claim.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -16,6 +17,9 @@ const USDT_REWARD_GUEST  = 4;
 const USDT_REWARD_LOGGED = 5;         // for users who linked a real (non-anonymous) provider
 const GAME_COINS_REWARD  = 7;
 const EXP_REWARD         = 8;
+
+const DAILY_LINK_BOOST_AMOUNT = 0.17; // +0.17 GH/s for 24h, once per day
+const DAILY_LINK_COOLDOWN_MS  = 86400000; // 24h
 
 function initFirebase() {
   if (!getApps().length) {
@@ -37,11 +41,57 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { uid } = req.body || {};
+  const { uid, action } = req.body || {};
   if (!uid) return res.status(400).json({ error: 'Missing uid' });
 
   const db = initFirebase();
   const userRef = db.collection('users').doc(uid);
+
+  // ─────────────────────────────────────────────────────────────────
+  // DAILY LINK CLAIM — separate flow, doesn't touch faucet claim
+  // counters/cooldown, doesn't consume ad_slots, doesn't reward
+  // coins/exp. Just a 24h-gated hashrate boost.
+  // ─────────────────────────────────────────────────────────────────
+  if (action === 'daily_link') {
+    try {
+      const result = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(userRef);
+        const data = snap.exists ? snap.data() : {};
+        const now = Date.now();
+
+        const lastLinkTs = data.dailyLinkTs?.toMillis ? data.dailyLinkTs.toMillis() : 0;
+        if (lastLinkTs && now - lastLinkTs < DAILY_LINK_COOLDOWN_MS) {
+          const hoursLeft = Math.ceil((DAILY_LINK_COOLDOWN_MS - (now - lastLinkTs)) / 3600000);
+          throw { code: 'LINK_COOLDOWN', message: `Come back in ${hoursLeft}h.` };
+        }
+
+        let boosts = data.claimBoosts || [];
+        boosts = boosts.filter(b => now - (b.time?.toMillis ? b.time.toMillis() : b.time) < 86400000);
+        boosts.push({ time: now, amount: DAILY_LINK_BOOST_AMOUNT });
+
+        tx.set(userRef, {
+          claimBoosts: boosts,
+          dailyLinkTs: Timestamp.fromMillis(now),
+          updatedAt: Timestamp.fromMillis(now),
+        }, { merge: true });
+
+        return { boostAmount: DAILY_LINK_BOOST_AMOUNT };
+      });
+
+      return res.status(200).json({ success: true, ...result });
+
+    } catch (e) {
+      if (e.code === 'LINK_COOLDOWN') {
+        return res.status(429).json({ success: false, error: e.message, code: e.code });
+      }
+      console.error('Daily link claim error:', e.message || e);
+      return res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // FAUCET CLAIM — original flow, unchanged
+  // ─────────────────────────────────────────────────────────────────
 
   // Up to 5 concurrent active campaigns can run at once. They're ordered
   // oldest-first, and that order determines which pair of daily claim
