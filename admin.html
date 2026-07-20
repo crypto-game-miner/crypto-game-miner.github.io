@@ -336,7 +336,62 @@
                 </div>
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⚙️ DAILY POOLS (Mining only)</div>
-                    <div class="info-r
+                    <div class="info-row"><span>Active USDT-track Hashrate</span><span>${activeUsdt.toFixed(1)} GH/S</span></div>
+                    <div class="info-row"><span>Active LTC-track Hashrate</span><span>${activeLtc.toFixed(1)} GH/S</span></div>
+                    <div style="font-size:10px; color:#8b949e; margin:10px 0 4px;">
+                        Set a daily budget per coin — it's divided across everyone currently mining that track, live. Leave blank to use the flat base rate (${BASE_USDT_RATE} USDT / ${BASE_LTC_RATE} LTC per GH/S/hr) instead of a budget. Does NOT affect claim rewards above.
+                    </div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT Pool / day (effective rate: ${effUsdtRate.toFixed(3)}/GH/S/hr)</label>
+                    <input type="number" id="usdt-pool-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${usdtPool != null ? usdtPool : ''}" placeholder="blank = base rate">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC Pool / day (effective rate: ${effLtcRate.toFixed(3)}/GH/S/hr)</label>
+                    <input type="number" id="ltc-pool-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1" min="0" value="${ltcPool != null ? ltcPool : ''}" placeholder="blank = base rate">
+                    <button class="btn-approve" style="width:100%;" onclick="savePools()">💾 Save Pools</button>
+                </div>
+            `;
+        } catch(e) {
+            container.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
+        }
+    }
+
+    window.saveClaimRewards = async function() {
+        const guestVal  = document.getElementById('reward-guest-input').value;
+        const loggedVal = document.getElementById('reward-logged-input').value;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_claim_rewards', rewardGuest: guestVal, rewardLogged: loggedVal })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving rewards'); return; }
+            alert('✅ Claim rewards updated.');
+            loadStats();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    window.savePools = async function() {
+        const usdtVal = document.getElementById('usdt-pool-input').value;
+        const ltcVal  = document.getElementById('ltc-pool-input').value;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_pools', usdtPool: usdtVal, ltcPool: ltcVal })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving pools'); return; }
+            alert('✅ Pools updated.');
+            loadStats();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+</script>
+</body>
+</html>
+
 
 
 
