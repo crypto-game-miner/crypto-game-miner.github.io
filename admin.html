@@ -244,15 +244,34 @@
     function todayKey() { return new Date().toISOString().slice(0, 10); }
     function yesterdayKey() { return new Date(Date.now() - 86400000).toISOString().slice(0, 10); }
 
+    // Conversion to REAL money, for admin's own reference only — has
+    // nothing to do with in-game rates above.
+    // USDT Coins: fixed, since real USDT ≈ $1 always (100 coins = $0.0001).
+    const USDT_COIN_TO_REAL_USD = 0.000001;
+    // LTC Coins: 1 in-game coin = 1 real litoshi (0.00000001 LTC), so its
+    // USD value depends on the live LTC market price — fetched below.
+    const LTC_COIN_TO_LTC = 0.00000001;
+
+    async function fetchLtcPriceUsd() {
+        try {
+            const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin&vs_currencies=usd');
+            const data = await resp.json();
+            return data.litecoin?.usd || null;
+        } catch(e) {
+            return null;
+        }
+    }
+
     async function loadStats() {
         const container = document.getElementById('stats-container');
         container.innerHTML = '<div class="empty">Loading...</div>';
 
         try {
-            const [dailySnap, yesterdaySnap, globalSnap] = await Promise.all([
+            const [dailySnap, yesterdaySnap, globalSnap, ltcPriceUsd] = await Promise.all([
                 getDoc(doc(db, 'stats', 'daily_' + todayKey())),
                 getDoc(doc(db, 'stats', 'daily_' + yesterdayKey())),
                 getDoc(doc(db, 'stats', 'global')),
+                fetchLtcPriceUsd(),
             ]);
 
             const d = dailySnap.exists() ? dailySnap.data() : {};
@@ -264,6 +283,16 @@
             const yUsdtClaims = y.usdt_from_claims || 0;
             const yUsdtMining = y.usdt_from_mining || 0;
             const yLtcMining  = y.ltc_from_mining  || 0;
+
+            function realUsdValue(usdtCoins, ltcCoins) {
+                const usdtPart = usdtCoins * USDT_COIN_TO_REAL_USD;
+                const ltcPart  = ltcPriceUsd != null ? (ltcCoins * LTC_COIN_TO_LTC * ltcPriceUsd) : 0;
+                return usdtPart + ltcPart;
+            }
+
+            const priceNote = ltcPriceUsd != null
+                ? `LTC price: $${ltcPriceUsd.toLocaleString()} (live, CoinGecko)`
+                : `⚠️ Couldn't fetch live LTC price — LTC portion excluded from $ totals below`;
 
             const g = globalSnap.exists() ? globalSnap.data() : {};
             const usdtPool = g.usdt_pool != null ? g.usdt_pool : null;
@@ -283,6 +312,7 @@
                     <div class="info-row"><span>USDT from Mining</span><span>${yUsdtMining.toFixed(2)}</span></div>
                     <div class="info-row"><span>Total USDT earned (claims+mining)</span><span style="color:#facc15;">${(yUsdtClaims + yUsdtMining).toFixed(2)}</span></div>
                     <div class="info-row"><span>LTC from Mining</span><span>${yLtcMining.toFixed(4)}</span></div>
+                    <div class="info-row"><span>💵 Real $ value paid out</span><span style="color:#22c55e;">$${realUsdValue(yUsdtClaims + yUsdtMining, yLtcMining).toFixed(6)}</span></div>
                 </div>
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">📅 TODAY (${todayKey()}) — live, still counting</div>
@@ -290,6 +320,8 @@
                     <div class="info-row"><span>USDT from Mining</span><span>${usdtMining.toFixed(2)}</span></div>
                     <div class="info-row"><span>Total USDT earned (claims+mining)</span><span style="color:#facc15;">${(usdtClaims + usdtMining).toFixed(2)}</span></div>
                     <div class="info-row"><span>LTC from Mining</span><span>${ltcMining.toFixed(4)}</span></div>
+                    <div class="info-row"><span>💵 Real $ value paid out</span><span style="color:#22c55e;">$${realUsdValue(usdtClaims + usdtMining, ltcMining).toFixed(6)}</span></div>
+                    <div style="font-size:9px; color:#8b949e; margin-top:8px;">${priceNote}</div>
                 </div>
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">🎟️ CLAIM REWARDS</div>
@@ -304,61 +336,7 @@
                 </div>
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⚙️ DAILY POOLS (Mining only)</div>
-                    <div class="info-row"><span>Active USDT-track Hashrate</span><span>${activeUsdt.toFixed(1)} GH/S</span></div>
-                    <div class="info-row"><span>Active LTC-track Hashrate</span><span>${activeLtc.toFixed(1)} GH/S</span></div>
-                    <div style="font-size:10px; color:#8b949e; margin:10px 0 4px;">
-                        Set a daily budget per coin — it's divided across everyone currently mining that track, live. Leave blank to use the flat base rate (${BASE_USDT_RATE} USDT / ${BASE_LTC_RATE} LTC per GH/S/hr) instead of a budget. Does NOT affect claim rewards above.
-                    </div>
-                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT Pool / day (effective rate: ${effUsdtRate.toFixed(3)}/GH/S/hr)</label>
-                    <input type="number" id="usdt-pool-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${usdtPool != null ? usdtPool : ''}" placeholder="blank = base rate">
-                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC Pool / day (effective rate: ${effLtcRate.toFixed(3)}/GH/S/hr)</label>
-                    <input type="number" id="ltc-pool-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1" min="0" value="${ltcPool != null ? ltcPool : ''}" placeholder="blank = base rate">
-                    <button class="btn-approve" style="width:100%;" onclick="savePools()">💾 Save Pools</button>
-                </div>
-            `;
-        } catch(e) {
-            container.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
-        }
-    }
-
-    window.saveClaimRewards = async function() {
-        const guestVal  = document.getElementById('reward-guest-input').value;
-        const loggedVal = document.getElementById('reward-logged-input').value;
-        try {
-            const res = await fetch('/api/moderate-ad', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_claim_rewards', rewardGuest: guestVal, rewardLogged: loggedVal })
-            });
-            const data = await res.json();
-            if (!data.success) { alert(data.error || 'Error saving rewards'); return; }
-            alert('✅ Claim rewards updated.');
-            loadStats();
-        } catch(e) {
-            alert('Error: ' + e.message);
-        }
-    };
-
-    window.savePools = async function() {
-        const usdtVal = document.getElementById('usdt-pool-input').value;
-        const ltcVal  = document.getElementById('ltc-pool-input').value;
-        try {
-            const res = await fetch('/api/moderate-ad', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_pools', usdtPool: usdtVal, ltcPool: ltcVal })
-            });
-            const data = await res.json();
-            if (!data.success) { alert(data.error || 'Error saving pools'); return; }
-            alert('✅ Pools updated.');
-            loadStats();
-        } catch(e) {
-            alert('Error: ' + e.message);
-        }
-    };
-</script>
-</body>
-</html>
+                    <div class="info-r
 
 
 
