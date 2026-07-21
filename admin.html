@@ -322,6 +322,10 @@
             const rewardGuest  = g.usdt_reward_guest  != null ? g.usdt_reward_guest  : 4;
             const rewardLogged = g.usdt_reward_logged != null ? g.usdt_reward_logged : 5;
             const dailyLinkUrl = g.daily_link_url || '';
+            const withdrawMinUsdt = g.withdraw_min_usdt != null ? g.withdraw_min_usdt : 200;
+            const withdrawMaxUsdt = g.withdraw_max_usdt != null ? g.withdraw_max_usdt : 700;
+            const withdrawMinLtc  = g.withdraw_min_ltc  != null ? g.withdraw_min_ltc  : 400;
+            const withdrawMaxLtc  = g.withdraw_max_ltc  != null ? g.withdraw_max_ltc  : 1500;
 
             const effUsdtRate = (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : BASE_USDT_RATE;
             const effLtcRate  = (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : BASE_LTC_RATE;
@@ -363,6 +367,21 @@
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Link URL</label>
                     <input type="text" id="daily-link-input" class="days-input" style="width:100%; margin-bottom:12px;" value="${dailyLinkUrl}" placeholder="https://...">
                     <button class="btn-approve" style="width:100%;" onclick="saveDailyLink()">💾 Save Link</button>
+                </div>
+                <div class="card">
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">💸 WITHDRAW LIMITS</div>
+                    <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
+                        Min amount per single withdrawal, and max total per day, for each currency. Enforced server-side in api/withdraw.js — not just client-side.
+                    </div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT — Min per withdrawal</label>
+                    <input type="number" id="wd-min-usdt-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMinUsdt}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT — Max per day</label>
+                    <input type="number" id="wd-max-usdt-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMaxUsdt}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC — Min per withdrawal</label>
+                    <input type="number" id="wd-min-ltc-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMinLtc}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC — Max per day</label>
+                    <input type="number" id="wd-max-ltc-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1" min="0" value="${withdrawMaxLtc}">
+                    <button class="btn-approve" style="width:100%;" onclick="saveWithdrawLimits()">💾 Save Withdraw Limits</button>
                 </div>
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⚙️ DAILY POOLS (Mining only)</div>
@@ -412,6 +431,26 @@
             const data = await res.json();
             if (!data.success) { alert(data.error || 'Error saving link'); return; }
             alert('✅ Daily link updated.');
+            loadStats();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    window.saveWithdrawLimits = async function() {
+        const minUsdt = document.getElementById('wd-min-usdt-input').value;
+        const maxUsdt = document.getElementById('wd-max-usdt-input').value;
+        const minLtc  = document.getElementById('wd-min-ltc-input').value;
+        const maxLtc  = document.getElementById('wd-max-ltc-input').value;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_withdraw_limits', minUsdt, maxUsdt, minLtc, maxLtc })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving limits'); return; }
+            alert('✅ Withdraw limits updated.');
             loadStats();
         } catch(e) {
             alert('Error: ' + e.message);
