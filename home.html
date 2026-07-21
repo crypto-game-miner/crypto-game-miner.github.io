@@ -115,9 +115,9 @@
                     <button class="switch-btn" id="btn-ltc" onclick="switchCoin('ltc')">LTC</button>
                     <button class="switch-btn" id="btn-usdt" onclick="switchCoin('usdt')">USDT</button>
                 </div>
-                <div class="mining-stat"><span class="mining-label">Base Hashrate</span><span class="mining-value" id="hashrate">0 GH/s</span></div>
-                <div class="mining-stat"><span class="mining-label">Claim Boost (24h)</span><span class="mining-value" id="boost-rate" style="color:#22c55e;">+0 GH/s</span></div>
-                <div class="mining-stat"><span class="mining-label">Total Hashrate</span><span class="mining-value" id="total-hashrate">0 GH/s</span></div>
+                <div class="mining-stat"><span class="mining-label">Base Hashrate</span><span class="mining-value" id="hashrate">0.00 GH/s</span></div>
+                <div class="mining-stat"><span class="mining-label">Claim Boost (24h)</span><span class="mining-value" id="boost-rate" style="color:#22c55e;">+0.00 GH/s</span></div>
+                <div class="mining-stat"><span class="mining-label">Total Hashrate</span><span class="mining-value" id="total-hashrate">0.00 GH/s</span></div>
                 <div class="mining-stat"><span class="mining-label" id="rate-label">LTC Coins / Hour</span><span class="mining-value" id="ltc-per-hour">0</span></div>
                 <div class="mining-stat"><span class="mining-label">Mined This Session</span><span class="mining-value" id="mined-session" style="color:#22c55e;">+0.0000</span></div>
                 <div class="mining-stat"><span class="mining-label">Status</span><span class="mining-value" id="mining-status" style="color:#ef4444;">Inactive</span></div>
@@ -255,7 +255,7 @@
                 const t = b.time?.toMillis ? b.time.toMillis() : b.time;
                 return now - t < 86400000;
             });
-            return Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 10) / 10;
+            return Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 100) / 100;
         }
 
         // 100% right when you claim, decays linearly to 0% over 24h.
@@ -307,14 +307,14 @@
             const baseHashrate  = level >= 2 ? 0.5 : 0;
             const taskBonus     = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
             const seasonBonus   = parseFloat(localStorage.getItem('season_bonus_hashrate')) || 0;
-            const permHashrate  = Math.round((baseHashrate + taskBonus + seasonBonus) * 10) / 10;
+            const permHashrate  = Math.round((baseHashrate + taskBonus + seasonBonus) * 100) / 100;
             localStorage.setItem('hashrate', permHashrate);
             const boostTotal    = getBoostTotal();
-            const totalHashrate = Math.round((permHashrate + boostTotal) * 10) / 10;
+            const totalHashrate = Math.round((permHashrate + boostTotal) * 100) / 100;
 
-            document.getElementById('hashrate').innerText       = permHashrate + ' GH/s';
-            document.getElementById('boost-rate').innerText     = '+' + boostTotal.toFixed(1) + ' GH/s';
-            document.getElementById('total-hashrate').innerText = totalHashrate + ' GH/s';
+            document.getElementById('hashrate').innerText       = permHashrate.toFixed(2) + ' GH/s';
+            document.getElementById('boost-rate').innerText     = '+' + boostTotal.toFixed(2) + ' GH/s';
+            document.getElementById('total-hashrate').innerText = totalHashrate.toFixed(2) + ' GH/s';
 
             // Mining status from Firebase lastClaimTime — paused once equipment health hits 0
             const miningPaused = getHealthPct() <= 0;
@@ -346,8 +346,8 @@
                     }
 
                     document.getElementById('mined-session').innerText  = '+' + sessionMined.toFixed(4);
-                    document.getElementById('boost-rate').innerText     = '+' + boost.toFixed(1) + ' GH/s';
-                    document.getElementById('total-hashrate').innerText = Math.round(total * 10) / 10 + ' GH/s';
+                    document.getElementById('boost-rate').innerText     = '+' + boost.toFixed(2) + ' GH/s';
+                    document.getElementById('total-hashrate').innerText = (Math.round(total * 100) / 100).toFixed(2) + ' GH/s';
                     renderHealthBar();
                 }, 1000);
             }
