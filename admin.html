@@ -28,6 +28,7 @@
         .btn-reject  { background: #ef4444; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; flex: 1; font-family: monospace; }
         .btn-approve:disabled, .btn-reject:disabled { opacity: 0.5; cursor: not-allowed; }
         .views-input { background: #0d0d0d; border: 1px solid #facc15; border-radius: 6px; color: white; padding: 6px 10px; font-size: 13px; font-family: monospace; width: 70px; outline: none; }
+        .days-input { background: #0d0d0d; border: 1px solid #facc15; border-radius: 6px; color: white; padding: 8px 10px; font-size: 13px; font-family: monospace; box-sizing: border-box; outline: none; }
         .empty { text-align: center; color: #555; padding: 40px 0; font-size: 14px; }
         .tab-row { display: flex; gap: 8px; margin-bottom: 16px; }
         .tab { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: 1px solid #3d2b1f; background: transparent; color: #8b949e; font-family: monospace; text-transform: uppercase; }
@@ -61,7 +62,11 @@
     import { getAuth, signInAnonymously, inMemoryPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
     import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, addDoc, deleteDoc, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
-    const ADMIN_PASSWORD = 'kr1stal2024'; // смени на свой пароль
+    // Пароль больше НЕ хранится здесь. Введённое значение проверяется на
+    // сервере (api/moderate-ad.js, action: 'verify') против process.env.ADMIN_SECRET.
+    // Если проверка прошла, сохраняем его в памяти вкладки (не на диск),
+    // чтобы использовать в последующих authenticated-запросах (approve/reject/...).
+    let ADMIN_PASSWORD = null;
 
     const firebaseConfig = {
         apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -86,22 +91,37 @@
 
     window.checkPwd = async function() {
         const pwd = document.getElementById('pwd').value;
-        if (pwd === ADMIN_PASSWORD) {
-            try {
-                // Сессию админки не сохраняем на диск — только на время
-                // вкладки, и она живёт в отдельном app, не трогая игрока.
-                await setPersistence(auth, inMemoryPersistence);
-                await signInAnonymously(auth); // satisfies "request.auth != null" in Firestore rules
-            } catch(e) {
-                alert('Auth error: ' + e.message);
+
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: pwd, action: 'verify' })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                alert('Wrong password');
                 return;
             }
-            document.getElementById('login-box').style.display = 'none';
-            document.getElementById('panel').style.display = 'block';
-            loadRequests('pending');
-        } else {
-            alert('Wrong password');
+        } catch(e) {
+            alert('Auth error: ' + e.message);
+            return;
         }
+
+        ADMIN_PASSWORD = pwd; // храним в памяти вкладки для последующих запросов
+
+        try {
+            // Сессию админки не сохраняем на диск — только на время
+            // вкладки, и она живёт в отдельном app, не трогая игрока.
+            await setPersistence(auth, inMemoryPersistence);
+            await signInAnonymously(auth); // satisfies "request.auth != null" in Firestore rules
+        } catch(e) {
+            alert('Auth error: ' + e.message);
+            return;
+        }
+        document.getElementById('login-box').style.display = 'none';
+        document.getElementById('panel').style.display = 'block';
+        loadRequests('pending');
     };
 
     window.switchTab = function(tab) {
@@ -301,6 +321,7 @@
             const activeLtc  = g.activeHashrateLtc  || 0;
             const rewardGuest  = g.usdt_reward_guest  != null ? g.usdt_reward_guest  : 4;
             const rewardLogged = g.usdt_reward_logged != null ? g.usdt_reward_logged : 5;
+            const dailyLinkUrl = g.daily_link_url || '';
 
             const effUsdtRate = (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : BASE_USDT_RATE;
             const effLtcRate  = (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : BASE_LTC_RATE;
@@ -335,6 +356,15 @@
                     <button class="btn-approve" style="width:100%;" onclick="saveClaimRewards()">💾 Save Rewards</button>
                 </div>
                 <div class="card">
+                    <div style="color:#a78bfa; font-size:13px; font-weight:bold; margin-bottom:10px;">🔗 DAILY BONUS LINK</div>
+                    <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
+                        URL shown for the "Daily Bonus Link" task on the Tasks page (+0.17 GH/s, once per 24h). Change it any time — takes effect for all users immediately, no redeploy needed.
+                    </div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Link URL</label>
+                    <input type="text" id="daily-link-input" class="days-input" style="width:100%; margin-bottom:12px;" value="${dailyLinkUrl}" placeholder="https://...">
+                    <button class="btn-approve" style="width:100%;" onclick="saveDailyLink()">💾 Save Link</button>
+                </div>
+                <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⚙️ DAILY POOLS (Mining only)</div>
                     <div class="info-row"><span>Active USDT-track Hashrate</span><span>${activeUsdt.toFixed(1)} GH/S</span></div>
                     <div class="info-row"><span>Active LTC-track Hashrate</span><span>${activeLtc.toFixed(1)} GH/S</span></div>
@@ -365,6 +395,23 @@
             const data = await res.json();
             if (!data.success) { alert(data.error || 'Error saving rewards'); return; }
             alert('✅ Claim rewards updated.');
+            loadStats();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    window.saveDailyLink = async function() {
+        const urlVal = document.getElementById('daily-link-input').value;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_daily_link', dailyLinkUrl: urlVal })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving link'); return; }
+            alert('✅ Daily link updated.');
             loadStats();
         } catch(e) {
             alert('Error: ' + e.message);
