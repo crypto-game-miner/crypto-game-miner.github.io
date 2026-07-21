@@ -7,9 +7,9 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
-// Prefer an env var so the secret isn't duplicated between client and server.
-// Falls back to the same value used in admin.html if the env var isn't set.
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'kr1stal2024';
+// No client-visible fallback anymore — this is the only place the real
+// password exists, and it only lives in Vercel's env vars.
+const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
 function initFirebase() {
   if (!getApps().length) {
@@ -31,13 +31,25 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { secret, action, reqId, views, bannerUrl, clickUrl, usdtPool, ltcPool, rewardGuest, rewardLogged } = req.body || {};
+  if (!ADMIN_SECRET) {
+    console.error('ADMIN_SECRET env var is not set');
+    return res.status(500).json({ success: false, error: 'Server misconfigured' });
+  }
+
+  const { secret, action, reqId, views, bannerUrl, clickUrl, usdtPool, ltcPool, rewardGuest, rewardLogged, dailyLinkUrl } = req.body || {};
 
   if (secret !== ADMIN_SECRET) {
     return res.status(403).json({ success: false, error: 'Invalid admin password' });
   }
 
   const db = initFirebase();
+
+  // Just confirms the password is correct — no side effects. Used by
+  // admin.html's login screen so the real password never has to be
+  // written into client-side JS to be compared there.
+  if (action === 'verify') {
+    return res.status(200).json({ success: true });
+  }
 
   // set_pools doesn't touch ad_requests, so it's handled before the reqId check.
   if (action === 'set_pools') {
@@ -80,6 +92,23 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, usdt_reward_guest: g, usdt_reward_logged: l });
     } catch (e) {
       console.error('Set-claim-rewards error:', e.message || e);
+      return res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
+  if (action === 'set_daily_link') {
+    const url = (dailyLinkUrl || '').trim();
+    if (!url || !/^https?:\/\//i.test(url)) {
+      return res.status(400).json({ success: false, error: 'Must be a valid http(s) URL.' });
+    }
+    try {
+      await db.collection('stats').doc('global').set({
+        daily_link_url: url,
+        dailyLinkUpdatedAt: Timestamp.now(),
+      }, { merge: true });
+      return res.status(200).json({ success: true, daily_link_url: url });
+    } catch (e) {
+      console.error('Set-daily-link error:', e.message || e);
       return res.status(500).json({ success: false, error: 'Server error' });
     }
   }
