@@ -1,14 +1,19 @@
 // api/withdraw.js (SECURE VERSION)
 // Verifies the user actually has enough balance in Firestore BEFORE
 // sending real crypto via FaucetPay. Deducts balance atomically.
+// Min/max withdraw limits are admin-adjustable via api/moderate-ad.js
+// (action: set_withdraw_limits), stored in stats/global — read here
+// inside the same transaction so the server always enforces whatever
+// the admin panel currently shows, not stale hardcoded defaults.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
-const MIN_USDT = 200;
-const MIN_LTC  = 400;
-const DAILY_LIMIT_USDT = 700;
-const DAILY_LIMIT_LTC  = 1500;
+// Fallback defaults — used only if stats/global doesn't have a value set yet.
+const DEFAULT_MIN_USDT = 200;
+const DEFAULT_MIN_LTC  = 400;
+const DEFAULT_DAILY_LIMIT_USDT = 700;
+const DEFAULT_DAILY_LIMIT_LTC  = 1500;
 
 function initFirebase() {
   if (!getApps().length) {
@@ -39,22 +44,31 @@ export default async function handler(req, res) {
   if (!uid || !email || !points || isNaN(points)) {
     return res.status(400).json({ status: 400, message: 'Missing uid, email or points' });
   }
-
-  const minCoins = currency === 'usdt' ? MIN_USDT : MIN_LTC;
-  if (points < minCoins) {
-    return res.status(400).json({ status: 400, message: `Minimum ${minCoins} ${currency.toUpperCase()} Coins` });
-  }
   if (!email.includes('@')) {
     return res.status(400).json({ status: 400, message: 'Invalid email' });
   }
 
   const db = initFirebase();
-  const userRef = db.collection('users').doc(uid);
+  const userRef  = db.collection('users').doc(uid);
+  const statsRef = db.collection('stats').doc('global');
 
   try {
     await db.runTransaction(async (tx) => {
-      const snap = await tx.get(userRef);
+      // Firestore transactions require ALL reads before ANY writes.
+      const [snap, statsSnap] = await Promise.all([tx.get(userRef), tx.get(statsRef)]);
       if (!snap.exists) throw { code: 'NO_USER', message: 'User not found' };
+
+      const g = statsSnap.exists ? statsSnap.data() : {};
+      const minCoins = currency === 'usdt'
+        ? (g.withdraw_min_usdt != null ? g.withdraw_min_usdt : DEFAULT_MIN_USDT)
+        : (g.withdraw_min_ltc  != null ? g.withdraw_min_ltc  : DEFAULT_MIN_LTC);
+      const dailyLimit = currency === 'usdt'
+        ? (g.withdraw_max_usdt != null ? g.withdraw_max_usdt : DEFAULT_DAILY_LIMIT_USDT)
+        : (g.withdraw_max_ltc  != null ? g.withdraw_max_ltc  : DEFAULT_DAILY_LIMIT_LTC);
+
+      if (points < minCoins) {
+        throw { code: 'BELOW_MIN', message: `Minimum ${minCoins} ${currency.toUpperCase()} Coins` };
+      }
 
       const data = snap.data();
       const balanceField = currency === 'usdt' ? 'coins' : 'ltc';
@@ -70,7 +84,6 @@ export default async function handler(req, res) {
       let withdrawnToday = data[withdrawnField] || 0;
       if (data[withdrawDayField] !== today) withdrawnToday = 0;
 
-      const dailyLimit = currency === 'usdt' ? DAILY_LIMIT_USDT : DAILY_LIMIT_LTC;
       if (withdrawnToday + points > dailyLimit) {
         throw { code: 'DAILY_LIMIT', message: `Daily limit is ${dailyLimit} ${currency.toUpperCase()} Coins. You can withdraw ${dailyLimit - withdrawnToday} more today.` };
       }
@@ -84,7 +97,7 @@ export default async function handler(req, res) {
   } catch (e) {
     const code = e.code || 'ERROR';
     const msg  = e.message || 'Transaction failed';
-    const status = code === 'INSUFFICIENT' || code === 'DAILY_LIMIT' ? 400 : 500;
+    const status = ['INSUFFICIENT', 'DAILY_LIMIT', 'BELOW_MIN'].includes(code) ? 400 : 500;
     return res.status(status).json({ status, message: msg, code });
   }
 
@@ -140,6 +153,5 @@ async function refundUser(db, userRef, currency, points) {
     console.error('CRITICAL: refund failed for', userRef.id, e.message);
   }
 }
-
 
 
