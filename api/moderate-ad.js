@@ -36,7 +36,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server misconfigured' });
   }
 
-  const { secret, action, reqId, views, bannerUrl, clickUrl, usdtPool, ltcPool, rewardGuest, rewardLogged, dailyLinkUrl } = req.body || {};
+  const {
+    secret, action, reqId, views, bannerUrl, clickUrl,
+    usdtPool, ltcPool, rewardGuest, rewardLogged, dailyLinkUrl,
+    minUsdt, maxUsdt, minLtc, maxLtc,
+  } = req.body || {};
 
   if (secret !== ADMIN_SECRET) {
     return res.status(403).json({ success: false, error: 'Invalid admin password' });
@@ -113,6 +117,36 @@ export default async function handler(req, res) {
     }
   }
 
+  if (action === 'set_withdraw_limits') {
+    function parseLimit(val) {
+      const n = parseFloat(val);
+      return (isFinite(n) && n >= 0) ? n : undefined;
+    }
+    const pMinUsdt = parseLimit(minUsdt);
+    const pMaxUsdt = parseLimit(maxUsdt);
+    const pMinLtc  = parseLimit(minLtc);
+    const pMaxLtc  = parseLimit(maxLtc);
+    if ([pMinUsdt, pMaxUsdt, pMinLtc, pMaxLtc].some(v => v === undefined)) {
+      return res.status(400).json({ success: false, error: 'All four values must be non-negative numbers.' });
+    }
+    if (pMinUsdt > pMaxUsdt || pMinLtc > pMaxLtc) {
+      return res.status(400).json({ success: false, error: 'Min cannot be greater than max (daily limit).' });
+    }
+    try {
+      await db.collection('stats').doc('global').set({
+        withdraw_min_usdt: pMinUsdt,
+        withdraw_max_usdt: pMaxUsdt,
+        withdraw_min_ltc: pMinLtc,
+        withdraw_max_ltc: pMaxLtc,
+        withdrawLimitsUpdatedAt: Timestamp.now(),
+      }, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error('Set-withdraw-limits error:', e.message || e);
+      return res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
   if (!reqId) {
     return res.status(400).json({ success: false, error: 'Missing reqId' });
   }
@@ -148,8 +182,6 @@ export default async function handler(req, res) {
     }
 
     if (action === 'revoke') {
-      // Find and delete any ad_slots created for this request, then move
-      // the request back to pending.
       const slotsSnap = await db.collection('ad_slots').where('req_id', '==', reqId).get();
       const batch = db.batch();
       slotsSnap.forEach(doc => batch.delete(doc.ref));
