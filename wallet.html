@@ -74,7 +74,7 @@
                 <h3 style="color:#facc15; margin-bottom:12px; font-size:14px;">Select Payment Platform</h3>
                 <div class="wallet-card" onclick="toggleBox('usdt-box', 'ltc-box')">
                     <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" style="width:35px;height:35px;margin-right:12px;">
-                    <div class="card-info"><h3>USDT</h3><p>via FaucetPay</p><span style="font-size:10px;color:#8b949e">Min: 200 USDT Coins</span></div>
+                    <div class="card-info"><h3>USDT</h3><p>via FaucetPay</p><span style="font-size:10px;color:#8b949e" id="usdt-min-label">Min: 200 USDT Coins</span></div>
                 </div>
                 <div id="usdt-box" class="withdraw-box">
                     <label>USDT Coins To Convert</label>
@@ -85,7 +85,7 @@
                 </div>
                 <div class="wallet-card" style="margin-top:8px;" onclick="toggleBox('ltc-box', 'usdt-box')">
                     <img src="https://cryptologos.cc/logos/litecoin-ltc-logo.svg" style="width:35px;height:35px;margin-right:12px;">
-                    <div class="card-info"><h3>Litecoin (LTC)</h3><p>via FaucetPay</p><span style="font-size:10px;color:#8b949e">Min: 400 LTC Coins</span></div>
+                    <div class="card-info"><h3>Litecoin (LTC)</h3><p>via FaucetPay</p><span style="font-size:10px;color:#8b949e" id="ltc-min-label">Min: 400 LTC Coins</span></div>
                 </div>
                 <div id="ltc-box" class="withdraw-box">
                     <label>LTC Coins To Withdraw</label>
@@ -148,8 +148,24 @@
         const auth = getAuth(app);
         const db   = getFirestore(app);
 
-        const DAILY_LIMIT_USDT = 700;
-        const DAILY_LIMIT_LTC  = 1500;
+        // Defaults used only until stats/global loads (or if the admin
+        // hasn't set custom values yet).
+        let MIN_USDT = 200, DAILY_LIMIT_USDT = 700;
+        let MIN_LTC  = 400, DAILY_LIMIT_LTC  = 1500;
+
+        // Live-updates if the admin changes limits while the page is open.
+        onSnapshot(doc(db, 'stats', 'global'), (snap) => {
+            const g = snap.exists() ? snap.data() : {};
+            if (g.withdraw_min_usdt != null) MIN_USDT = g.withdraw_min_usdt;
+            if (g.withdraw_max_usdt != null) DAILY_LIMIT_USDT = g.withdraw_max_usdt;
+            if (g.withdraw_min_ltc  != null) MIN_LTC  = g.withdraw_min_ltc;
+            if (g.withdraw_max_ltc  != null) DAILY_LIMIT_LTC  = g.withdraw_max_ltc;
+
+            document.getElementById('usdt-min-label').innerText = 'Min: ' + MIN_USDT + ' USDT Coins';
+            document.getElementById('ltc-min-label').innerText  = 'Min: ' + MIN_LTC + ' LTC Coins';
+            document.getElementById('wd-points-usdt').placeholder = 'Min ' + MIN_USDT;
+            document.getElementById('wd-points-ltc').placeholder  = 'Min ' + MIN_LTC;
+        });
 
         // These track the SERVER balance (from Firebase)
         let coins    = 0;
@@ -260,7 +276,7 @@
             const btn        = event.target;
             const points     = Number(document.getElementById('wd-points-' + type).value);
             const email      = document.getElementById('wd-email-' + type).value.trim();
-            const minCoins   = type === 'usdt' ? 200 : 400;
+            const minCoins   = type === 'usdt' ? MIN_USDT : MIN_LTC;
             const dailyLimit = type === 'usdt' ? DAILY_LIMIT_USDT : DAILY_LIMIT_LTC;
             const balance    = type === 'usdt' ? coins : ltcCoins;
 
@@ -304,19 +320,3 @@
     </script>
 </body>
 </html>
-
-
-   
-
-
-
-
-
-
-
-
-
-
-
-
-
