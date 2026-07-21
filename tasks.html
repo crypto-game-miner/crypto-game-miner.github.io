@@ -113,7 +113,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
         import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-        import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getFirestore, doc, onSnapshot, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -128,8 +128,15 @@
         const auth = getAuth(app);
         const db   = getFirestore(app);
 
-        const DAILY_LINK_URL = 'https://za.gl/qLw9k2';
+        // Fallback used only until the admin sets a real link in Firestore.
+        let dailyLinkUrl = 'https://za.gl/qLw9k2';
         let currentUser = null;
+
+        // Live-updates if the admin changes the link while the page is open.
+        onSnapshot(doc(db, 'stats', 'global'), (snap) => {
+            const g = snap.exists() ? snap.data() : {};
+            if (g.daily_link_url) dailyLinkUrl = g.daily_link_url;
+        });
 
         // ── Auth + live balance ───────────────────────────────────────
         onAuthStateChanged(auth, async (user) => {
@@ -222,7 +229,7 @@
             const btn = document.getElementById('task-daily-link-btn');
             if (btn.disabled) return;
 
-            window.open(DAILY_LINK_URL, '_blank');
+            window.open(dailyLinkUrl, '_blank');
             btn.disabled = true;
             let t = 15;
             btn.innerText = 'Verifying... ' + t + 's';
@@ -254,4 +261,3 @@
     </script>
 </body>
 </html>
-
