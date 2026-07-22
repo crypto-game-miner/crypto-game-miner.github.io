@@ -39,7 +39,7 @@ export default async function handler(req, res) {
   const {
     secret, action, reqId, views, bannerUrl, clickUrl,
     usdtPool, ltcPool, rewardGuest, rewardLogged, dailyLinkUrl,
-    minUsdt, maxUsdt, minLtc, maxLtc,
+    minUsdt, maxUsdt, minLtc, maxLtc, storeConfig,
   } = req.body || {};
 
   if (secret !== ADMIN_SECRET) {
@@ -143,6 +143,41 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     } catch (e) {
       console.error('Set-withdraw-limits error:', e.message || e);
+      return res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
+  if (action === 'set_store_config') {
+    function num(val, allowZero) {
+      const n = parseFloat(val);
+      return (isFinite(n) && (allowZero ? n >= 0 : n > 0)) ? n : undefined;
+    }
+    const cfg = {
+      nano_price: num(storeConfig?.nanoPrice),
+      nano_power: num(storeConfig?.nanoPower),
+      nano_max:   num(storeConfig?.nanoMax),
+      box_price:  num(storeConfig?.boxPrice),
+      mega_power: num(storeConfig?.megaPower),
+      mega_max:   num(storeConfig?.megaMax),
+      box_odds_tier1_chance: num(storeConfig?.tier1Chance, true),
+      box_odds_tier1_amount: num(storeConfig?.tier1Amount, true),
+      box_odds_tier2_chance: num(storeConfig?.tier2Chance, true),
+      box_odds_tier2_amount: num(storeConfig?.tier2Amount, true),
+      box_odds_tier3_chance: num(storeConfig?.tier3Chance, true),
+      box_odds_tier3_amount: num(storeConfig?.tier3Amount, true),
+    };
+    if (Object.values(cfg).some(v => v === undefined)) {
+      return res.status(400).json({ success: false, error: 'All store config fields must be valid non-negative numbers.' });
+    }
+    const oddsSum = cfg.box_odds_tier1_chance + cfg.box_odds_tier2_chance + cfg.box_odds_tier3_chance;
+    if (oddsSum > 100) {
+      return res.status(400).json({ success: false, error: `Tier 1+2+3 chances add up to ${oddsSum}% — must be ≤100% (remainder becomes MegaMiner chance).` });
+    }
+    try {
+      await db.collection('stats').doc('global').set(cfg, { merge: true });
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error('Set-store-config error:', e.message || e);
       return res.status(500).json({ success: false, error: 'Server error' });
     }
   }
