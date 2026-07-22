@@ -9,6 +9,12 @@
 // transaction (before any writes) so the server always enforces whatever
 // the admin panel currently shows — never trusts anything from the client
 // about price/power/odds.
+//
+// IMPORTANT: this endpoint no longer bakes miner power into
+// task_bonus_hashrate. It only updates miner_nano/miner_mega (owned
+// counts) — home.html recomputes miner power LIVE from owned counts ×
+// current nano_power/mega_power, so admin power changes apply
+// retroactively to miners the user already owns, not just new purchases.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -88,15 +94,13 @@ export default async function handler(req, res) {
 
         const newGameCoins = gameCoins - cfg.nano_price;
         const newOwnedNano = ownedNano + 1;
-        const newTaskBonus = Math.round(((data.task_bonus_hashrate || 0) + cfg.nano_power) * 100) / 100;
 
         tx.set(userRef, {
           game_coins: newGameCoins,
           miner_nano: newOwnedNano,
-          task_bonus_hashrate: newTaskBonus,
         }, { merge: true });
 
-        return { game_coins: newGameCoins, miner_nano: newOwnedNano, task_bonus_hashrate: newTaskBonus };
+        return { game_coins: newGameCoins, miner_nano: newOwnedNano, nano_power: cfg.nano_power };
       }
 
       // action === 'open_box'
@@ -106,23 +110,20 @@ export default async function handler(req, res) {
 
       let newGameCoins = gameCoins - cfg.box_price;
       let newOwnedMega = ownedMega;
-      let newTaskBonus = data.task_bonus_hashrate || 0;
 
       const prize = rollBoxPrize(cfg);
       if (prize.type === 'coins') {
         newGameCoins += prize.amount;
       } else {
         newOwnedMega += 1;
-        newTaskBonus = Math.round((newTaskBonus + cfg.mega_power) * 100) / 100;
       }
 
       tx.set(userRef, {
         game_coins: newGameCoins,
         miner_mega: newOwnedMega,
-        task_bonus_hashrate: newTaskBonus,
       }, { merge: true });
 
-      return { prize, game_coins: newGameCoins, miner_mega: newOwnedMega, task_bonus_hashrate: newTaskBonus };
+      return { prize, game_coins: newGameCoins, miner_mega: newOwnedMega, mega_power: cfg.mega_power };
     });
 
     return res.status(200).json({ success: true, ...result });
