@@ -207,6 +207,15 @@
                     if (userData.season_bonus_hashrate != null) {
                         localStorage.setItem('season_bonus_hashrate', userData.season_bonus_hashrate);
                     }
+                    // Server (Firestore) is the source of truth for
+                    // task_bonus_hashrate — always overwrite the local
+                    // cache with it, so admin-side corrections (e.g. the
+                    // one-time migration removing baked-in miner power)
+                    // reach the device on the very next snapshot, instead
+                    // of the device continuing to trust a stale local value.
+                    if (userData.task_bonus_hashrate != null) {
+                        localStorage.setItem('task_bonus_hashrate', userData.task_bonus_hashrate);
+                    }
                     // Keep miner counts in sync too, so miners.html (and this
                     // page's own power calc) always reflect the latest state.
                     if (userData.miner_nano != null) localStorage.setItem('miner_nano', userData.miner_nano);
