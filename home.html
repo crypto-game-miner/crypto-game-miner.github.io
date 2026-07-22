@@ -156,8 +156,11 @@
 
         // Live effective rate — mirrors the same pool math api/sync-mining.js
         // actually uses for real earnings, instead of always assuming the
-        // flat base rate. Refreshed alongside syncMining().
-        let currentRate = { ltc: LTC_RATE, usdt: USDT_RATE };
+        // flat base rate. Also pulls miner power (nano/mega), so admin
+        // changes to those apply retroactively to miners already owned —
+        // not just future purchases. Refreshed alongside syncMining().
+        let currentRate  = { ltc: LTC_RATE, usdt: USDT_RATE };
+        let currentPower = { nano: 0.1, mega: 0.2 };
 
         async function refreshRates() {
             try {
@@ -170,6 +173,10 @@
                 currentRate = {
                     usdt: (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : USDT_RATE,
                     ltc:  (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : LTC_RATE,
+                };
+                currentPower = {
+                    nano: g.nano_power != null ? g.nano_power : 0.1,
+                    mega: g.mega_power != null ? g.mega_power : 0.2,
                 };
                 renderHome();
             } catch(e) {}
@@ -200,6 +207,10 @@
                     if (userData.season_bonus_hashrate != null) {
                         localStorage.setItem('season_bonus_hashrate', userData.season_bonus_hashrate);
                     }
+                    // Keep miner counts in sync too, so miners.html (and this
+                    // page's own power calc) always reflect the latest state.
+                    if (userData.miner_nano != null) localStorage.setItem('miner_nano', userData.miner_nano);
+                    if (userData.miner_mega != null) localStorage.setItem('miner_mega', userData.miner_mega);
 
                     // Only reset visual balance from server on first load
                     if (!initialized) {
@@ -258,6 +269,15 @@
             return Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 100) / 100;
         }
 
+        // Live-computed from owned counts × CURRENT admin-set power — so
+        // changing nano_power/mega_power in admin.html applies immediately
+        // to miners the user already owns, not just future purchases.
+        function getMinerPower() {
+            const ownedNano = userData.miner_nano || 0;
+            const ownedMega = userData.miner_mega || 0;
+            return Math.round((ownedNano * currentPower.nano + ownedMega * currentPower.mega) * 100) / 100;
+        }
+
         // 100% right when you claim, decays linearly to 0% over 24h.
         // 0% == equipment stopped == same moment mining would've paused.
         function getHealthPct() {
@@ -303,12 +323,14 @@
             const pct = needed === 'MAX' ? 100 : (currentExp / needed * 100);
             document.getElementById('exp-bar').style.width = pct + '%';
 
-            // Hashrate
+            // Hashrate — task_bonus_hashrate now only holds one-time task
+            // rewards (register/zerads from tasks.html), NOT miner power.
+            // Miner power is computed live below via getMinerPower().
             const baseHashrate  = level >= 2 ? 0.5 : 0;
             const taskBonus     = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
             const seasonBonus   = parseFloat(localStorage.getItem('season_bonus_hashrate')) || 0;
-            const permHashrate  = Math.round((baseHashrate + taskBonus + seasonBonus) * 100) / 100;
-            localStorage.setItem('hashrate', permHashrate);
+            const minerPower    = getMinerPower();
+            const permHashrate  = Math.round((baseHashrate + taskBonus + seasonBonus + minerPower) * 100) / 100;
             const boostTotal    = getBoostTotal();
             const totalHashrate = Math.round((permHashrate + boostTotal) * 100) / 100;
 
