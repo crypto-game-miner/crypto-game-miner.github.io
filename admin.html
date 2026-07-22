@@ -30,7 +30,7 @@
         .views-input { background: #0d0d0d; border: 1px solid #facc15; border-radius: 6px; color: white; padding: 6px 10px; font-size: 13px; font-family: monospace; width: 70px; outline: none; }
         .days-input { background: #0d0d0d; border: 1px solid #facc15; border-radius: 6px; color: white; padding: 8px 10px; font-size: 13px; font-family: monospace; box-sizing: border-box; outline: none; }
         .empty { text-align: center; color: #555; padding: 40px 0; font-size: 14px; }
-        .tab-row { display: flex; gap: 8px; margin-bottom: 16px; }
+        .tab-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
         .tab { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: 1px solid #3d2b1f; background: transparent; color: #8b949e; font-family: monospace; text-transform: uppercase; }
         .tab.active { background: #facc15; color: #1a1613; border-color: #facc15; }
     </style>
@@ -52,9 +52,11 @@
         <button class="tab" onclick="switchTab('active')">✅ Active</button>
         <button class="tab" onclick="switchTab('rejected')">❌ Rejected</button>
         <button class="tab" onclick="switchTab('stats')">📊 Stats</button>
+        <button class="tab" onclick="switchTab('miners')">⛏️ Miners</button>
     </div>
     <div id="cards-container"></div>
     <div id="stats-container" style="display:none;"></div>
+    <div id="miners-container" style="display:none;"></div>
 </div>
 
 <script type="module">
@@ -128,13 +130,17 @@
         currentTab = tab;
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         event.target.classList.add('active');
+        document.getElementById('cards-container').style.display = 'none';
+        document.getElementById('stats-container').style.display = 'none';
+        document.getElementById('miners-container').style.display = 'none';
         if (tab === 'stats') {
-            document.getElementById('cards-container').style.display = 'none';
             document.getElementById('stats-container').style.display = 'block';
             loadStats();
+        } else if (tab === 'miners') {
+            document.getElementById('miners-container').style.display = 'block';
+            loadMinersConfig();
         } else {
             document.getElementById('cards-container').style.display = 'block';
-            document.getElementById('stats-container').style.display = 'none';
             loadRequests(tab);
         }
     };
@@ -470,6 +476,116 @@
             if (!data.success) { alert(data.error || 'Error saving pools'); return; }
             alert('✅ Pools updated.');
             loadStats();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    async function loadMinersConfig() {
+        const container = document.getElementById('miners-container');
+        container.innerHTML = '<div class="empty">Loading...</div>';
+        try {
+            const snap = await getDoc(doc(db, 'stats', 'global'));
+            const g = snap.exists() ? snap.data() : {};
+
+            const nanoPrice = g.nano_price != null ? g.nano_price : 50;
+            const nanoPower = g.nano_power != null ? g.nano_power : 0.1;
+            const nanoMax   = g.nano_max   != null ? g.nano_max   : 10;
+            const boxPrice  = g.box_price  != null ? g.box_price  : 40;
+            const megaPower = g.mega_power != null ? g.mega_power : 0.2;
+            const megaMax   = g.mega_max   != null ? g.mega_max   : 2;
+            const t1c = g.box_odds_tier1_chance != null ? g.box_odds_tier1_chance : 35;
+            const t1a = g.box_odds_tier1_amount != null ? g.box_odds_tier1_amount : 10;
+            const t2c = g.box_odds_tier2_chance != null ? g.box_odds_tier2_chance : 30;
+            const t2a = g.box_odds_tier2_amount != null ? g.box_odds_tier2_amount : 20;
+            const t3c = g.box_odds_tier3_chance != null ? g.box_odds_tier3_chance : 15;
+            const t3a = g.box_odds_tier3_amount != null ? g.box_odds_tier3_amount : 40;
+            const megaChance = 100 - (t1c + t2c + t3c);
+
+            container.innerHTML = `
+                <div class="card">
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⛏️ NANOMINER X1</div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Price (Game Coins)</label>
+                    <input type="number" id="nano-price-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="1" value="${nanoPrice}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Power (GH/s per unit)</label>
+                    <input type="number" id="nano-power-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.01" min="0.01" value="${nanoPower}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Max owned per account</label>
+                    <input type="number" id="nano-max-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1" min="1" value="${nanoMax}">
+                </div>
+                <div class="card">
+                    <div style="color:#a78bfa; font-size:13px; font-weight:bold; margin-bottom:10px;">🎁 MYSTERY BOX</div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Price (Game Coins)</label>
+                    <input type="number" id="box-price-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="1" value="${boxPrice}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">MegaMiner Power (GH/s per unit)</label>
+                    <input type="number" id="mega-power-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.01" min="0.01" value="${megaPower}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">MegaMiner Max owned per account</label>
+                    <input type="number" id="mega-max-input" class="days-input" style="width:100%; margin-bottom:14px;" step="1" min="1" value="${megaMax}">
+
+                    <div style="font-size:11px; color:#facc15; font-weight:bold; margin-bottom:8px;">Prize Odds (must total ≤100% — rest goes to MegaMiner)</div>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 1 chance %</label>
+                            <input type="number" id="t1c-input" class="days-input" style="width:100%;" step="1" min="0" max="100" value="${t1c}">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 1 coins</label>
+                            <input type="number" id="t1a-input" class="days-input" style="width:100%;" step="1" min="0" value="${t1a}">
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 2 chance %</label>
+                            <input type="number" id="t2c-input" class="days-input" style="width:100%;" step="1" min="0" max="100" value="${t2c}">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 2 coins</label>
+                            <input type="number" id="t2a-input" class="days-input" style="width:100%;" step="1" min="0" value="${t2a}">
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 3 chance %</label>
+                            <input type="number" id="t3c-input" class="days-input" style="width:100%;" step="1" min="0" max="100" value="${t3c}">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 3 coins</label>
+                            <input type="number" id="t3a-input" class="days-input" style="width:100%;" step="1" min="0" value="${t3a}">
+                        </div>
+                    </div>
+                    <div style="font-size:10px; color:#22c55e; margin-bottom:12px;">MegaMiner chance (auto): ${megaChance}%</div>
+                    <button class="btn-approve" style="width:100%;" onclick="saveMinersConfig()">💾 Save Miners/Box Config</button>
+                </div>
+            `;
+        } catch(e) {
+            container.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
+        }
+    }
+
+    window.saveMinersConfig = async function() {
+        const storeConfig = {
+            nanoPrice: document.getElementById('nano-price-input').value,
+            nanoPower: document.getElementById('nano-power-input').value,
+            nanoMax:   document.getElementById('nano-max-input').value,
+            boxPrice:  document.getElementById('box-price-input').value,
+            megaPower: document.getElementById('mega-power-input').value,
+            megaMax:   document.getElementById('mega-max-input').value,
+            tier1Chance: document.getElementById('t1c-input').value,
+            tier1Amount: document.getElementById('t1a-input').value,
+            tier2Chance: document.getElementById('t2c-input').value,
+            tier2Amount: document.getElementById('t2a-input').value,
+            tier3Chance: document.getElementById('t3c-input').value,
+            tier3Amount: document.getElementById('t3a-input').value,
+        };
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_store_config', storeConfig })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving config'); return; }
+            alert('✅ Miners/Box config updated.');
+            loadMinersConfig();
         } catch(e) {
             alert('Error: ' + e.message);
         }
