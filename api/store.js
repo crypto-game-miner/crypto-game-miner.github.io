@@ -3,17 +3,29 @@
 // (Vercel Hobby plan caps a project at 12 serverless functions total).
 // The ONLY place allowed to deduct game_coins for NanoMiner purchases and
 // Mystery Box openings. Client sends { uid, action }.
+//
+// All prices/power/limits/odds are admin-adjustable via api/moderate-ad.js
+// (action: set_store_config), stored in stats/global. Read here inside the
+// transaction (before any writes) so the server always enforces whatever
+// the admin panel currently shows — never trusts anything from the client
+// about price/power/odds.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const NANO_PRICE = 50;
-const MAX_NANO = 10;
-const HASHRATE_PER_NANO = 0.1;
-
-const BOX_PRICE = 40;
-const MAX_MEGA = 2;
-const HASHRATE_PER_MEGA = 0.2;
+// Fallback defaults — used only for any field the admin hasn't set yet.
+const DEFAULTS = {
+  nano_price: 50,
+  nano_power: 0.1,
+  nano_max: 10,
+  box_price: 40,
+  mega_power: 0.2,
+  mega_max: 2,
+  box_odds_tier1_chance: 35, box_odds_tier1_amount: 10,
+  box_odds_tier2_chance: 30, box_odds_tier2_amount: 20,
+  box_odds_tier3_chance: 15, box_odds_tier3_amount: 40,
+  // mega chance = 100 - (tier1 + tier2 + tier3)
+};
 
 function initFirebase() {
   if (!getApps().length) {
@@ -23,11 +35,22 @@ function initFirebase() {
   return getFirestore();
 }
 
-function rollBoxPrize() {
+function getStoreConfig(g) {
+  const cfg = {};
+  for (const key in DEFAULTS) {
+    cfg[key] = (g && g[key] != null) ? g[key] : DEFAULTS[key];
+  }
+  return cfg;
+}
+
+function rollBoxPrize(cfg) {
+  const t1 = cfg.box_odds_tier1_chance;
+  const t2 = t1 + cfg.box_odds_tier2_chance;
+  const t3 = t2 + cfg.box_odds_tier3_chance;
   const r = Math.random() * 100;
-  if (r < 35) return { type: 'coins', amount: 10 };
-  if (r < 65) return { type: 'coins', amount: 20 };
-  if (r < 80) return { type: 'coins', amount: 40 };
+  if (r < t1) return { type: 'coins', amount: cfg.box_odds_tier1_amount };
+  if (r < t2) return { type: 'coins', amount: cfg.box_odds_tier2_amount };
+  if (r < t3) return { type: 'coins', amount: cfg.box_odds_tier3_amount };
   return { type: 'mega' };
 }
 
@@ -45,24 +68,27 @@ export default async function handler(req, res) {
   }
 
   const db = initFirebase();
-  const userRef = db.collection('users').doc(uid);
+  const userRef  = db.collection('users').doc(uid);
+  const statsRef = db.collection('stats').doc('global');
 
   try {
     const result = await db.runTransaction(async (tx) => {
-      const snap = await tx.get(userRef);
+      // Firestore transactions require ALL reads before ANY writes.
+      const [snap, statsSnap] = await Promise.all([tx.get(userRef), tx.get(statsRef)]);
       if (!snap.exists) throw { code: 'NO_USER', message: 'User not found. Please sign in again.' };
 
+      const cfg = getStoreConfig(statsSnap.exists ? statsSnap.data() : {});
       const data = snap.data();
       const gameCoins = data.game_coins || 0;
 
       if (action === 'buy_miner') {
         const ownedNano = data.miner_nano || 0;
-        if (ownedNano >= MAX_NANO) throw { code: 'MAXED', message: `You already own the max (${MAX_NANO}) NanoMiners.` };
-        if (gameCoins < NANO_PRICE) throw { code: 'INSUFFICIENT_FUNDS', message: `Not enough Game Coins. Need ${NANO_PRICE}, you have ${gameCoins}.` };
+        if (ownedNano >= cfg.nano_max) throw { code: 'MAXED', message: `You already own the max (${cfg.nano_max}) NanoMiners.` };
+        if (gameCoins < cfg.nano_price) throw { code: 'INSUFFICIENT_FUNDS', message: `Not enough Game Coins. Need ${cfg.nano_price}, you have ${gameCoins}.` };
 
-        const newGameCoins = gameCoins - NANO_PRICE;
+        const newGameCoins = gameCoins - cfg.nano_price;
         const newOwnedNano = ownedNano + 1;
-        const newTaskBonus = Math.round(((data.task_bonus_hashrate || 0) + HASHRATE_PER_NANO) * 10) / 10;
+        const newTaskBonus = Math.round(((data.task_bonus_hashrate || 0) + cfg.nano_power) * 100) / 100;
 
         tx.set(userRef, {
           game_coins: newGameCoins,
@@ -75,19 +101,19 @@ export default async function handler(req, res) {
 
       // action === 'open_box'
       const ownedMega = data.miner_mega || 0;
-      if (ownedMega >= MAX_MEGA) throw { code: 'MAXED', message: `You already own the max (${MAX_MEGA}) MegaMiners.` };
-      if (gameCoins < BOX_PRICE) throw { code: 'INSUFFICIENT_FUNDS', message: `Not enough Game Coins. Need ${BOX_PRICE}, you have ${gameCoins}.` };
+      if (ownedMega >= cfg.mega_max) throw { code: 'MAXED', message: `You already own the max (${cfg.mega_max}) MegaMiners.` };
+      if (gameCoins < cfg.box_price) throw { code: 'INSUFFICIENT_FUNDS', message: `Not enough Game Coins. Need ${cfg.box_price}, you have ${gameCoins}.` };
 
-      let newGameCoins = gameCoins - BOX_PRICE;
+      let newGameCoins = gameCoins - cfg.box_price;
       let newOwnedMega = ownedMega;
       let newTaskBonus = data.task_bonus_hashrate || 0;
 
-      const prize = rollBoxPrize();
+      const prize = rollBoxPrize(cfg);
       if (prize.type === 'coins') {
         newGameCoins += prize.amount;
       } else {
         newOwnedMega += 1;
-        newTaskBonus = Math.round((newTaskBonus + HASHRATE_PER_MEGA) * 10) / 10;
+        newTaskBonus = Math.round((newTaskBonus + cfg.mega_power) * 100) / 100;
       }
 
       tx.set(userRef, {
