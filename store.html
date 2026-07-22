@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!D<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -242,6 +242,10 @@
                         ownedMega = data.miner_mega;
                         localStorage.setItem('miner_mega', ownedMega);
                     }
+                    // task_bonus_hashrate is now ONLY for one-time task
+                    // rewards (register/zerads in tasks.html) — miner power
+                    // is computed live in home.html from miner_nano/miner_mega
+                    // × current admin-set power, so it's not written here.
                     if (data.task_bonus_hashrate != null) {
                         localStorage.setItem('task_bonus_hashrate', data.task_bonus_hashrate);
                     }
@@ -337,7 +341,6 @@
                 ownedNano = result.miner_nano;
                 localStorage.setItem('game_coins', gameCoins);
                 localStorage.setItem('miner_nano', ownedNano);
-                localStorage.setItem('task_bonus_hashrate', result.task_bonus_hashrate);
 
                 document.getElementById('game-coins').innerText = gameCoins;
                 updateNanoUI(); updateBoxUI();
@@ -409,7 +412,6 @@
                 ownedMega = result.miner_mega;
                 localStorage.setItem('game_coins', gameCoins);
                 localStorage.setItem('miner_mega', ownedMega);
-                localStorage.setItem('task_bonus_hashrate', result.task_bonus_hashrate);
                 document.getElementById('game-coins').innerText = gameCoins;
 
                 updateNanoUI(); updateBoxUI();
