@@ -555,6 +555,13 @@
                     <div style="font-size:10px; color:#22c55e; margin-bottom:12px;">MegaMiner chance (auto): ${megaChance}%</div>
                     <button class="btn-approve" style="width:100%;" onclick="saveMinersConfig()">💾 Save Miners/Box Config</button>
                 </div>
+                <div class="card" style="border-color:#ef4444;">
+                    <div style="color:#ef4444; font-size:13px; font-weight:bold; margin-bottom:10px;">🔧 ONE-TIME FIX</div>
+                    <div style="font-size:10px; color:#8b949e; margin-bottom:12px;">
+                        Removes old baked-in miner power (0.1/0.2 GH/s per unit, hardcoded before this panel existed) from every existing user's task_bonus_hashrate. Run this ONCE after deploying the live-power version of home.html/api/store.js — otherwise users who bought miners before will get their miner power counted twice. Safe to run more than once (it's a no-op the second time).
+                    </div>
+                    <button class="btn-reject" style="width:100%;" onclick="runMigration()">⚠️ Run Migration</button>
+                </div>
             `;
         } catch(e) {
             container.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
@@ -590,21 +597,22 @@
             alert('Error: ' + e.message);
         }
     };
+
+    window.runMigration = async function() {
+        if (!confirm('This will update task_bonus_hashrate for every existing user. Run once. Continue?')) return;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'migrate_fix_task_bonus' })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Migration failed'); return; }
+            alert(`✅ Fixed ${data.fixedCount} out of ${data.totalUsers} users.`);
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
