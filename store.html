@@ -122,9 +122,9 @@
                     </div>
                 </div>
                 <div class="miner-stats">
-                    <div class="stat-box"><div class="stat-label">Power</div><div class="stat-value">+0.1 GH/S</div></div>
-                    <div class="stat-box"><div class="stat-label">Price</div><div class="stat-value" style="color:#22c55e;">50 🟢</div></div>
-                    <div class="stat-box"><div class="stat-label">Max</div><div class="stat-value">10x</div></div>
+                    <div class="stat-box"><div class="stat-label">Power</div><div class="stat-value" id="nano-power-display">+0.1 GH/S</div></div>
+                    <div class="stat-box"><div class="stat-label">Price</div><div class="stat-value" style="color:#22c55e;" id="nano-price-display">50 🟢</div></div>
+                    <div class="stat-box"><div class="stat-label">Max</div><div class="stat-value" id="nano-max-display">10x</div></div>
                 </div>
                 <div class="owned-count" id="owned-nano">Owned: 0 / 10</div>
                 <button class="buy-btn" id="btn-nano" onclick="buyMiner('nano')">Buy for 50 Game Coins</button>
@@ -139,15 +139,15 @@
                         <div class="box-desc">Chance to win exclusive MegaMiner X2!</div>
                     </div>
                 </div>
-                <div class="box-odds">
+                <div class="box-odds" id="box-odds-display">
                     <div class="odds-row"><span class="odds-label">🟢 +10 Game Coins</span><span class="odds-chance">35%</span></div>
                     <div class="odds-row"><span class="odds-label">🟢 +20 Game Coins</span><span class="odds-chance">30%</span></div>
                     <div class="odds-row"><span class="odds-label">🟢 +40 Game Coins</span><span class="odds-chance">15%</span></div>
-                    <div class="odds-row"><span class="odds-label">🔥 MegaMiner X2 (+0.2 GH/S)</span><span class="odds-chance rare">20%</span></div>
+                    <div class="odds-row"><span class="odds-label">🔥 MegaMiner X2</span><span class="odds-chance rare">20%</span></div>
                 </div>
                 <div class="miner-stats" style="margin-bottom:10px;">
-                    <div class="stat-box"><div class="stat-label">Price</div><div class="stat-value" style="color:#22c55e;">40 🟢</div></div>
-                    <div class="stat-box"><div class="stat-label">MegaMiner Max</div><div class="stat-value">2x</div></div>
+                    <div class="stat-box"><div class="stat-label">Price</div><div class="stat-value" style="color:#22c55e;" id="box-price-display">40 🟢</div></div>
+                    <div class="stat-box"><div class="stat-label">MegaMiner Max</div><div class="stat-value" id="mega-max-display">2x</div></div>
                 </div>
                 <div class="owned-count" id="owned-mega" style="color:#a78bfa;">MegaMiner X2: 0 / 2</div>
                 <button class="open-btn" id="btn-box" onclick="openBox()">Open for 40 Game Coins</button>
@@ -180,6 +180,44 @@
         const auth = getAuth(app);
         const db   = getFirestore(app);
         let currentUser = null;
+
+        // Defaults — used until stats/global loads, or for any field the
+        // admin hasn't customized yet. Server (api/store.js) is the real
+        // source of truth regardless of what's shown here.
+        let NANO_PRICE = 50, NANO_POWER = 0.1, NANO_MAX = 10;
+        let BOX_PRICE = 40, MEGA_POWER = 0.2, MEGA_MAX = 2;
+
+        onSnapshot(doc(db, 'stats', 'global'), (snap) => {
+            const g = snap.exists() ? snap.data() : {};
+            if (g.nano_price != null) NANO_PRICE = g.nano_price;
+            if (g.nano_power != null) NANO_POWER = g.nano_power;
+            if (g.nano_max   != null) NANO_MAX   = g.nano_max;
+            if (g.box_price  != null) BOX_PRICE  = g.box_price;
+            if (g.mega_power != null) MEGA_POWER = g.mega_power;
+            if (g.mega_max   != null) MEGA_MAX   = g.mega_max;
+
+            document.getElementById('nano-power-display').innerText = '+' + NANO_POWER.toFixed(2) + ' GH/S';
+            document.getElementById('nano-price-display').innerText = NANO_PRICE + ' 🟢';
+            document.getElementById('nano-max-display').innerText   = NANO_MAX + 'x';
+            document.getElementById('box-price-display').innerText  = BOX_PRICE + ' 🟢';
+            document.getElementById('mega-max-display').innerText   = MEGA_MAX + 'x';
+
+            const t1c = g.box_odds_tier1_chance != null ? g.box_odds_tier1_chance : 35;
+            const t1a = g.box_odds_tier1_amount != null ? g.box_odds_tier1_amount : 10;
+            const t2c = g.box_odds_tier2_chance != null ? g.box_odds_tier2_chance : 30;
+            const t2a = g.box_odds_tier2_amount != null ? g.box_odds_tier2_amount : 20;
+            const t3c = g.box_odds_tier3_chance != null ? g.box_odds_tier3_chance : 15;
+            const t3a = g.box_odds_tier3_amount != null ? g.box_odds_tier3_amount : 40;
+            const megaChance = 100 - (t1c + t2c + t3c);
+            document.getElementById('box-odds-display').innerHTML = `
+                <div class="odds-row"><span class="odds-label">🟢 +${t1a} Game Coins</span><span class="odds-chance">${t1c}%</span></div>
+                <div class="odds-row"><span class="odds-label">🟢 +${t2a} Game Coins</span><span class="odds-chance">${t2c}%</span></div>
+                <div class="odds-row"><span class="odds-label">🟢 +${t3a} Game Coins</span><span class="odds-chance">${t3c}%</span></div>
+                <div class="odds-row"><span class="odds-label">🔥 MegaMiner X2 (+${MEGA_POWER.toFixed(2)} GH/S)</span><span class="odds-chance rare">${megaChance}%</span></div>
+            `;
+
+            updateNanoUI(); updateBoxUI();
+        });
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -233,22 +271,22 @@
         }
 
         function updateNanoUI() {
-            document.getElementById('owned-nano').innerText = `Owned: ${ownedNano} / 10`;
+            document.getElementById('owned-nano').innerText = `Owned: ${ownedNano} / ${NANO_MAX}`;
             const btn = document.getElementById('btn-nano');
             if (!isLoggedIn) {
                 btn.innerText = '🔒 Login Required';
                 btn.className = 'buy-btn';
                 btn.style.background = '#ef4444';
                 btn.disabled = false;
-            } else if (ownedNano >= 10) {
+            } else if (ownedNano >= NANO_MAX) {
                 btn.innerText = 'MAX REACHED';
                 btn.className = 'buy-btn maxed';
                 btn.disabled = true;
-            } else if (gameCoins < 50) {
+            } else if (gameCoins < NANO_PRICE) {
                 btn.innerText = 'Not Enough Game Coins';
                 btn.disabled = true;
             } else {
-                btn.innerText = 'Buy for 50 Game Coins';
+                btn.innerText = 'Buy for ' + NANO_PRICE + ' Game Coins';
                 btn.className = 'buy-btn';
                 btn.disabled = false;
             }
@@ -256,20 +294,20 @@
         }
 
         function updateBoxUI() {
-            document.getElementById('owned-mega').innerText = `MegaMiner X2: ${ownedMega} / 2`;
+            document.getElementById('owned-mega').innerText = `MegaMiner X2: ${ownedMega} / ${MEGA_MAX}`;
             const btn = document.getElementById('btn-box');
-            if (ownedMega >= 2) {
+            if (ownedMega >= MEGA_MAX) {
                 btn.innerText = '✅ All MegaMiners Unlocked!';
                 btn.disabled = true;
             } else if (!isLoggedIn) {
                 btn.innerText = '🔒 Login Required';
                 btn.style.background = '#ef4444';
                 btn.disabled = false;
-            } else if (gameCoins < 40) {
+            } else if (gameCoins < BOX_PRICE) {
                 btn.innerText = 'Not Enough Game Coins';
                 btn.disabled = true;
             } else {
-                btn.innerText = 'Open for 40 Game Coins';
+                btn.innerText = 'Open for ' + BOX_PRICE + ' Game Coins';
                 btn.disabled = false;
             }
         }
@@ -277,7 +315,7 @@
         window.buyMiner = async function(type) {
             if (!isLoggedIn) { alert('❌ Login required! Go to Settings.'); return; }
             if (type !== 'nano') return;
-            if (ownedNano >= 10 || gameCoins < 50 || !currentUser) return;
+            if (ownedNano >= NANO_MAX || gameCoins < NANO_PRICE || !currentUser) return;
 
             const btn = document.getElementById('btn-nano');
             btn.disabled = true;
@@ -303,7 +341,7 @@
 
                 document.getElementById('game-coins').innerText = gameCoins;
                 updateNanoUI(); updateBoxUI();
-                showToast('✅ NanoMiner X1 purchased! +0.1 GH/S');
+                showToast('✅ NanoMiner X1 purchased! +' + NANO_POWER.toFixed(2) + ' GH/S');
             } catch(e) {
                 alert('Network error: ' + e.message);
                 updateNanoUI();
@@ -312,7 +350,7 @@
 
         window.openBox = async function() {
             if (!isLoggedIn) { alert('❌ Login required!'); return; }
-            if (ownedMega >= 2 || gameCoins < 40 || !currentUser) return;
+            if (ownedMega >= MEGA_MAX || gameCoins < BOX_PRICE || !currentUser) return;
 
             document.getElementById('btn-box').disabled = true;
 
@@ -354,11 +392,11 @@
                 if (prize.type === 'coins') {
                     icon = '🟢';
                     title = `+${prize.amount} Game Coins`;
-                    sub = prize.amount >= 40 ? 'You got your money back!' : (prize.amount >= 20 ? 'Not bad!' : 'Better luck next time!');
+                    sub = prize.amount >= BOX_PRICE ? 'You got your money back!' : (prize.amount >= BOX_PRICE / 2 ? 'Not bad!' : 'Better luck next time!');
                 } else {
                     icon = '🔥';
                     title = 'MegaMiner X2!';
-                    sub = '+0.2 GH/S added!';
+                    sub = '+' + MEGA_POWER.toFixed(2) + ' GH/S added!';
                 }
 
                 boxAnim.style.display = 'none';
