@@ -40,6 +40,7 @@ export default async function handler(req, res) {
     secret, action, reqId, views, bannerUrl, clickUrl,
     usdtPool, ltcPool, rewardGuest, rewardLogged, dailyLinkUrl,
     minUsdt, maxUsdt, minLtc, maxLtc, storeConfig,
+    gameCoinsReward, claimBoostAmount,
   } = req.body || {};
 
   if (secret !== ADMIN_SECRET) {
@@ -84,16 +85,20 @@ export default async function handler(req, res) {
   if (action === 'set_claim_rewards') {
     const g = parseFloat(rewardGuest);
     const l = parseFloat(rewardLogged);
-    if (!isFinite(g) || g < 0 || !isFinite(l) || l < 0) {
-      return res.status(400).json({ success: false, error: 'Rewards must be non-negative numbers.' });
+    const gc = parseFloat(gameCoinsReward);
+    const boost = parseFloat(claimBoostAmount);
+    if (!isFinite(g) || g < 0 || !isFinite(l) || l < 0 || !isFinite(gc) || gc < 0 || !isFinite(boost) || boost < 0) {
+      return res.status(400).json({ success: false, error: 'All reward values must be non-negative numbers.' });
     }
     try {
       await db.collection('stats').doc('global').set({
         usdt_reward_guest: g,
         usdt_reward_logged: l,
+        game_coins_reward: gc,
+        claim_boost_amount: boost,
         rewardsUpdatedAt: Timestamp.now(),
       }, { merge: true });
-      return res.status(200).json({ success: true, usdt_reward_guest: g, usdt_reward_logged: l });
+      return res.status(200).json({ success: true, usdt_reward_guest: g, usdt_reward_logged: l, game_coins_reward: gc, claim_boost_amount: boost });
     } catch (e) {
       console.error('Set-claim-rewards error:', e.message || e);
       return res.status(500).json({ success: false, error: 'Server error' });
