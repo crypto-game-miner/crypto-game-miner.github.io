@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Stats</title>
+    <style>
+        html, body { margin: 0; padding: 0; background: #1a1613; color: white; font-family: 'Courier New', monospace; }
+        body { padding: 16px 16px 40px; }
+        .header { color: #facc15; font-size: 18px; font-weight: bold; margin-bottom: 16px; text-transform: uppercase; }
+        .login-box { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 10px; padding: 20px; max-width: 320px; margin: 60px auto; }
+        .login-box input { width: 100%; box-sizing: border-box; background: #0d0d0d; border: 1px solid #3d2b1f; border-radius: 8px; color: white; padding: 10px; font-size: 14px; font-family: monospace; outline: none; margin-bottom: 12px; }
+        .login-box button { background: #facc15; color: #1a1613; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; font-family: monospace; }
+        #panel { display: none; }
+        .card { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+        .info-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; border-bottom: 1px solid #2a2015; }
+        .info-row:last-child { border-bottom: none; }
+        .info-row span:first-child { color: #8b949e; }
+        .btn-approve { background: #22c55e; color: #000; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; font-family: monospace; }
+        .days-input { background: #0d0d0d; border: 1px solid #facc15; border-radius: 6px; color: white; padding: 8px 10px; font-size: 13px; font-family: monospace; box-sizing: border-box; outline: none; }
+        .empty { text-align: center; color: #555; padding: 40px 0; font-size: 14px; }
+        .tab-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .tab { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: 1px solid #3d2b1f; background: transparent; color: #8b949e; font-family: monospace; text-transform: uppercase; text-decoration: none; display: inline-block; }
+        .tab.active { background: #facc15; color: #1a1613; border-color: #facc15; }
+    </style>
+</head>
+<body>
+
+<div id="login-box" class="login-box">
+    <div style="color:#facc15; font-size:16px; font-weight:bold; margin-bottom:16px; text-align:center;">🔐 Admin Panel</div>
+    <input type="password" id="pwd" placeholder="Password" onkeydown="if(event.key==='Enter')checkPwd()">
+    <button onclick="checkPwd()">Enter</button>
+</div>
+
+<div id="panel">
+    <div class="header">📊 Stats</div>
+    <div class="tab-row">
+        <a class="tab" href="admin.html">📢 Ads</a>
+        <button class="tab active">📊 Stats</button>
+        <a class="tab" href="admin-miners.html">⛏️ Miners</a>
+    </div>
+    <div id="stats-container"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+    import { getAuth, signInAnonymously, inMemoryPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+    import { getFirestore, doc, getDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+
+    let ADMIN_PASSWORD = sessionStorage.getItem('admin_pwd');
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+        authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+        projectId: "crypto-miner-game-f45dc",
+        storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+        messagingSenderId: "33690622473",
+        appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+    };
+
+    const app  = initializeApp(firebaseConfig, 'admin-panel');
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    async function doLogin(pwd) {
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: pwd, action: 'verify' })
+            });
+            const data = await res.json();
+            if (!data.success) return false;
+        } catch(e) {
+            return false;
+        }
+        try {
+            await setPersistence(auth, inMemoryPersistence);
+            await signInAnonymously(auth);
+        } catch(e) {
+            return false;
+        }
+        return true;
+    }
+
+    window.checkPwd = async function() {
+        const pwd = document.getElementById('pwd').value;
+        const ok = await doLogin(pwd);
+        if (!ok) { alert('Wrong password'); return; }
+        ADMIN_PASSWORD = pwd;
+        sessionStorage.setItem('admin_pwd', pwd);
+        document.getElementById('login-box').style.display = 'none';
+        document.getElementById('panel').style.display = 'block';
+        loadStats();
+    };
+
+    (async function autoLogin() {
+        if (!ADMIN_PASSWORD) return;
+        const ok = await doLogin(ADMIN_PASSWORD);
+        if (ok) {
+            document.getElementById('login-box').style.display = 'none';
+            document.getElementById('panel').style.display = 'block';
+            loadStats();
+        } else {
+            sessionStorage.removeItem('admin_pwd');
+            ADMIN_PASSWORD = null;
+        }
+    })();
+
+    const BASE_USDT_RATE = 1.1;
+    const BASE_LTC_RATE  = 2.5;
+
+    function todayKey() { return new Date().toISOString().slice(0, 10); }
+    function yesterdayKey() { return new Date(Date.now() - 86400000).toISOString().slice(0, 10); }
+
+    const USDT_COIN_TO_REAL_USD = 0.000001;
+    const LTC_COIN_TO_LTC = 0.00000001;
+
+    async function fetchLtcPriceUsd() {
+        try {
+            const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin&vs_currencies=usd');
+            const data = await resp.json();
+            return data.litecoin?.usd || null;
+        } catch(e) {
+            return null;
+        }
+    }
+
+    async function loadStats() {
+        const container = document.getElementById('stats-container');
+        container.innerHTML = '<div class="empty">Loading...</div>';
+
+        try {
+            const [dailySnap, yesterdaySnap, globalSnap, ltcPriceUsd] = await Promise.all([
+                getDoc(doc(db, 'stats', 'daily_' + todayKey())),
+                getDoc(doc(db, 'stats', 'daily_' + yesterdayKey())),
+                getDoc(doc(db, 'stats', 'global')),
+                fetchLtcPriceUsd(),
+            ]);
+
+            const d = dailySnap.exists() ? dailySnap.data() : {};
+            const usdtClaims = d.usdt_from_claims || 0;
+            const usdtMining = d.usdt_from_mining || 0;
+            const ltcMining  = d.ltc_from_mining  || 0;
+
+            const y = yesterdaySnap.exists() ? yesterdaySnap.data() : {};
+            const yUsdtClaims = y.usdt_from_claims || 0;
+            const yUsdtMining = y.usdt_from_mining || 0;
+            const yLtcMining  = y.ltc_from_mining  || 0;
+
+            function realUsdValue(usdtCoins, ltcCoins) {
+                const usdtPart = usdtCoins * USDT_COIN_TO_REAL_USD;
+                const ltcPart  = ltcPriceUsd != null ? (ltcCoins * LTC_COIN_TO_LTC * ltcPriceUsd) : 0;
+                return usdtPart + ltcPart;
+            }
+
+            const priceNote = ltcPriceUsd != null
+                ? `LTC price: $${ltcPriceUsd.toLocaleString()} (live, CoinGecko)`
+                : `⚠️ Couldn't fetch live LTC price — LTC portion excluded from $ totals below`;
+
+            const g = globalSnap.exists() ? globalSnap.data() : {};
+            const usdtPool = g.usdt_pool != null ? g.usdt_pool : null;
+            const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
+            const activeUsdt = g.activeHashrateUsdt || 0;
+            const activeLtc  = g.activeHashrateLtc  || 0;
+            const rewardGuest  = g.usdt_reward_guest  != null ? g.usdt_reward_guest  : 4;
+            const rewardLogged = g.usdt_reward_logged != null ? g.usdt_reward_logged : 5;
+            const gameCoinsReward = g.game_coins_reward != null ? g.game_coins_reward : 7;
+            const claimBoostAmount = g.claim_boost_amount != null ? g.claim_boost_amount : 0.1;
+            const dailyLinkUrl = g.daily_link_url || '';
+            const withdrawMinUsdt = g.withdraw_min_usdt != null ? g.withdraw_min_usdt : 200;
+            const withdrawMaxUsdt = g.withdraw_max_usdt != null ? g.withdraw_max_usdt : 700;
+            const withdrawMinLtc  = g.withdraw_min_ltc  != null ? g.withdraw_min_ltc  : 400;
+            const withdrawMaxLtc  = g.withdraw_max_ltc  != null ? g.withdraw_max_ltc  : 1500;
+
+            const effUsdtRate = (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : BASE_USDT_RATE;
+            const effLtcRate  = (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : BASE_LTC_RATE;
+
+            container.innerHTML = `
+                <div class="card">
+                    <div style="color:#8b949e; font-size:13px; font-weight:bold; margin-bottom:10px;">✅ YESTERDAY (${yesterdayKey()}) — complete day</div>
+                    <div class="info-row"><span>USDT from Claims</span><span>${yUsdtClaims.toFixed(2)}</span></div>
+                    <div class="info-row"><span>USDT from Mining</span><span>${yUsdtMining.toFixed(2)}</span></div>
+                    <div class="info-row"><span>Total USDT earned (claims+mining)</span><span style="color:#facc15;">${(yUsdtClaims + yUsdtMining).toFixed(2)}</span></div>
+                    <div class="info-row"><span>LTC from Mining</span><span>${yLtcMining.toFixed(4)}</span></div>
+                    <div class="info-row"><span>💵 Real $ value paid out</span><span style="color:#22c55e;">$${realUsdValue(yUsdtClaims + yUsdtMining, yLtcMining).toFixed(6)}</span></div>
+                </div>
+                <div class="card">
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">📅 TODAY (${todayKey()}) — live, still counting</div>
+                    <div class="info-row"><span>USDT from Claims</span><span>${usdtClaims.toFixed(2)}</span></div>
+                    <div class="info-row"><span>USDT from Mining</span><span>${usdtMining.toFixed(2)}</span></div>
+                    <div class="info-row"><span>Total USDT earned (claims+mining)</span><span style="color:#facc15;">${(usdtClaims + usdtMining).toFixed(2)}</span></div>
+                    <div class="info-row"><span>LTC from Mining</span><span>${ltcMining.toFixed(4)}</span></div>
+                    <div class="info-row"><span>💵 Real $ value paid out</span><span style="color:#22c55e;">$${realUsdValue(usdtClaims + usdtMining, ltcMining).toFixed(6)}</span></div>
+                    <div style="font-size:9px; color:#8b949e; margin-top:8px;">${priceNote}</div>
+                </div>
+                <div class="card">
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">🎟️ CLAIM REWARDS</div>
+                    <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
+                        Everything paid out per faucet claim: USDT coins, Game Coins, and the 24h mining power boost.
+                    </div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT — Guest reward (per claim)</label>
+                    <input type="number" id="reward-guest-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.5" min="0" value="${rewardGuest}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT — Logged-in reward (per claim)</label>
+                    <input type="number" id="reward-logged-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.5" min="0" value="${rewardLogged}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Game Coins reward (per claim)</label>
+                    <input type="number" id="reward-gamecoins-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${gameCoinsReward}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Boost power (GH/s per claim, 24h)</label>
+                    <input type="number" id="reward-boost-input" class="days-input" style="width:100%; margin-bottom:12px;" step="0.01" min="0" value="${claimBoostAmount}">
+                    <button class="btn-approve" style="width:100%;" onclick="saveClaimRewards()">💾 Save Rewards</button>
+                </div>
+                <div class="card">
+                    <div style="color:#a78bfa; font-size:13px; font-weight:bold; margin-bottom:10px;">🔗 DAILY BONUS LINK</div>
+                    <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
+                        URL for the "Daily Bonus Link" task on Tasks page (+0.17 GH/s, once per 24h). Takes effect immediately.
+                    </div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Link URL</label>
+                    <input type="text" id="daily-link-input" class="days-input" style="width:100%; margin-bottom:12px;" value="${dailyLinkUrl}" placeholder="https://...">
+                    <button class="btn-approve" style="width:100%;" onclick="saveDailyLink()">💾 Save Link</button>
+                </div>
+                <div class="card">
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">💸 WITHDRAW LIMITS</div>
+                    <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
+                        Min per withdrawal, max per day, per currency. Enforced server-side.
+                    </div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT — Min per withdrawal</label>
+                    <input type="number" id="wd-min-usdt-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMinUsdt}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT — Max per day</label>
+                    <input type="number" id="wd-max-usdt-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMaxUsdt}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC — Min per withdrawal</label>
+                    <input type="number" id="wd-min-ltc-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMinLtc}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC — Max per day</label>
+                    <input type="number" id="wd-max-ltc-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1" min="0" value="${withdrawMaxLtc}">
+                    <button class="btn-approve" style="width:100%;" onclick="saveWithdrawLimits()">💾 Save Withdraw Limits</button>
+                </div>
+                <div class="card">
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⚙️ DAILY POOLS (Mining only)</div>
+                    <div class="info-row"><span>Active USDT-track Hashrate</span><span>${activeUsdt.toFixed(1)} GH/S</span></div>
+                    <div class="info-row"><span>Active LTC-track Hashrate</span><span>${activeLtc.toFixed(1)} GH/S</span></div>
+                    <div style="font-size:10px; color:#8b949e; margin:10px 0 4px;">
+                        Set a daily budget per coin — divided across everyone currently mining that track, live. Leave blank for flat base rate (${BASE_USDT_RATE} USDT / ${BASE_LTC_RATE} LTC per GH/S/hr).
+                    </div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT Pool / day (effective: ${effUsdtRate.toFixed(3)}/GH/S/hr)</label>
+                    <input type="number" id="usdt-pool-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${usdtPool != null ? usdtPool : ''}" placeholder="blank = base rate">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC Pool / day (effective: ${effLtcRate.toFixed(3)}/GH/S/hr)</label>
+                    <input type="number" id="ltc-pool-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1" min="0" value="${ltcPool != null ? ltcPool : ''}" placeholder="blank = base rate">
+                    <button class="btn-approve" style="width:100%;" onclick="savePools()">💾 Save Pools</button>
+                </div>
+            `;
+        } catch(e) {
+            container.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
+        }
+    }
+
+    window.saveClaimRewards = async function() {
+        const guestVal      = document.getElementById('reward-guest-input').value;
+        const loggedVal     = document.getElementById('reward-logged-input').value;
+        const gameCoinsVal  = document.getElementById('reward-gamecoins-input').value;
+        const boostVal      = document.getElementById('reward-boost-input').value;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    secret: ADMIN_PASSWORD, action: 'set_claim_rewards',
+                    rewardGuest: guestVal, rewardLogged: loggedVal,
+                    gameCoinsReward: gameCoinsVal, claimBoostAmount: boostVal,
+                })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving rewards'); return; }
+            alert('✅ Claim rewards updated.');
+            loadStats();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    window.saveDailyLink = async function() {
+        const urlVal = document.getElementById('daily-link-input').value;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_daily_link', dailyLinkUrl: urlVal })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving link'); return; }
+            alert('✅ Daily link updated.');
+            loadStats();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    window.saveWithdrawLimits = async function() {
+        const minUsdt = document.getElementById('wd-min-usdt-input').value;
+        const maxUsdt = document.getElementById('wd-max-usdt-input').value;
+        const minLtc  = document.getElementById('wd-min-ltc-input').value;
+        const maxLtc  = document.getElementById('wd-max-ltc-input').value;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_withdraw_limits', minUsdt, maxUsdt, minLtc, maxLtc })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving limits'); return; }
+            alert('✅ Withdraw limits updated.');
+            loadStats();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    window.savePools = async function() {
+        const usdtVal = document.getElementById
