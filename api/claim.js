@@ -12,10 +12,11 @@ const CLAIM_COOLDOWN_MS  = 5000;
 const MAX_CONCURRENT_ADS = 5;         // campaign #1 shows on claims 2&7, #2 on 3&8, #3 on 4&9, #4 on 5&10, #5 on 6&11
 const AD_CLAIM_BASE_A    = 2;         // first window start (2,3,4,5,6)
 const AD_CLAIM_BASE_B    = 7;         // second window start (7,8,9,10,11)
-const CLAIM_BOOST_AMOUNT = 0.1;       // +0.1 GH/s per claim, expires in 24h
 const USDT_REWARD_GUEST  = 4;
 const USDT_REWARD_LOGGED = 5;         // for users who linked a real (non-anonymous) provider
-const GAME_COINS_REWARD  = 7;
+// Fallback defaults — used only if the admin hasn't set these in stats/global yet.
+const DEFAULT_GAME_COINS_REWARD  = 7;
+const DEFAULT_CLAIM_BOOST_AMOUNT = 0.1; // GH/s per claim, expires in 24h
 const EXP_REWARD         = 8;
 
 const DAILY_LINK_BOOST_AMOUNT = 0.17; // +0.17 GH/s for 24h, once per day
@@ -117,6 +118,8 @@ export default async function handler(req, res) {
       const g = statsGlobalSnap.exists ? statsGlobalSnap.data() : {};
       const rewardGuest  = g.usdt_reward_guest  != null ? g.usdt_reward_guest  : USDT_REWARD_GUEST;
       const rewardLogged = g.usdt_reward_logged != null ? g.usdt_reward_logged : USDT_REWARD_LOGGED;
+      const gameCoinsReward  = g.game_coins_reward  != null ? g.game_coins_reward  : DEFAULT_GAME_COINS_REWARD;
+      const claimBoostAmount = g.claim_boost_amount != null ? g.claim_boost_amount : DEFAULT_CLAIM_BOOST_AMOUNT;
 
       // Read the ad slot query up front too — Firestore transactions
       // require ALL reads to happen before ANY writes.
@@ -152,13 +155,13 @@ export default async function handler(req, res) {
       const isRealLogin = !!data.email; // email only set once user links Google
       const usdtReward = isRealLogin ? rewardLogged : rewardGuest;
 
-      // ─── Update claim boosts array (each claim = +0.1 GH/s for 24h) ─
+      // ─── Update claim boosts array (each claim = +claimBoostAmount GH/s for 24h) ─
       let boosts = data.claimBoosts || [];
       boosts = boosts.filter(b => now - (b.time?.toMillis ? b.time.toMillis() : b.time) < 86400000);
-      boosts.push({ time: now, amount: CLAIM_BOOST_AMOUNT });
+      boosts.push({ time: now, amount: claimBoostAmount });
 
       const newCoins     = (data.coins || 0) + usdtReward;
-      const newGameCoins = (data.game_coins || 0) + GAME_COINS_REWARD;
+      const newGameCoins = (data.game_coins || 0) + gameCoinsReward;
       const newExp       = (data.exp || 0) + EXP_REWARD;
       const newClaims    = claimsToday + 1;
 
@@ -225,7 +228,7 @@ export default async function handler(req, res) {
         claimsToday: newClaims,
         claimsRemaining: MAX_CLAIMS_PER_DAY - newClaims,
         usdtReward,
-        gameCoinsReward: GAME_COINS_REWARD,
+        gameCoinsReward,
         ad,
       };
     });
