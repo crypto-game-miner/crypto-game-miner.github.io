@@ -327,6 +327,8 @@
             const activeLtc  = g.activeHashrateLtc  || 0;
             const rewardGuest  = g.usdt_reward_guest  != null ? g.usdt_reward_guest  : 4;
             const rewardLogged = g.usdt_reward_logged != null ? g.usdt_reward_logged : 5;
+            const gameCoinsReward = g.game_coins_reward != null ? g.game_coins_reward : 7;
+            const claimBoostAmount = g.claim_boost_amount != null ? g.claim_boost_amount : 0.1;
             const dailyLinkUrl = g.daily_link_url || '';
             const withdrawMinUsdt = g.withdraw_min_usdt != null ? g.withdraw_min_usdt : 200;
             const withdrawMaxUsdt = g.withdraw_max_usdt != null ? g.withdraw_max_usdt : 700;
@@ -357,12 +359,16 @@
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">🎟️ CLAIM REWARDS</div>
                     <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
-                        USDT paid out per faucet claim. Guests (no Google linked) get one rate, logged-in users get another. This is usually the biggest cost driver — bigger than mining.
+                        Everything paid out per faucet claim: USDT coins, Game Coins, and the 24h mining power boost. Guests (no Google linked) get a different USDT rate than logged-in users; Game Coins and boost power are the same for both.
                     </div>
-                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Guest reward (per claim)</label>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT — Guest reward (per claim)</label>
                     <input type="number" id="reward-guest-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.5" min="0" value="${rewardGuest}">
-                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Logged-in reward (per claim)</label>
-                    <input type="number" id="reward-logged-input" class="days-input" style="width:100%; margin-bottom:12px;" step="0.5" min="0" value="${rewardLogged}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT — Logged-in reward (per claim)</label>
+                    <input type="number" id="reward-logged-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.5" min="0" value="${rewardLogged}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Game Coins reward (per claim)</label>
+                    <input type="number" id="reward-gamecoins-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${gameCoinsReward}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Boost power (GH/s per claim, 24h)</label>
+                    <input type="number" id="reward-boost-input" class="days-input" style="width:100%; margin-bottom:12px;" step="0.01" min="0" value="${claimBoostAmount}">
                     <button class="btn-approve" style="width:100%;" onclick="saveClaimRewards()">💾 Save Rewards</button>
                 </div>
                 <div class="card">
@@ -409,13 +415,19 @@
     }
 
     window.saveClaimRewards = async function() {
-        const guestVal  = document.getElementById('reward-guest-input').value;
-        const loggedVal = document.getElementById('reward-logged-input').value;
+        const guestVal      = document.getElementById('reward-guest-input').value;
+        const loggedVal     = document.getElementById('reward-logged-input').value;
+        const gameCoinsVal  = document.getElementById('reward-gamecoins-input').value;
+        const boostVal      = document.getElementById('reward-boost-input').value;
         try {
             const res = await fetch('/api/moderate-ad', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_claim_rewards', rewardGuest: guestVal, rewardLogged: loggedVal })
+                body: JSON.stringify({
+                    secret: ADMIN_PASSWORD, action: 'set_claim_rewards',
+                    rewardGuest: guestVal, rewardLogged: loggedVal,
+                    gameCoinsReward: gameCoinsVal, claimBoostAmount: boostVal,
+                })
             });
             const data = await res.json();
             if (!data.success) { alert(data.error || 'Error saving rewards'); return; }
