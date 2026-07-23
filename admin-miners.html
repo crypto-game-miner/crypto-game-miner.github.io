@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Miners</title>
+    <style>
+        html, body { margin: 0; padding: 0; background: #1a1613; color: white; font-family: 'Courier New', monospace; }
+        body { padding: 16px 16px 40px; }
+        .header { color: #facc15; font-size: 18px; font-weight: bold; margin-bottom: 16px; text-transform: uppercase; }
+        .login-box { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 10px; padding: 20px; max-width: 320px; margin: 60px auto; }
+        .login-box input { width: 100%; box-sizing: border-box; background: #0d0d0d; border: 1px solid #3d2b1f; border-radius: 8px; color: white; padding: 10px; font-size: 14px; font-family: monospace; outline: none; margin-bottom: 12px; }
+        .login-box button { background: #facc15; color: #1a1613; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; font-family: monospace; }
+        #panel { display: none; }
+        .card { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+        .btn-approve { background: #22c55e; color: #000; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; font-family: monospace; }
+        .btn-reject  { background: #ef4444; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; font-family: monospace; }
+        .days-input { background: #0d0d0d; border: 1px solid #facc15; border-radius: 6px; color: white; padding: 8px 10px; font-size: 13px; font-family: monospace; box-sizing: border-box; outline: none; }
+        .empty { text-align: center; color: #555; padding: 40px 0; font-size: 14px; }
+        .tab-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .tab { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: 1px solid #3d2b1f; background: transparent; color: #8b949e; font-family: monospace; text-transform: uppercase; text-decoration: none; display: inline-block; }
+        .tab.active { background: #facc15; color: #1a1613; border-color: #facc15; }
+    </style>
+</head>
+<body>
+
+<div id="login-box" class="login-box">
+    <div style="color:#facc15; font-size:16px; font-weight:bold; margin-bottom:16px; text-align:center;">🔐 Admin Panel</div>
+    <input type="password" id="pwd" placeholder="Password" onkeydown="if(event.key==='Enter')checkPwd()">
+    <button onclick="checkPwd()">Enter</button>
+</div>
+
+<div id="panel">
+    <div class="header">⛏️ Miners</div>
+    <div class="tab-row">
+        <a class="tab" href="admin.html">📢 Ads</a>
+        <a class="tab" href="admin-stats.html">📊 Stats</a>
+        <button class="tab active">⛏️ Miners</button>
+    </div>
+    <div id="miners-container"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+    import { getAuth, signInAnonymously, inMemoryPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+    import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+
+    let ADMIN_PASSWORD = sessionStorage.getItem('admin_pwd');
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+        authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+        projectId: "crypto-miner-game-f45dc",
+        storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+        messagingSenderId: "33690622473",
+        appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+    };
+
+    const app  = initializeApp(firebaseConfig, 'admin-panel');
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    async function doLogin(pwd) {
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: pwd, action: 'verify' })
+            });
+            const data = await res.json();
+            if (!data.success) return false;
+        } catch(e) {
+            return false;
+        }
+        try {
+            await setPersistence(auth, inMemoryPersistence);
+            await signInAnonymously(auth);
+        } catch(e) {
+            return false;
+        }
+        return true;
+    }
+
+    window.checkPwd = async function() {
+        const pwd = document.getElementById('pwd').value;
+        const ok = await doLogin(pwd);
+        if (!ok) { alert('Wrong password'); return; }
+        ADMIN_PASSWORD = pwd;
+        sessionStorage.setItem('admin_pwd', pwd);
+        document.getElementById('login-box').style.display = 'none';
+        document.getElementById('panel').style.display = 'block';
+        loadMinersConfig();
+    };
+
+    (async function autoLogin() {
+        if (!ADMIN_PASSWORD) return;
+        const ok = await doLogin(ADMIN_PASSWORD);
+        if (ok) {
+            document.getElementById('login-box').style.display = 'none';
+            document.getElementById('panel').style.display = 'block';
+            loadMinersConfig();
+        } else {
+            sessionStorage.removeItem('admin_pwd');
+            ADMIN_PASSWORD = null;
+        }
+    })();
+
+    async function loadMinersConfig() {
+        const container = document.getElementById('miners-container');
+        container.innerHTML = '<div class="empty">Loading...</div>';
+        try {
+            const snap = await getDoc(doc(db, 'stats', 'global'));
+            const g = snap.exists() ? snap.data() : {};
+
+            const nanoPrice = g.nano_price != null ? g.nano_price : 50;
+            const nanoPower = g.nano_power != null ? g.nano_power : 0.1;
+            const nanoMax   = g.nano_max   != null ? g.nano_max   : 10;
+            const boxPrice  = g.box_price  != null ? g.box_price  : 40;
+            const megaPower = g.mega_power != null ? g.mega_power : 0.2;
+            const megaMax   = g.mega_max   != null ? g.mega_max   : 2;
+            const t1c = g.box_odds_tier1_chance != null ? g.box_odds_tier1_chance : 35;
+            const t1a = g.box_odds_tier1_amount != null ? g.box_odds_tier1_amount : 10;
+            const t2c = g.box_odds_tier2_chance != null ? g.box_odds_tier2_chance : 30;
+            const t2a = g.box_odds_tier2_amount != null ? g.box_odds_tier2_amount : 20;
+            const t3c = g.box_odds_tier3_chance != null ? g.box_odds_tier3_chance : 15;
+            const t3a = g.box_odds_tier3_amount != null ? g.box_odds_tier3_amount : 40;
+            const megaChance = 100 - (t1c + t2c + t3c);
+
+            container.innerHTML = `
+                <div class="card">
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⛏️ NANOMINER X1</div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Price (Game Coins)</label>
+                    <input type="number" id="nano-price-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="1" value="${nanoPrice}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Power (GH/s per unit)</label>
+                    <input type="number" id="nano-power-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.01" min="0.01" value="${nanoPower}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Max owned per account</label>
+                    <input type="number" id="nano-max-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1" min="1" value="${nanoMax}">
+                </div>
+                <div class="card">
+                    <div style="color:#a78bfa; font-size:13px; font-weight:bold; margin-bottom:10px;">🎁 MYSTERY BOX</div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Price (Game Coins)</label>
+                    <input type="number" id="box-price-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="1" value="${boxPrice}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">MegaMiner Power (GH/s per unit)</label>
+                    <input type="number" id="mega-power-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.01" min="0.01" value="${megaPower}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">MegaMiner Max owned per account</label>
+                    <input type="number" id="mega-max-input" class="days-input" style="width:100%; margin-bottom:14px;" step="1" min="1" value="${megaMax}">
+
+                    <div style="font-size:11px; color:#facc15; font-weight:bold; margin-bottom:8px;">Prize Odds (must total ≤100% — rest goes to MegaMiner)</div>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 1 chance %</label>
+                            <input type="number" id="t1c-input" class="days-input" style="width:100%;" step="1" min="0" max="100" value="${t1c}">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 1 coins</label>
+                            <input type="number" id="t1a-input" class="days-input" style="width:100%;" step="1" min="0" value="${t1a}">
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 2 chance %</label>
+                            <input type="number" id="t2c-input" class="days-input" style="width:100%;" step="1" min="0" max="100" value="${t2c}">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 2 coins</label>
+                            <input type="number" id="t2a-input" class="days-input" style="width:100%;" step="1" min="0" value="${t2a}">
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 3 chance %</label>
+                            <input type="number" id="t3c-input" class="days-input" style="width:100%;" step="1" min="0" max="100" value="${t3c}">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:10px; color:#8b949e; display:block; margin-bottom:4px;">Tier 3 coins</label>
+                            <input type="number" id="t3a-input" class="days-input" style="width:100%;" step="1" min="0" value="${t3a}">
+                        </div>
+                    </div>
+                    <div style="font-size:10px; color:#22c55e; margin-bottom:12px;">MegaMiner chance (auto): ${megaChance}%</div>
+                    <button class="btn-approve" style="width:100%;" onclick="saveMinersConfig()">💾 Save Miners/Box Config</button>
+                </div>
+                <div class="card" style="border-color:#ef4444;">
+                    <div style="color:#ef4444; font-size:13px; font-weight:bold; margin-bottom:10px;">🔧 ONE-TIME FIX</div>
+                    <div style="font-size:10px; color:#8b949e; margin-bottom:12px;">
+                        Removes old baked-in miner power (0.1/0.2 GH/s per unit, hardcoded before this panel existed) from every existing user's task_bonus_hashrate. Run this ONCE after deploying live-power home.html/api/store.js — otherwise users who bought miners before will get their power counted twice. Safe to run more than once (no-op the second time).
+                    </div>
+                    <button class="btn-reject" style="width:100%;" onclick="runMigration()">⚠️ Run Migration</button>
+                </div>
+            `;
+        } catch(e) {
+            container.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
+        }
+    }
+
+    window.saveMinersConfig = async function() {
+        const storeConfig = {
+            nanoPrice: document.getElementById('nano-price-input').value,
+            nanoPower: document.getElementById('nano-power-input').value,
+            nanoMax:   document.getElementById('nano-max-input').value,
+            boxPrice:  document.getElementById('box-price-input').value,
+            megaPower: document.getElementById('mega-power-input').value,
+            megaMax:   document.getElementById('mega-max-input').value,
+            tier1Chance: document.getElementById('t1c-input').value,
+            tier1Amount: document.getElementById('t1a-input').value,
+            tier2Chance: document.getElementById('t2c-input').value,
+            tier2Amount: document.getElementById('t2a-input').value,
+            tier3Chance: document.getElementById('t3c-input').value,
+            tier3Amount: document.getElementById('t3a-input').value,
+        };
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_store_config', storeConfig })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving config'); return; }
+            alert('✅ Miners/Box config updated.');
+            loadMinersConfig();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    window.runMigration = async function() {
+        if (!confirm('This will update task_bonus_hashrate for every existing user. Run once. Continue?')) return;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'migrate_fix_task_bonus' })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Migration failed'); return; }
+            alert(`✅ Fixed ${data.fixedCount} out of ${data.totalUsers} users.`);
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+</script>
+</body>
+</html>
