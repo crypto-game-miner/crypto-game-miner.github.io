@@ -1,8 +1,10 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 
-const LTC_RATE  = 2.5;
-const USDT_RATE = 1.1;
+// Fallback defaults — used only if the admin hasn't set base_usdt_rate /
+// base_ltc_rate in stats/global yet.
+const DEFAULT_LTC_RATE  = 2.5;
+const DEFAULT_USDT_RATE = 1.1;
 const MAX_SECONDS = 86400;
 const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
@@ -52,11 +54,13 @@ export default async function handler(req, res) {
       const snap = await tx.get(userRef);
       if (!snap.exists) throw { code: 'NO_USER' };
 
-      // Admin-adjustable daily pools — read here (before any writes,
-      // Firestore transactions require all reads first) so the effective
-      // per-GH/S/hour rate is derived live: pool / (24h * active hashrate
-      // currently mining that coin). Falls back to the flat base rate if
-      // no pool is configured or nobody's mining that track yet.
+      // Admin-adjustable daily pools AND base rates — read here (before
+      // any writes, Firestore transactions require all reads first) so
+      // the effective per-GH/S/hour rate is derived live: pool / (24h *
+      // active hashrate currently mining that coin). If no pool is set (or
+      // nobody's mining that track yet), falls back to the admin-set base
+      // rate — and only if THAT is unset too, falls back to the flat
+      // hardcoded default.
       const statsGlobalRef = db.collection('stats').doc('global');
       const statsGlobalSnap = await tx.get(statsGlobalRef);
       const g = statsGlobalSnap.exists ? statsGlobalSnap.data() : {};
@@ -64,6 +68,8 @@ export default async function handler(req, res) {
       const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
       const activeHashrateUsdt = g.activeHashrateUsdt || 0;
       const activeHashrateLtc  = g.activeHashrateLtc  || 0;
+      const baseUsdtRate = g.base_usdt_rate != null ? g.base_usdt_rate : DEFAULT_USDT_RATE;
+      const baseLtcRate  = g.base_ltc_rate  != null ? g.base_ltc_rate  : DEFAULT_LTC_RATE;
 
       const data = snap.data();
       const now = Date.now();
@@ -76,14 +82,23 @@ export default async function handler(req, res) {
       const baseHashrate = level >= 2 ? 0.5 : 0;
       const taskBonus = data.task_bonus_hashrate || 0;
       const seasonBonus = data.season_bonus_hashrate || 0;
-      const permHashrate = Math.round((baseHashrate + taskBonus + seasonBonus) * 10) / 10;
+      // Miner power computed live from owned counts × current admin-set
+      // power, same as home.html — so admin changes to nano/mega power
+      // apply retroactively here too, keeping actual mining income
+      // consistent with what home.html displays.
+      const ownedNano = data.miner_nano || 0;
+      const ownedMega = data.miner_mega || 0;
+      const nanoPower = g.nano_power != null ? g.nano_power : 0.1;
+      const megaPower = g.mega_power != null ? g.mega_power : 0.2;
+      const minerPower = ownedNano * nanoPower + ownedMega * megaPower;
+      const permHashrate = Math.round((baseHashrate + taskBonus + seasonBonus + minerPower) * 100) / 100;
 
       const boosts = (data.claimBoosts || []).filter(b => {
         const t = b.time?.toMillis ? b.time.toMillis() : b.time;
         return now - t < 86400000;
       });
-      const boostTotal = Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 10) / 10;
-      const totalHashrate = Math.round((permHashrate + boostTotal) * 10) / 10;
+      const boostTotal = Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 100) / 100;
+      const totalHashrate = Math.round((permHashrate + boostTotal) * 100) / 100;
 
       const lastSyncMs = data.lastMiningSync?.toMillis ? data.lastMiningSync.toMillis() : now;
       const secondsElapsed = Math.min(Math.max((now - lastSyncMs) / 1000, 0), MAX_SECONDS);
@@ -94,9 +109,9 @@ export default async function handler(req, res) {
       if (!miningPaused && totalHashrate > 0 && secondsElapsed > 0) {
         let rate;
         if (coin === 'usdt') {
-          rate = (usdtPool != null && activeHashrateUsdt > 0) ? (usdtPool / (24 * activeHashrateUsdt)) : USDT_RATE;
+          rate = (usdtPool != null && activeHashrateUsdt > 0) ? (usdtPool / (24 * activeHashrateUsdt)) : baseUsdtRate;
         } else {
-          rate = (ltcPool != null && activeHashrateLtc > 0) ? (ltcPool / (24 * activeHashrateLtc)) : LTC_RATE;
+          rate = (ltcPool != null && activeHashrateLtc > 0) ? (ltcPool / (24 * activeHashrateLtc)) : baseLtcRate;
         }
         earned = totalHashrate * rate / 3600 * secondsElapsed;
         if (coin === 'usdt') updates.coins = (data.coins || 0) + earned;
@@ -187,10 +202,10 @@ async function refreshGlobalStats(db) {
 
   await db.collection('stats').doc('global').set({
     totalPlayers,
-    totalHashrate: Math.round(totalHashrate * 10) / 10,
-    activeHashrate: Math.round(activeHashrate * 10) / 10,
-    activeHashrateUsdt: Math.round(activeHashrateUsdt * 10) / 10,
-    activeHashrateLtc: Math.round(activeHashrateLtc * 10) / 10,
+    totalHashrate: Math.round(totalHashrate * 100) / 100,
+    activeHashrate: Math.round(activeHashrate * 100) / 100,
+    activeHashrateUsdt: Math.round(activeHashrateUsdt * 100) / 100,
+    activeHashrateLtc: Math.round(activeHashrateLtc * 100) / 100,
     updatedAt: Timestamp.fromMillis(Date.now()),
   }, { merge: true });
 }
