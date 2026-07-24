@@ -151,6 +151,8 @@
         const db   = getFirestore(app);
 
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
+        // These are only the ultimate fallback if the admin hasn't set
+        // base_usdt_rate/base_ltc_rate in Firestore yet — see refreshRates().
         const LTC_RATE  = 2.5;
         const USDT_RATE = 1.1;
 
@@ -170,9 +172,11 @@
                 const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
                 const activeUsdt = g.activeHashrateUsdt || 0;
                 const activeLtc  = g.activeHashrateLtc  || 0;
+                const baseUsdtRate = g.base_usdt_rate != null ? g.base_usdt_rate : USDT_RATE;
+                const baseLtcRate  = g.base_ltc_rate  != null ? g.base_ltc_rate  : LTC_RATE;
                 currentRate = {
-                    usdt: (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : USDT_RATE,
-                    ltc:  (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : LTC_RATE,
+                    usdt: (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : baseUsdtRate,
+                    ltc:  (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : baseLtcRate,
                 };
                 currentPower = {
                     nano: g.nano_power != null ? g.nano_power : 0.1,
@@ -287,7 +291,7 @@
             return Math.round((ownedNano * currentPower.nano + ownedMega * currentPower.mega) * 100) / 100;
         }
 
-        // 100% right when you claim, decays linearly to 0% over 24h.
+                // 100% right when you claim, decays linearly to 0% over 24h.
         // 0% == equipment stopped == same moment mining would've paused.
         function getHealthPct() {
             const lastClaimMs = userData.lastClaimTime?.toMillis ? userData.lastClaimTime.toMillis() : 0;
@@ -410,6 +414,7 @@
     </script>
 </body>
 </html>
+
 
 
 
