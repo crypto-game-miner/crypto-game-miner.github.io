@@ -29,6 +29,14 @@ const QUESTS = {
     xp: 15, daily: true, label: 'Claim from Faucet 5 times today',
     check: (d, ctx) => ctx.claimsToday >= 5,
   },
+  // Uses dailyLinkTs, which api/claim.js already writes whenever the
+  // daily bonus link claim succeeds (action: 'daily_link'). Same UTC-date
+  // comparison style as quest_claims — dailyLinkTs is a Firestore Timestamp,
+  // so it's converted to a date string first.
+  quest_daily_link: {
+    xp: 10, daily: true, label: 'Claim the Daily Bonus Link',
+    check: (d, ctx) => ctx.dailyLinkClaimedToday,
+  },
 };
 
 function initFirebase() {
@@ -71,7 +79,15 @@ export default async function handler(req, res) {
       const today = new Date().toISOString().slice(0, 10);
       const claimsToday = d.claimsDay === today ? (d.claimsToday || 0) : 0;
       const level = getLevel(d.exp || 0);
-      const ctx = { level, claimsToday };
+
+      // dailyLinkTs is a Firestore Timestamp set by api/claim.js — convert
+      // to the same UTC date-string format used everywhere else to check
+      // "claimed today".
+      const dailyLinkMs = d.dailyLinkTs?.toMillis ? d.dailyLinkTs.toMillis() : 0;
+      const dailyLinkDateKey = dailyLinkMs ? new Date(dailyLinkMs).toISOString().slice(0, 10) : null;
+      const dailyLinkClaimedToday = dailyLinkDateKey === today;
+
+      const ctx = { level, claimsToday, dailyLinkClaimedToday };
       const seasonXp = d.season_xp || 0;
 
       const updates = {};
