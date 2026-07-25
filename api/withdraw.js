@@ -4,6 +4,13 @@
 //   - no action / action==='withdraw' (default): sends real crypto via FaucetPay
 //   - action: 'swap': converts USDT Coins <-> LTC Coins at their real-dollar
 //     value, minus an admin-adjustable fee (stats/global.swap_fee_pct)
+//
+// Currencies supported for withdraw: usdt, ltc, sol.
+// SOL Coins follow the same "1 in-game Coin = 1 smallest real on-chain unit"
+// pattern as LTC (1 LTC Coin = 1 litoshi): 1 SOL Coin = 1 lamport
+// (1 SOL = 1,000,000,000 lamports). NOT YET VERIFIED against FaucetPay's
+// actual expected amount granularity for SOL — test with a small real
+// withdrawal to your own FaucetPay account before enabling this for users.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -11,8 +18,10 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 // Fallback defaults — used only if stats/global doesn't have a value set yet.
 const DEFAULT_MIN_USDT = 200;
 const DEFAULT_MIN_LTC  = 400;
+const DEFAULT_MIN_SOL  = 1000000;       // 0.001 SOL, in lamports
 const DEFAULT_DAILY_LIMIT_USDT = 700;
 const DEFAULT_DAILY_LIMIT_LTC  = 1500;
+const DEFAULT_DAILY_LIMIT_SOL  = 5000000; // 0.005 SOL, in lamports
 
 const USDT_COIN_TO_REAL_USD = 0.000001;
 const LTC_COIN_TO_LTC = 0.00000001;
@@ -55,7 +64,7 @@ export default async function handler(req, res) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// WITHDRAW — original flow, unchanged
+// WITHDRAW — now handles usdt, ltc, and sol
 // ─────────────────────────────────────────────────────────────────
 async function handleWithdraw(req, res, body) {
   const uid      = body.uid;
@@ -63,6 +72,9 @@ async function handleWithdraw(req, res, body) {
   const points   = Number(body.points);
   const currency = (body.currency || 'usdt').toLowerCase();
 
+  if (!['usdt', 'ltc', 'sol'].includes(currency)) {
+    return res.status(400).json({ status: 400, message: 'Invalid currency' });
+  }
   if (!uid || !email || !points || isNaN(points)) {
     return res.status(400).json({ status: 400, message: 'Missing uid, email or points' });
   }
@@ -81,19 +93,25 @@ async function handleWithdraw(req, res, body) {
       if (!snap.exists) throw { code: 'NO_USER', message: 'User not found' };
 
       const g = statsSnap.exists ? statsSnap.data() : {};
-      const minCoins = currency === 'usdt'
-        ? (g.withdraw_min_usdt != null ? g.withdraw_min_usdt : DEFAULT_MIN_USDT)
-        : (g.withdraw_min_ltc  != null ? g.withdraw_min_ltc  : DEFAULT_MIN_LTC);
-      const dailyLimit = currency === 'usdt'
-        ? (g.withdraw_max_usdt != null ? g.withdraw_max_usdt : DEFAULT_DAILY_LIMIT_USDT)
-        : (g.withdraw_max_ltc  != null ? g.withdraw_max_ltc  : DEFAULT_DAILY_LIMIT_LTC);
+
+      let minCoins, dailyLimit;
+      if (currency === 'usdt') {
+        minCoins   = g.withdraw_min_usdt != null ? g.withdraw_min_usdt : DEFAULT_MIN_USDT;
+        dailyLimit = g.withdraw_max_usdt != null ? g.withdraw_max_usdt : DEFAULT_DAILY_LIMIT_USDT;
+      } else if (currency === 'ltc') {
+        minCoins   = g.withdraw_min_ltc != null ? g.withdraw_min_ltc : DEFAULT_MIN_LTC;
+        dailyLimit = g.withdraw_max_ltc != null ? g.withdraw_max_ltc : DEFAULT_DAILY_LIMIT_LTC;
+      } else {
+        minCoins   = g.withdraw_min_sol != null ? g.withdraw_min_sol : DEFAULT_MIN_SOL;
+        dailyLimit = g.withdraw_max_sol != null ? g.withdraw_max_sol : DEFAULT_DAILY_LIMIT_SOL;
+      }
 
       if (points < minCoins) {
         throw { code: 'BELOW_MIN', message: `Minimum ${minCoins} ${currency.toUpperCase()} Coins` };
       }
 
       const data = snap.data();
-      const balanceField = currency === 'usdt' ? 'coins' : 'ltc';
+      const balanceField = currency === 'usdt' ? 'coins' : currency === 'ltc' ? 'ltc' : 'sol';
       const currentBalance = data[balanceField] || 0;
 
       if (points > currentBalance) {
@@ -101,8 +119,8 @@ async function handleWithdraw(req, res, body) {
       }
 
       const today = new Date().toDateString();
-      const withdrawDayField = currency === 'usdt' ? 'withdrawDayUsdt' : 'withdrawDayLtc';
-      const withdrawnField   = currency === 'usdt' ? 'withdrawnTodayUsdt' : 'withdrawnTodayLtc';
+      const withdrawDayField = currency === 'usdt' ? 'withdrawDayUsdt' : currency === 'ltc' ? 'withdrawDayLtc' : 'withdrawDaySol';
+      const withdrawnField   = currency === 'usdt' ? 'withdrawnTodayUsdt' : currency === 'ltc' ? 'withdrawnTodayLtc' : 'withdrawnTodaySol';
       let withdrawnToday = data[withdrawnField] || 0;
       if (data[withdrawDayField] !== today) withdrawnToday = 0;
 
@@ -124,18 +142,23 @@ async function handleWithdraw(req, res, body) {
   }
 
   let amount, fpCurrency;
-  const currency2 = (body.currency || 'usdt').toLowerCase();
-  const points2 = Number(body.points);
-  if (currency2 === 'usdt') {
-    amount = Math.round(points2 * 100);
+  if (currency === 'usdt') {
+    amount = Math.round(points * 100);
     fpCurrency = 'USDT';
-  } else {
-    amount = Math.round(points2);
+  } else if (currency === 'ltc') {
+    amount = Math.round(points);
     fpCurrency = 'LTC';
+  } else {
+    // SOL: 1 SOL Coin = 1 lamport, sent raw — UNVERIFIED against FaucetPay's
+    // actual expected granularity for this currency. Test with a small real
+    // withdrawal before relying on this.
+    amount = Math.round(points);
+    fpCurrency = 'SOL';
   }
 
   const db2 = initFirebase();
-  const userRef2 = db2.collection('users').doc(body.uid);
+  const userRef2 = db2.collection('users').doc(uid);
+  const balanceField2 = currency === 'usdt' ? 'coins' : currency === 'ltc' ? 'ltc' : 'sol';
 
   try {
     const fpResponse = await fetch('https://faucetpay.io/api/v1/send', {
@@ -145,7 +168,7 @@ async function handleWithdraw(req, res, body) {
         api_key:  process.env.FAUCETPAY_API_KEY,
         currency: fpCurrency,
         amount:   amount,
-        to:       body.email,
+        to:       email,
         referral: 'no',
       }),
     });
@@ -154,12 +177,12 @@ async function handleWithdraw(req, res, body) {
     let data;
     try { data = JSON.parse(text); }
     catch {
-      await refundUser(db2, userRef2, currency2, points2);
+      await refundUser(db2, userRef2, balanceField2, points);
       return res.status(502).json({ status: 502, message: 'FaucetPay error (refunded): ' + text });
     }
 
     if (data.status !== 200) {
-      await refundUser(db2, userRef2, currency2, points2);
+      await refundUser(db2, userRef2, balanceField2, points);
       return res.status(200).json(data);
     }
 
@@ -167,13 +190,12 @@ async function handleWithdraw(req, res, body) {
 
   } catch (e) {
     console.error('FaucetPay request error:', e.message);
-    await refundUser(db2, userRef2, currency2, points2);
+    await refundUser(db2, userRef2, balanceField2, points);
     return res.status(500).json({ status: 500, message: 'Server error (refunded): ' + e.message });
   }
 }
 
-async function refundUser(db, userRef, currency, points) {
-  const balanceField = currency === 'usdt' ? 'coins' : 'ltc';
+async function refundUser(db, userRef, balanceField, points) {
   try {
     await userRef.update({ [balanceField]: FieldValue.increment(points) });
   } catch (e) {
@@ -183,8 +205,7 @@ async function refundUser(db, userRef, currency, points) {
 
 // ─────────────────────────────────────────────────────────────────
 // SWAP — converts USDT Coins <-> LTC Coins at real-dollar value,
-// minus an admin-adjustable fee. Uses the same real-dollar constants
-// used throughout admin-stats.html for consistency.
+// minus an admin-adjustable fee. SOL not added to swap yet — next step.
 // ─────────────────────────────────────────────────────────────────
 async function handleSwap(req, res, body) {
   const { uid, direction, amount } = body;
@@ -201,8 +222,6 @@ async function handleSwap(req, res, body) {
   const userRef  = db.collection('users').doc(uid);
   const statsRef = db.collection('stats').doc('global');
 
-  // Fetched once outside the transaction — CoinGecko isn't part of
-  // Firestore, so it can't be read inside a transaction anyway.
   let ltcPriceUsd;
   try {
     ltcPriceUsd = await fetchLtcPriceUsd();
