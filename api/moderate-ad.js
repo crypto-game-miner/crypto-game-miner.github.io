@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     usdtPool, ltcPool, rewardGuest, rewardLogged, dailyLinkUrl,
     minUsdt, maxUsdt, minLtc, maxLtc, storeConfig,
     gameCoinsReward, claimBoostAmount,
-    baseUsdtRate, baseLtcRate,
+    baseUsdtRate, baseLtcRate, swapFeePct,
   } = req.body || {};
 
   if (secret !== ADMIN_SECRET) {
@@ -98,6 +98,23 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, base_usdt_rate: usdt, base_ltc_rate: ltc });
     } catch (e) {
       console.error('Set-base-rates error:', e.message || e);
+      return res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
+  if (action === 'set_swap_fee') {
+    const fee = parseFloat(swapFeePct);
+    if (!isFinite(fee) || fee < 0 || fee > 100) {
+      return res.status(400).json({ success: false, error: 'Swap fee must be a number between 0 and 100.' });
+    }
+    try {
+      await db.collection('stats').doc('global').set({
+        swap_fee_pct: fee,
+        swapFeeUpdatedAt: Timestamp.now(),
+      }, { merge: true });
+      return res.status(200).json({ success: true, swap_fee_pct: fee });
+    } catch (e) {
+      console.error('Set-swap-fee error:', e.message || e);
       return res.status(500).json({ success: false, error: 'Server error' });
     }
   }
