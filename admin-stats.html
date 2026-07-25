@@ -172,6 +172,8 @@
             const withdrawMaxUsdt = g.withdraw_max_usdt != null ? g.withdraw_max_usdt : 700;
             const withdrawMinLtc  = g.withdraw_min_ltc  != null ? g.withdraw_min_ltc  : 400;
             const withdrawMaxLtc  = g.withdraw_max_ltc  != null ? g.withdraw_max_ltc  : 1500;
+            const withdrawMinSol  = g.withdraw_min_sol  != null ? g.withdraw_min_sol  : 1000000;
+            const withdrawMaxSol  = g.withdraw_max_sol  != null ? g.withdraw_max_sol  : 5000000;
             const baseUsdtRate = g.base_usdt_rate != null ? g.base_usdt_rate : BASE_USDT_RATE;
             const baseLtcRate  = g.base_ltc_rate  != null ? g.base_ltc_rate  : BASE_LTC_RATE;
             const swapFeePct = g.swap_fee_pct != null ? g.swap_fee_pct : 5;
@@ -224,7 +226,7 @@
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">💸 WITHDRAW LIMITS</div>
                     <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
-                        Min per withdrawal, max per day, per currency. Enforced server-side.
+                        Min per withdrawal, max per day, per currency. Enforced server-side. SOL is in lamports (1 SOL Coin = 1 lamport, 1 SOL = 1,000,000,000 lamports) — not yet live-tested with FaucetPay, verify with a small withdrawal first.
                     </div>
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT — Min per withdrawal</label>
                     <input type="number" id="wd-min-usdt-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMinUsdt}">
@@ -233,7 +235,11 @@
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC — Min per withdrawal</label>
                     <input type="number" id="wd-min-ltc-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMinLtc}">
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC — Max per day</label>
-                    <input type="number" id="wd-max-ltc-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1" min="0" value="${withdrawMaxLtc}">
+                    <input type="number" id="wd-max-ltc-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMaxLtc}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">SOL — Min per withdrawal (lamports)</label>
+                    <input type="number" id="wd-min-sol-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1000" min="0" value="${withdrawMinSol}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">SOL — Max per day (lamports)</label>
+                    <input type="number" id="wd-max-sol-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1000" min="0" value="${withdrawMaxSol}">
                     <button class="btn-approve" style="width:100%;" onclick="saveWithdrawLimits()">💾 Save Withdraw Limits</button>
                 </div>
                 <div class="card">
@@ -321,11 +327,13 @@
         const maxUsdt = document.getElementById('wd-max-usdt-input').value;
         const minLtc  = document.getElementById('wd-min-ltc-input').value;
         const maxLtc  = document.getElementById('wd-max-ltc-input').value;
+        const minSol  = document.getElementById('wd-min-sol-input').value;
+        const maxSol  = document.getElementById('wd-max-sol-input').value;
         try {
             const res = await fetch('/api/moderate-ad', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_withdraw_limits', minUsdt, maxUsdt, minLtc, maxLtc })
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_withdraw_limits', minUsdt, maxUsdt, minLtc, maxLtc, minSol, maxSol })
             });
             const data = await res.json();
             if (!data.success) { alert(data.error || 'Error saving limits'); return; }
