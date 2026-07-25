@@ -174,6 +174,7 @@
             const withdrawMaxLtc  = g.withdraw_max_ltc  != null ? g.withdraw_max_ltc  : 1500;
             const baseUsdtRate = g.base_usdt_rate != null ? g.base_usdt_rate : BASE_USDT_RATE;
             const baseLtcRate  = g.base_ltc_rate  != null ? g.base_ltc_rate  : BASE_LTC_RATE;
+            const swapFeePct = g.swap_fee_pct != null ? g.swap_fee_pct : 5;
 
             const effUsdtRate = (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : baseUsdtRate;
             const effLtcRate  = (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : baseLtcRate;
@@ -258,6 +259,15 @@
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC Coins per GH/S per hour</label>
                     <input type="number" id="base-ltc-rate-input" class="days-input" style="width:100%; margin-bottom:12px;" step="0.1" min="0" value="${baseLtcRate}">
                     <button class="btn-approve" style="width:100%;" onclick="saveBaseRates()">💾 Save Base Rates</button>
+                </div>
+                <div class="card">
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">💱 SWAP FEE</div>
+                    <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
+                        Fee charged on Coin Swap (Wallet page) — taken from the real-dollar value of the swap before converting to the destination coin.
+                    </div>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Fee % (0–100)</label>
+                    <input type="number" id="swap-fee-input" class="days-input" style="width:100%; margin-bottom:12px;" step="0.5" min="0" max="100" value="${swapFeePct}">
+                    <button class="btn-approve" style="width:100%;" onclick="saveSwapFee()">💾 Save Swap Fee</button>
                 </div>
             `;
         } catch(e) {
@@ -356,6 +366,23 @@
             const data = await res.json();
             if (!data.success) { alert(data.error || 'Error saving base rates'); return; }
             alert('✅ Base rates updated.');
+            loadStats();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    window.saveSwapFee = async function() {
+        const swapFeePct = document.getElementById('swap-fee-input').value;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_swap_fee', swapFeePct })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving swap fee'); return; }
+            alert('✅ Swap fee updated.');
             loadStats();
         } catch(e) {
             alert('Error: ' + e.message);
