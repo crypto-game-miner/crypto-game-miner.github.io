@@ -39,7 +39,7 @@ export default async function handler(req, res) {
   const {
     secret, action, reqId, views, bannerUrl, clickUrl,
     usdtPool, ltcPool, rewardGuest, rewardLogged, dailyLinkUrl,
-    minUsdt, maxUsdt, minLtc, maxLtc, storeConfig,
+    minUsdt, maxUsdt, minLtc, maxLtc, minSol, maxSol, storeConfig,
     gameCoinsReward, claimBoostAmount,
     baseUsdtRate, baseLtcRate, swapFeePct,
   } = req.body || {};
@@ -168,10 +168,12 @@ export default async function handler(req, res) {
     const pMaxUsdt = parseLimit(maxUsdt);
     const pMinLtc  = parseLimit(minLtc);
     const pMaxLtc  = parseLimit(maxLtc);
-    if ([pMinUsdt, pMaxUsdt, pMinLtc, pMaxLtc].some(v => v === undefined)) {
-      return res.status(400).json({ success: false, error: 'All four values must be non-negative numbers.' });
+    const pMinSol  = parseLimit(minSol);
+    const pMaxSol  = parseLimit(maxSol);
+    if ([pMinUsdt, pMaxUsdt, pMinLtc, pMaxLtc, pMinSol, pMaxSol].some(v => v === undefined)) {
+      return res.status(400).json({ success: false, error: 'All values must be non-negative numbers.' });
     }
-    if (pMinUsdt > pMaxUsdt || pMinLtc > pMaxLtc) {
+    if (pMinUsdt > pMaxUsdt || pMinLtc > pMaxLtc || pMinSol > pMaxSol) {
       return res.status(400).json({ success: false, error: 'Min cannot be greater than max (daily limit).' });
     }
     try {
@@ -180,6 +182,8 @@ export default async function handler(req, res) {
         withdraw_max_usdt: pMaxUsdt,
         withdraw_min_ltc: pMinLtc,
         withdraw_max_ltc: pMaxLtc,
+        withdraw_min_sol: pMinSol,
+        withdraw_max_sol: pMaxSol,
         withdrawLimitsUpdatedAt: Timestamp.now(),
       }, { merge: true });
       return res.status(200).json({ success: true });
@@ -310,5 +314,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
-
-
