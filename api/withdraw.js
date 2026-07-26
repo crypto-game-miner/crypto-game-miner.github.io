@@ -2,8 +2,9 @@
 // Handles two actions on the same endpoint (merged to stay under Vercel's
 // serverless function count limit, same pattern as api/claim.js):
 //   - no action / action==='withdraw' (default): sends real crypto via FaucetPay
-//   - action: 'swap': converts USDT Coins <-> LTC Coins at their real-dollar
-//     value, minus an admin-adjustable fee (stats/global.swap_fee_pct)
+//   - action: 'swap': converts between any two of USDT/LTC/SOL Coins based
+//     on their real-dollar value, minus an admin-adjustable fee
+//     (stats/global.swap_fee_pct)
 //
 // Currencies supported for withdraw: usdt, ltc, sol.
 // SOL Coins follow the same "1 in-game Coin = 1 smallest real on-chain unit"
@@ -25,7 +26,10 @@ const DEFAULT_DAILY_LIMIT_SOL  = 5000000; // 0.005 SOL, in lamports
 
 const USDT_COIN_TO_REAL_USD = 0.000001;
 const LTC_COIN_TO_LTC = 0.00000001;
+const SOL_COIN_TO_SOL = 0.000000001;
 const DEFAULT_SWAP_FEE_PCT = 5;
+
+const BALANCE_FIELD = { usdt: 'coins', ltc: 'ltc', sol: 'sol' };
 
 function initFirebase() {
   if (!getApps().length) {
@@ -40,12 +44,27 @@ function initFirebase() {
   return getFirestore();
 }
 
-async function fetchLtcPriceUsd() {
-  const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin&vs_currencies=usd');
+// Fetches both LTC and SOL prices in one call — needed regardless of which
+// pair is being swapped, since either leg might be ltc or sol.
+async function fetchPricesUsd() {
+  const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin,solana&vs_currencies=usd');
   const data = await resp.json();
-  const price = data?.litecoin?.usd;
-  if (!price || !isFinite(price)) throw new Error('Could not fetch LTC price');
-  return price;
+  const ltc = data?.litecoin?.usd;
+  const sol = data?.solana?.usd;
+  if (!ltc || !isFinite(ltc) || !sol || !isFinite(sol)) throw new Error('Could not fetch live prices');
+  return { ltc, sol };
+}
+
+function coinUsdValue(coin, amount, prices) {
+  if (coin === 'usdt') return amount * USDT_COIN_TO_REAL_USD;
+  if (coin === 'ltc')  return amount * LTC_COIN_TO_LTC * prices.ltc;
+  return amount * SOL_COIN_TO_SOL * prices.sol; // sol
+}
+
+function usdValuePerUnit(coin, prices) {
+  if (coin === 'usdt') return USDT_COIN_TO_REAL_USD;
+  if (coin === 'ltc')  return LTC_COIN_TO_LTC * prices.ltc;
+  return SOL_COIN_TO_SOL * prices.sol; // sol
 }
 
 export default async function handler(req, res) {
@@ -64,7 +83,7 @@ export default async function handler(req, res) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// WITHDRAW — now handles usdt, ltc, and sol
+// WITHDRAW — usdt, ltc, sol
 // ─────────────────────────────────────────────────────────────────
 async function handleWithdraw(req, res, body) {
   const uid      = body.uid;
@@ -88,7 +107,6 @@ async function handleWithdraw(req, res, body) {
 
   try {
     await db.runTransaction(async (tx) => {
-      // Firestore transactions require ALL reads before ANY writes.
       const [snap, statsSnap] = await Promise.all([tx.get(userRef), tx.get(statsRef)]);
       if (!snap.exists) throw { code: 'NO_USER', message: 'User not found' };
 
@@ -111,7 +129,7 @@ async function handleWithdraw(req, res, body) {
       }
 
       const data = snap.data();
-      const balanceField = currency === 'usdt' ? 'coins' : currency === 'ltc' ? 'ltc' : 'sol';
+      const balanceField = BALANCE_FIELD[currency];
       const currentBalance = data[balanceField] || 0;
 
       if (points > currentBalance) {
@@ -158,7 +176,7 @@ async function handleWithdraw(req, res, body) {
 
   const db2 = initFirebase();
   const userRef2 = db2.collection('users').doc(uid);
-  const balanceField2 = currency === 'usdt' ? 'coins' : currency === 'ltc' ? 'ltc' : 'sol';
+  const balanceField2 = BALANCE_FIELD[currency];
 
   try {
     const fpResponse = await fetch('https://faucetpay.io/api/v1/send', {
@@ -204,14 +222,17 @@ async function refundUser(db, userRef, balanceField, points) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// SWAP — converts USDT Coins <-> LTC Coins at real-dollar value,
-// minus an admin-adjustable fee. SOL not added to swap yet — next step.
+// SWAP — converts between any two of usdt/ltc/sol at real-dollar value,
+// minus an admin-adjustable fee.
 // ─────────────────────────────────────────────────────────────────
 async function handleSwap(req, res, body) {
-  const { uid, direction, amount } = body;
+  const { uid, fromCoin, toCoin, amount } = body;
   if (!uid) return res.status(400).json({ success: false, error: 'Missing uid' });
-  if (direction !== 'usdt_to_ltc' && direction !== 'ltc_to_usdt') {
-    return res.status(400).json({ success: false, error: 'Invalid direction' });
+  if (!['usdt', 'ltc', 'sol'].includes(fromCoin) || !['usdt', 'ltc', 'sol'].includes(toCoin)) {
+    return res.status(400).json({ success: false, error: 'Invalid coin' });
+  }
+  if (fromCoin === toCoin) {
+    return res.status(400).json({ success: false, error: 'Cannot swap a coin for itself' });
   }
   const amountIn = Number(amount);
   if (!amountIn || !isFinite(amountIn) || amountIn <= 0) {
@@ -222,11 +243,11 @@ async function handleSwap(req, res, body) {
   const userRef  = db.collection('users').doc(uid);
   const statsRef = db.collection('stats').doc('global');
 
-  let ltcPriceUsd;
+  let prices;
   try {
-    ltcPriceUsd = await fetchLtcPriceUsd();
+    prices = await fetchPricesUsd();
   } catch (e) {
-    return res.status(502).json({ success: false, error: 'Could not fetch live LTC price. Try again shortly.' });
+    return res.status(502).json({ success: false, error: 'Could not fetch live prices. Try again shortly.' });
   }
 
   try {
@@ -238,27 +259,17 @@ async function handleSwap(req, res, body) {
       const g = statsSnap.exists ? statsSnap.data() : {};
       const feePct = g.swap_fee_pct != null ? g.swap_fee_pct : DEFAULT_SWAP_FEE_PCT;
 
-      let sourceField, destField, sourceBalance, amountOut;
+      const sourceField = BALANCE_FIELD[fromCoin];
+      const destField   = BALANCE_FIELD[toCoin];
+      const sourceBalance = d[sourceField] || 0;
 
-      if (direction === 'usdt_to_ltc') {
-        sourceField = 'coins'; destField = 'ltc';
-        sourceBalance = d.coins || 0;
-        if (amountIn > sourceBalance) {
-          throw { code: 'INSUFFICIENT', message: `Not enough USDT Coins. You have ${sourceBalance.toFixed(4)}.` };
-        }
-        const usdValue = amountIn * USDT_COIN_TO_REAL_USD;
-        const usdValueAfterFee = usdValue * (1 - feePct / 100);
-        amountOut = (usdValueAfterFee / ltcPriceUsd) / LTC_COIN_TO_LTC;
-      } else {
-        sourceField = 'ltc'; destField = 'coins';
-        sourceBalance = d.ltc || 0;
-        if (amountIn > sourceBalance) {
-          throw { code: 'INSUFFICIENT', message: `Not enough LTC Coins. You have ${sourceBalance.toFixed(4)}.` };
-        }
-        const usdValue = amountIn * LTC_COIN_TO_LTC * ltcPriceUsd;
-        const usdValueAfterFee = usdValue * (1 - feePct / 100);
-        amountOut = usdValueAfterFee / USDT_COIN_TO_REAL_USD;
+      if (amountIn > sourceBalance) {
+        throw { code: 'INSUFFICIENT', message: `Not enough ${fromCoin.toUpperCase()} Coins. You have ${sourceBalance.toFixed(4)}.` };
       }
+
+      const usdValue = coinUsdValue(fromCoin, amountIn, prices);
+      const usdValueAfterFee = usdValue * (1 - feePct / 100);
+      const amountOut = usdValueAfterFee / usdValuePerUnit(toCoin, prices);
 
       if (!isFinite(amountOut) || amountOut <= 0) {
         throw { code: 'TOO_SMALL', message: 'Amount too small to swap after fee.' };
@@ -273,12 +284,9 @@ async function handleSwap(req, res, body) {
       }, { merge: true });
 
       return {
-        amountIn,
-        amountOut,
-        feePct,
-        ltcPriceUsd,
-        newCoins: direction === 'usdt_to_ltc' ? newSource : newDest,
-        newLtc:   direction === 'usdt_to_ltc' ? newDest   : newSource,
+        fromCoin, toCoin,
+        amountIn, amountOut, feePct,
+        prices,
       };
     });
 
