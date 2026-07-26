@@ -2,9 +2,10 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 // Fallback defaults — used only if the admin hasn't set base_usdt_rate /
-// base_ltc_rate in stats/global yet.
+// base_ltc_rate / base_sol_rate in stats/global yet.
 const DEFAULT_LTC_RATE  = 2.5;
 const DEFAULT_USDT_RATE = 1.1;
+const DEFAULT_SOL_RATE  = 1.5;
 const MAX_SECONDS = 86400;
 const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
@@ -43,7 +44,8 @@ export default async function handler(req, res) {
 
   const { uid, miningCoin } = req.body || {};
   if (!uid) return res.status(400).json({ error: 'Missing uid' });
-  const coin = miningCoin === 'usdt' ? 'usdt' : 'ltc';
+  const coin = miningCoin === 'usdt' ? 'usdt' : miningCoin === 'sol' ? 'sol' : 'ltc';
+  const balanceField = coin === 'usdt' ? 'coins' : coin === 'sol' ? 'sol' : 'ltc';
 
   const db = initFirebase();
   const userRef = db.collection('users').doc(uid);
@@ -66,10 +68,13 @@ export default async function handler(req, res) {
       const g = statsGlobalSnap.exists ? statsGlobalSnap.data() : {};
       const usdtPool = g.usdt_pool != null ? g.usdt_pool : null;
       const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
+      const solPool  = g.sol_pool  != null ? g.sol_pool  : null;
       const activeHashrateUsdt = g.activeHashrateUsdt || 0;
       const activeHashrateLtc  = g.activeHashrateLtc  || 0;
+      const activeHashrateSol  = g.activeHashrateSol  || 0;
       const baseUsdtRate = g.base_usdt_rate != null ? g.base_usdt_rate : DEFAULT_USDT_RATE;
       const baseLtcRate  = g.base_ltc_rate  != null ? g.base_ltc_rate  : DEFAULT_LTC_RATE;
+      const baseSolRate  = g.base_sol_rate  != null ? g.base_sol_rate  : DEFAULT_SOL_RATE;
 
       const data = snap.data();
       const now = Date.now();
@@ -110,12 +115,13 @@ export default async function handler(req, res) {
         let rate;
         if (coin === 'usdt') {
           rate = (usdtPool != null && activeHashrateUsdt > 0) ? (usdtPool / (24 * activeHashrateUsdt)) : baseUsdtRate;
+        } else if (coin === 'sol') {
+          rate = (solPool != null && activeHashrateSol > 0) ? (solPool / (24 * activeHashrateSol)) : baseSolRate;
         } else {
           rate = (ltcPool != null && activeHashrateLtc > 0) ? (ltcPool / (24 * activeHashrateLtc)) : baseLtcRate;
         }
         earned = totalHashrate * rate / 3600 * secondsElapsed;
-        if (coin === 'usdt') updates.coins = (data.coins || 0) + earned;
-        else updates.ltc = (data.ltc || 0) + earned;
+        updates[balanceField] = (data[balanceField] || 0) + earned;
       }
 
       tx.set(userRef, updates, { merge: true });
@@ -124,7 +130,7 @@ export default async function handler(req, res) {
       // by which coin track it came from.
       if (earned > 0) {
         const dailyStatsRef = db.collection('stats').doc('daily_' + today);
-        const field = coin === 'usdt' ? 'usdt_from_mining' : 'ltc_from_mining';
+        const field = coin === 'usdt' ? 'usdt_from_mining' : coin === 'sol' ? 'sol_from_mining' : 'ltc_from_mining';
         tx.set(dailyStatsRef, {
           [field]: FieldValue.increment(earned),
           updatedAt: Timestamp.fromMillis(now),
@@ -132,8 +138,8 @@ export default async function handler(req, res) {
       }
 
       // ─── Mirror safe, public-only fields for the leaderboard ────────
-      // Never write email, coins, ltc, or anything sensitive here — this
-      // collection is publicly readable by design.
+      // Never write email, coins, ltc, sol, or anything sensitive here —
+      // this collection is publicly readable by design.
       tx.set(leaderboardRef, {
         display_name: publicDisplayName(data, uid),
         hashrate: totalHashrate,
@@ -152,6 +158,7 @@ export default async function handler(req, res) {
         coin,
         coins: coin === 'usdt' ? (data.coins || 0) + earned : (data.coins || 0),
         ltc:   coin === 'ltc'  ? (data.ltc   || 0) + earned : (data.ltc   || 0),
+        sol:   coin === 'sol'  ? (data.sol   || 0) + earned : (data.sol   || 0),
         totalHashrate,
         miningPaused,
         level,
@@ -179,7 +186,7 @@ async function refreshGlobalStats(db) {
   const snap = await db.collection('leaderboard_public').get();
   const now = Date.now();
   let totalPlayers = 0, totalHashrate = 0, activeHashrate = 0;
-  let activeHashrateUsdt = 0, activeHashrateLtc = 0;
+  let activeHashrateUsdt = 0, activeHashrateLtc = 0, activeHashrateSol = 0;
 
   snap.forEach(d => {
     const data = d.data();
@@ -196,6 +203,7 @@ async function refreshGlobalStats(db) {
     if (isActiveNow) {
       activeHashrate += data.hashrate;
       if (data.mining_coin === 'usdt') activeHashrateUsdt += data.hashrate;
+      else if (data.mining_coin === 'sol') activeHashrateSol += data.hashrate;
       else activeHashrateLtc += data.hashrate; // default to ltc if unset (legacy docs)
     }
   });
@@ -206,10 +214,10 @@ async function refreshGlobalStats(db) {
     activeHashrate: Math.round(activeHashrate * 100) / 100,
     activeHashrateUsdt: Math.round(activeHashrateUsdt * 100) / 100,
     activeHashrateLtc: Math.round(activeHashrateLtc * 100) / 100,
+    activeHashrateSol: Math.round(activeHashrateSol * 100) / 100,
     updatedAt: Timestamp.fromMillis(Date.now()),
   }, { merge: true });
 }
-
 
 
 
