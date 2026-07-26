@@ -8,9 +8,10 @@
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
-        .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
-        .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
+        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 10px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .balance-cell { background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 10px; text-align: left; }
+        .balance-cell .bc-label { font-size: 9px; color: #8b949e; margin-bottom: 2px; }
+        .balance-cell .bc-value { font-size: 15px; font-weight: bold; }
         .main-area { flex: 1; padding: 15px 20px; overflow-y: auto; padding-bottom: 90px; }
         .level-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
         .level-title { color: #facc15; font-size: 22px; font-weight: bold; margin-bottom: 12px; }
@@ -27,6 +28,7 @@
         .switch-btn { flex: 1; padding: 8px 0; border: none; background: transparent; color: #8b949e; font-size: 12px; font-family: 'Courier New', monospace; cursor: pointer; border-radius: 6px; font-weight: bold; text-transform: uppercase; }
         .switch-btn.active-ltc { background: #a78bfa; color: #1a1613; }
         .switch-btn.active-usdt { background: #facc15; color: #1a1613; }
+        .switch-btn.active-sol { background: #14f195; color: #1a1613; }
         .health-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; }
         .health-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .health-title { color: #facc15; font-size: 14px; font-weight: bold; }
@@ -82,9 +84,22 @@
             <button class="burger-btn" onclick="openMenu()"><span></span><span></span><span></span></button>
         </div>
         <div class="balance-container">
-            <div class="balance-row"><span style="color:#22c55e;">Game Coins</span><span style="font-weight:bold;color:#22c55e;" id="game-coins">—</span></div>
-            <div class="balance-row"><span style="color:#facc15;">USDT Coins</span><span style="font-weight:bold;" id="balance">—</span></div>
-            <div class="balance-row"><span style="color:#a78bfa;">LTC Coins</span><span style="font-weight:bold;color:#a78bfa;" id="ltc-balance">—</span></div>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#22c55e;">Game Coins</div>
+                <div class="bc-value" style="color:#22c55e;" id="game-coins">—</div>
+            </div>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#facc15;">USDT Coins</div>
+                <div class="bc-value" id="balance">—</div>
+            </div>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#a78bfa;">LTC Coins</div>
+                <div class="bc-value" style="color:#a78bfa;" id="ltc-balance">—</div>
+            </div>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#14f195;">SOL Coins</div>
+                <div class="bc-value" style="color:#14f195;" id="sol-balance">—</div>
+            </div>
         </div>
 
         <div class="main-area">
@@ -114,6 +129,7 @@
                 <div class="coin-switch">
                     <button class="switch-btn" id="btn-ltc" onclick="switchCoin('ltc')">LTC</button>
                     <button class="switch-btn" id="btn-usdt" onclick="switchCoin('usdt')">USDT</button>
+                    <button class="switch-btn" id="btn-sol" onclick="switchCoin('sol')">SOL</button>
                 </div>
                 <div class="mining-stat"><span class="mining-label">Base Hashrate</span><span class="mining-value" id="hashrate">0.00 GH/s</span></div>
                 <div class="mining-stat"><span class="mining-label">Claim Boost (24h)</span><span class="mining-value" id="boost-rate" style="color:#22c55e;">+0.00 GH/s</span></div>
@@ -152,16 +168,17 @@
 
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
         // These are only the ultimate fallback if the admin hasn't set
-        // base_usdt_rate/base_ltc_rate in Firestore yet — see refreshRates().
+        // base_usdt_rate/base_ltc_rate/base_sol_rate in Firestore yet.
         const LTC_RATE  = 2.5;
         const USDT_RATE = 1.1;
+        const SOL_RATE  = 1.5;
 
         // Live effective rate — mirrors the same pool math api/sync-mining.js
         // actually uses for real earnings, instead of always assuming the
         // flat base rate. Also pulls miner power (nano/mega), so admin
         // changes to those apply retroactively to miners already owned —
         // not just future purchases. Refreshed alongside syncMining().
-        let currentRate  = { ltc: LTC_RATE, usdt: USDT_RATE };
+        let currentRate  = { ltc: LTC_RATE, usdt: USDT_RATE, sol: SOL_RATE };
         let currentPower = { nano: 0.1, mega: 0.2 };
 
         async function refreshRates() {
@@ -170,13 +187,17 @@
                 const g = snap.exists() ? snap.data() : {};
                 const usdtPool = g.usdt_pool != null ? g.usdt_pool : null;
                 const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
+                const solPool  = g.sol_pool  != null ? g.sol_pool  : null;
                 const activeUsdt = g.activeHashrateUsdt || 0;
                 const activeLtc  = g.activeHashrateLtc  || 0;
+                const activeSol  = g.activeHashrateSol  || 0;
                 const baseUsdtRate = g.base_usdt_rate != null ? g.base_usdt_rate : USDT_RATE;
                 const baseLtcRate  = g.base_ltc_rate  != null ? g.base_ltc_rate  : LTC_RATE;
+                const baseSolRate  = g.base_sol_rate  != null ? g.base_sol_rate  : SOL_RATE;
                 currentRate = {
                     usdt: (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : baseUsdtRate,
                     ltc:  (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : baseLtcRate,
+                    sol:  (solPool  != null && activeSol  > 0) ? (solPool  / (24 * activeSol))  : baseSolRate,
                 };
                 currentPower = {
                     nano: g.nano_power != null ? g.nano_power : 0.1,
@@ -193,6 +214,7 @@
         // Visual balance tracking (updated every second, synced to server every 60s)
         let visualCoins  = 0;
         let visualLtc    = 0;
+        let visualSol    = 0;
         let initialized  = false;
 
         onAuthStateChanged(auth, async (user) => {
@@ -213,10 +235,8 @@
                     }
                     // Server (Firestore) is the source of truth for
                     // task_bonus_hashrate — always overwrite the local
-                    // cache with it, so admin-side corrections (e.g. the
-                    // one-time migration removing baked-in miner power)
-                    // reach the device on the very next snapshot, instead
-                    // of the device continuing to trust a stale local value.
+                    // cache with it, so admin-side corrections reach the
+                    // device on the next snapshot.
                     if (userData.task_bonus_hashrate != null) {
                         localStorage.setItem('task_bonus_hashrate', userData.task_bonus_hashrate);
                     }
@@ -225,10 +245,11 @@
                     if (userData.miner_nano != null) localStorage.setItem('miner_nano', userData.miner_nano);
                     if (userData.miner_mega != null) localStorage.setItem('miner_mega', userData.miner_mega);
 
-                    // Only reset visual balance from server on first load
+                    // Only reset visual balances from server on first load
                     if (!initialized) {
                         visualCoins = parseFloat(userData.coins || 0);
                         visualLtc   = parseFloat(userData.ltc   || 0);
+                        visualSol   = parseFloat(userData.sol   || 0);
                         initialized = true;
                     }
 
@@ -255,11 +276,14 @@
                     // Update visual balance with server values after sync
                     if (data.coin === 'ltc') {
                         visualLtc   = parseFloat(data.ltc   || visualLtc);
+                    } else if (data.coin === 'sol') {
+                        visualSol   = parseFloat(data.sol   || visualSol);
                     } else {
                         visualCoins = parseFloat(data.coins || visualCoins);
                     }
                     document.getElementById('balance').innerText     = visualCoins.toFixed(4);
                     document.getElementById('ltc-balance').innerText = visualLtc.toFixed(4);
+                    document.getElementById('sol-balance').innerText = visualSol.toFixed(4);
                 }
             } catch(e) {}
         }
@@ -291,7 +315,7 @@
             return Math.round((ownedNano * currentPower.nano + ownedMega * currentPower.mega) * 100) / 100;
         }
 
-                // 100% right when you claim, decays linearly to 0% over 24h.
+        // 100% right when you claim, decays linearly to 0% over 24h.
         // 0% == equipment stopped == same moment mining would've paused.
         function getHealthPct() {
             const lastClaimMs = userData.lastClaimTime?.toMillis ? userData.lastClaimTime.toMillis() : 0;
@@ -319,11 +343,14 @@
             subEl.style.display = pct <= 0 ? 'block' : 'none';
         }
 
+        function coinLabel(coin) { return coin === 'usdt' ? 'USDT' : coin === 'sol' ? 'SOL' : 'LTC'; }
+
         function renderHome() {
             // Balances
             document.getElementById('balance').innerText     = visualCoins.toFixed(4);
             document.getElementById('game-coins').innerText  = userData.game_coins || 0;
             document.getElementById('ltc-balance').innerText = visualLtc.toFixed(4);
+            document.getElementById('sol-balance').innerText = visualSol.toFixed(4);
 
             renderHealthBar();
 
@@ -354,9 +381,9 @@
             // Mining status from Firebase lastClaimTime — paused once equipment health hits 0
             const miningPaused = getHealthPct() <= 0;
 
-            const rate = miningCoin === 'ltc' ? currentRate.ltc : currentRate.usdt;
+            const rate = currentRate[miningCoin];
             document.getElementById('ltc-per-hour').innerText = totalHashrate > 0 ? (totalHashrate * rate).toFixed(3) : 0;
-            document.getElementById('rate-label').innerText   = (miningCoin === 'ltc' ? 'LTC' : 'USDT') + ' Coins / Hour';
+            document.getElementById('rate-label').innerText   = coinLabel(miningCoin) + ' Coins / Hour';
 
             const active = totalHashrate > 0 && !miningPaused;
             document.getElementById('mining-status').innerText   = active ? 'Active ✅' : (totalHashrate === 0 ? 'Inactive' : 'Paused ⚠️');
@@ -375,6 +402,9 @@
                     if (miningCoin === 'ltc') {
                         visualLtc += earned;
                         document.getElementById('ltc-balance').innerText = visualLtc.toFixed(4);
+                    } else if (miningCoin === 'sol') {
+                        visualSol += earned;
+                        document.getElementById('sol-balance').innerText = visualSol.toFixed(4);
                     } else {
                         visualCoins += earned;
                         document.getElementById('balance').innerText = visualCoins.toFixed(4);
@@ -397,11 +427,13 @@
             document.getElementById('mined-session').innerText = '+0.0000';
             document.getElementById('btn-ltc').className  = 'switch-btn' + (coin === 'ltc'  ? ' active-ltc'  : '');
             document.getElementById('btn-usdt').className = 'switch-btn' + (coin === 'usdt' ? ' active-usdt' : '');
+            document.getElementById('btn-sol').className  = 'switch-btn' + (coin === 'sol'  ? ' active-sol'  : '');
             renderHome();
         };
 
         document.getElementById('btn-ltc').className  = 'switch-btn' + (miningCoin === 'ltc'  ? ' active-ltc'  : '');
         document.getElementById('btn-usdt').className = 'switch-btn' + (miningCoin === 'usdt' ? ' active-usdt' : '');
+        document.getElementById('btn-sol').className  = 'switch-btn' + (miningCoin === 'sol'  ? ' active-sol'  : '');
 
         window.openMenu = function() {
             document.getElementById('side-menu').classList.add('open');
