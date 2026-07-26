@@ -2,7 +2,7 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 // Fallback defaults — used only if the admin hasn't set base_usdt_rate /
-// base_ltc_rate / base_sol_rate in stats/global yet.
+// base_ltc_rate / base_sol_rate in Firestore yet.
 const DEFAULT_LTC_RATE  = 2.5;
 const DEFAULT_USDT_RATE = 1.1;
 const DEFAULT_SOL_RATE  = 1.5;
@@ -35,6 +35,16 @@ function publicDisplayName(data, uid) {
   return 'Guest_' + uid.slice(-4).toUpperCase();
 }
 
+// Effective rate = pool spread across active hashrate, but NEVER above the
+// base rate — a thin pool with few active miners would otherwise pay out
+// more per GH/S/hr than intended. The pool can only ever reduce payout
+// below base, never increase it above base.
+function effectiveRate(pool, activeHashrate, baseRate) {
+  if (pool == null || activeHashrate <= 0) return baseRate;
+  const poolRate = pool / (24 * activeHashrate);
+  return Math.min(poolRate, baseRate);
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -45,7 +55,6 @@ export default async function handler(req, res) {
   const { uid, miningCoin } = req.body || {};
   if (!uid) return res.status(400).json({ error: 'Missing uid' });
   const coin = miningCoin === 'usdt' ? 'usdt' : miningCoin === 'sol' ? 'sol' : 'ltc';
-  const balanceField = coin === 'usdt' ? 'coins' : coin === 'sol' ? 'sol' : 'ltc';
 
   const db = initFirebase();
   const userRef = db.collection('users').doc(uid);
@@ -57,12 +66,9 @@ export default async function handler(req, res) {
       if (!snap.exists) throw { code: 'NO_USER' };
 
       // Admin-adjustable daily pools AND base rates — read here (before
-      // any writes, Firestore transactions require all reads first) so
-      // the effective per-GH/S/hour rate is derived live: pool / (24h *
-      // active hashrate currently mining that coin). If no pool is set (or
-      // nobody's mining that track yet), falls back to the admin-set base
-      // rate — and only if THAT is unset too, falls back to the flat
-      // hardcoded default.
+      // any writes, Firestore transactions require all reads first). The
+      // effective rate is capped at the base rate (see effectiveRate above)
+      // — the pool can only reduce payout below base, never raise it above.
       const statsGlobalRef = db.collection('stats').doc('global');
       const statsGlobalSnap = await tx.get(statsGlobalRef);
       const g = statsGlobalSnap.exists ? statsGlobalSnap.data() : {};
@@ -110,15 +116,16 @@ export default async function handler(req, res) {
 
       const updates = { lastMiningSync: Timestamp.fromMillis(now), claimBoosts: boosts, mining_coin: coin };
       let earned = 0;
+      const balanceField = coin === 'usdt' ? 'coins' : coin === 'sol' ? 'sol' : 'ltc';
 
       if (!miningPaused && totalHashrate > 0 && secondsElapsed > 0) {
         let rate;
         if (coin === 'usdt') {
-          rate = (usdtPool != null && activeHashrateUsdt > 0) ? (usdtPool / (24 * activeHashrateUsdt)) : baseUsdtRate;
+          rate = effectiveRate(usdtPool, activeHashrateUsdt, baseUsdtRate);
         } else if (coin === 'sol') {
-          rate = (solPool != null && activeHashrateSol > 0) ? (solPool / (24 * activeHashrateSol)) : baseSolRate;
+          rate = effectiveRate(solPool, activeHashrateSol, baseSolRate);
         } else {
-          rate = (ltcPool != null && activeHashrateLtc > 0) ? (ltcPool / (24 * activeHashrateLtc)) : baseLtcRate;
+          rate = effectiveRate(ltcPool, activeHashrateLtc, baseLtcRate);
         }
         earned = totalHashrate * rate / 3600 * secondsElapsed;
         updates[balanceField] = (data[balanceField] || 0) + earned;
