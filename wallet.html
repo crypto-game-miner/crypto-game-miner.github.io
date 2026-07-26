@@ -17,13 +17,16 @@
         .tab-btn.active { background: #facc15; color: #1a1613; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .wallet-card { background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px; padding: 10px; margin-bottom: 8px; display: flex; align-items: center; cursor: pointer; transition: border-color 0.2s; }
-        .wallet-card:active { border-color: #facc15; }
-        .card-info h3 { margin: 0; font-size: 15px; }
-        .card-info p { margin: 2px 0; font-size: 10px; color: #facc15; }
-        .withdraw-box, .deposit-box { background: #261e19; border: 1px solid #facc15; border-radius: 12px; padding: 12px; margin-top: 5px; display: none; }
+        .coin-pill-row { display: flex; gap: 8px; margin-bottom: 14px; }
+        .coin-pill { flex: 1; background: #261e19; border: 1px solid #3d2b1f; border-radius: 10px; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+        .coin-pill.active { border-color: #facc15; background: rgba(250,204,21,0.08); }
+        .coin-pill img { width: 26px; height: 26px; }
+        .coin-pill span { font-size: 11px; font-weight: bold; color: #8b949e; }
+        .coin-pill.active span { color: #facc15; }
+        .withdraw-box, .deposit-box { background: #261e19; border: 1px solid #facc15; border-radius: 12px; padding: 12px; margin-top: 5px; }
         .withdraw-box label, .deposit-box label { display: block; color: #facc15; font-size: 11px; margin-bottom: 4px; text-transform: uppercase; }
         .withdraw-box input { width: 100%; background: #1a1613; border: 1px solid #3d2b1f; padding: 8px; color: white; border-radius: 5px; margin-bottom: 10px; box-sizing: border-box; font-family: monospace; outline: none; font-size: 13px; }
+        .withdraw-min-note { font-size: 10px; color: #8b949e; margin-bottom: 10px; }
         .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 10px; border-radius: 10px; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; font-family: 'Courier New', monospace; text-transform: uppercase; }
         .collect-btn:disabled { background: #555; color: #999; cursor: not-allowed; }
         .addr-box { background: #0d0d0d; border: 1px solid #facc15; border-radius: 8px; padding: 10px; margin: 10px 0; word-break: break-all; font-size: 11px; color: #facc15; }
@@ -79,55 +82,45 @@
             </div>
 
             <div id="tab-withdraw" class="tab-content active">
-                <h3 style="color:#facc15; margin-bottom:12px; font-size:14px;">Select Payment Platform</h3>
-                <div class="wallet-card" onclick="toggleBox('usdt-box', 'ltc-box', 'sol-box')">
-                    <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" style="width:35px;height:35px;margin-right:12px;">
-                    <div class="card-info"><h3>USDT</h3><p>via FaucetPay</p><span style="font-size:10px;color:#8b949e" id="usdt-min-label">Min: 200 USDT Coins</span></div>
+                <div class="coin-pill-row">
+                    <div class="coin-pill active" id="wd-pill-usdt" onclick="selectWithdrawCoin('usdt')">
+                        <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg">
+                        <span>USDT</span>
+                    </div>
+                    <div class="coin-pill" id="wd-pill-ltc" onclick="selectWithdrawCoin('ltc')">
+                        <img src="https://cryptologos.cc/logos/litecoin-ltc-logo.svg">
+                        <span>LTC</span>
+                    </div>
+                    <div class="coin-pill" id="wd-pill-sol" onclick="selectWithdrawCoin('sol')">
+                        <img src="https://cryptologos.cc/logos/solana-sol-logo.svg">
+                        <span>SOL</span>
+                    </div>
                 </div>
-                <div id="usdt-box" class="withdraw-box">
-                    <label>USDT Coins To Convert</label>
-                    <input type="number" id="wd-points-usdt" placeholder="Min 200">
+
+                <div class="withdraw-box">
+                    <p class="withdraw-min-note" id="wd-min-note">Min: 200 USDT Coins · via FaucetPay</p>
+                    <label id="wd-amount-label">USDT Coins To Withdraw</label>
+                    <input type="number" id="wd-points" placeholder="Min 200">
                     <label>FaucetPay Email</label>
-                    <input type="email" id="wd-email-usdt" placeholder="example@mail.com">
-                    <button class="collect-btn" onclick="handleWithdraw('usdt')">Withdraw USDT</button>
-                </div>
-                <div class="wallet-card" style="margin-top:8px;" onclick="toggleBox('ltc-box', 'usdt-box', 'sol-box')">
-                    <img src="https://cryptologos.cc/logos/litecoin-ltc-logo.svg" style="width:35px;height:35px;margin-right:12px;">
-                    <div class="card-info"><h3>Litecoin (LTC)</h3><p>via FaucetPay</p><span style="font-size:10px;color:#8b949e" id="ltc-min-label">Min: 400 LTC Coins</span></div>
-                </div>
-                <div id="ltc-box" class="withdraw-box">
-                    <label>LTC Coins To Withdraw</label>
-                    <input type="number" id="wd-points-ltc" placeholder="Min 400">
-                    <label>FaucetPay Email</label>
-                    <input type="email" id="wd-email-ltc" placeholder="example@mail.com">
-                    <button class="collect-btn" onclick="handleWithdraw('ltc')">Withdraw LTC</button>
-                </div>
-                <div class="wallet-card" style="margin-top:8px;" onclick="toggleBox('sol-box', 'usdt-box', 'ltc-box')">
-                    <img src="https://cryptologos.cc/logos/solana-sol-logo.svg" style="width:35px;height:35px;margin-right:12px;">
-                    <div class="card-info"><h3>Solana (SOL)</h3><p>via FaucetPay</p><span style="font-size:10px;color:#8b949e" id="sol-min-label">Min: 1000000 SOL Coins</span></div>
-                </div>
-                <div id="sol-box" class="withdraw-box">
-                    <label>SOL Coins To Withdraw</label>
-                    <input type="number" id="wd-points-sol" placeholder="Min 1000000">
-                    <label>FaucetPay Email</label>
-                    <input type="email" id="wd-email-sol" placeholder="example@mail.com">
-                    <button class="collect-btn" onclick="handleWithdraw('sol')">Withdraw SOL</button>
+                    <input type="email" id="wd-email" placeholder="example@mail.com">
+                    <button class="collect-btn" id="wd-submit-btn" onclick="handleWithdraw()">Withdraw USDT</button>
                 </div>
             </div>
 
             <div id="tab-deposit" class="tab-content">
                 <h3 style="color:#facc15; margin-bottom:4px; font-size:14px;">Deposit Crypto</h3>
                 <p style="font-size:10px; color:#8b949e; margin:0 0 12px;">Coins are credited instantly after confirmation</p>
-                <div class="wallet-card" onclick="toggleDepositBox('dep-usdt', 'dep-ltc', 'USDT')">
-                    <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" style="width:35px;height:35px;margin-right:12px;">
-                    <div class="card-info"><h3>USDT (TRC20)</h3><p>Tron network</p><span style="font-size:10px;color:#8b949e">1 USDT = 1,000,000 USDT Coins</span></div>
+                <div class="coin-pill-row">
+                    <div class="coin-pill active" id="dep-pill-usdt" onclick="selectDepositCoin('USDT')">
+                        <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg">
+                        <span>USDT</span>
+                    </div>
+                    <div class="coin-pill" id="dep-pill-ltc" onclick="selectDepositCoin('LTC')">
+                        <img src="https://cryptologos.cc/logos/litecoin-ltc-logo.svg">
+                        <span>LTC</span>
+                    </div>
                 </div>
-                <div id="dep-usdt" class="deposit-box"><div id="dep-usdt-inner"><p class="deposit-loading">⏳ Loading deposit address...</p></div></div>
-                <div class="wallet-card" style="margin-top:8px;" onclick="toggleDepositBox('dep-ltc', 'dep-usdt', 'LTC')">
-                    <img src="https://cryptologos.cc/logos/litecoin-ltc-logo.svg" style="width:35px;height:35px;margin-right:12px;">
-                    <div class="card-info"><h3>Litecoin (LTC)</h3><p>LTC network</p><span style="font-size:10px;color:#8b949e">1 LTC = 100,000,000 LTC Coins</span></div>
-                </div>
-                <div id="dep-ltc" class="deposit-box"><div id="dep-ltc-inner"><p class="deposit-loading">⏳ Loading deposit address...</p></div></div>
+                <div class="deposit-box" id="dep-box"><div id="dep-inner"><p class="deposit-loading">⏳ Loading deposit address...</p></div></div>
                 <p style="font-size:10px; color:#8b949e; text-align:center; margin:12px 0;">🔜 Solana deposit coming in the next step.</p>
                 <div style="background:rgba(0,0,0,0.3); border:1px solid #3d2b1f; border-radius:10px; padding:10px; margin-top:12px;">
                     <div class="info-row"><span>USDT rate</span><span>1 USDT → 1,000,000 USDT Coins</span></div>
@@ -217,12 +210,7 @@
             if (g.withdraw_max_sol  != null) DAILY_LIMIT_SOL = g.withdraw_max_sol;
             if (g.swap_fee_pct      != null) swapFeePct = g.swap_fee_pct;
 
-            document.getElementById('usdt-min-label').innerText = 'Min: ' + MIN_USDT + ' USDT Coins';
-            document.getElementById('ltc-min-label').innerText  = 'Min: ' + MIN_LTC + ' LTC Coins';
-            document.getElementById('sol-min-label').innerText  = 'Min: ' + MIN_SOL + ' SOL Coins';
-            document.getElementById('wd-points-usdt').placeholder = 'Min ' + MIN_USDT;
-            document.getElementById('wd-points-ltc').placeholder  = 'Min ' + MIN_LTC;
-            document.getElementById('wd-points-sol').placeholder  = 'Min ' + MIN_SOL;
+            renderWithdrawBox();
             document.getElementById('swap-fee-pct').innerText = swapFeePct;
             document.getElementById('swap-fee-note').innerText = swapFeePct + '%';
             previewSwap();
@@ -263,66 +251,28 @@
             event.target.classList.add('active');
         };
 
-        window.toggleBox = function(showId, ...hideIds) {
-            const show = document.getElementById(showId);
-            hideIds.forEach(id => { document.getElementById(id).style.display = 'none'; });
-            show.style.display = show.style.display === 'block' ? 'none' : 'block';
+        // ─── Withdraw — compact pill selector + single form ───────────
+        let withdrawCoin = 'usdt';
+        const WD_LABEL = { usdt: 'USDT', ltc: 'LTC', sol: 'SOL' };
+
+        window.selectWithdrawCoin = function(coin) {
+            withdrawCoin = coin;
+            document.querySelectorAll('.coin-pill').forEach(p => { if (p.id.startsWith('wd-pill-')) p.classList.remove('active'); });
+            document.getElementById('wd-pill-' + coin).classList.add('active');
+            document.getElementById('wd-points').value = '';
+            renderWithdrawBox();
         };
 
-        // ─── Deposit boxes ───────────────────────────────────────────
-        const loadedAddresses = {};
+        function renderWithdrawBox() {
+            const minCoins = withdrawCoin === 'usdt' ? MIN_USDT : withdrawCoin === 'ltc' ? MIN_LTC : MIN_SOL;
+            const label = WD_LABEL[withdrawCoin];
+            document.getElementById('wd-min-note').innerText = 'Min: ' + minCoins + ' ' + label + ' Coins · via FaucetPay';
+            document.getElementById('wd-amount-label').innerText = label + ' Coins To Withdraw';
+            document.getElementById('wd-points').placeholder = 'Min ' + minCoins;
+            document.getElementById('wd-submit-btn').innerText = 'Withdraw ' + label;
+        }
+        renderWithdrawBox();
 
-        window.toggleDepositBox = async function(showId, hideId, currency) {
-            const show = document.getElementById(showId);
-            const hide = document.getElementById(hideId);
-            hide.style.display = 'none';
-            if (show.style.display === 'block') { show.style.display = 'none'; return; }
-            show.style.display = 'block';
-            if (loadedAddresses[currency]) return;
-
-            const userId = localStorage.getItem('firebase_uid') || 'guest_' + Date.now();
-            const inner  = document.getElementById(showId + '-inner');
-            try {
-                const resp = await fetch('/api/deposit-address', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, currency }),
-                });
-                const data = await resp.json();
-                if (data.address) {
-                    loadedAddresses[currency] = data.address;
-                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(data.address)}`;
-                    inner.innerHTML = `
-                        <label>${currency === 'USDT' ? 'USDT TRC20' : 'LTC'} Deposit Address</label>
-                        <div class="qr-wrap"><img src="${qrUrl}" alt="QR"></div>
-                        <div class="addr-box" id="addr-${currency}">${data.address}</div>
-                        ${data.memo ? `<div class="addr-box" style="margin-top:6px;"><span style="color:#8b949e;font-size:10px;">MEMO: </span>${data.memo}</div>` : ''}
-                        <button class="copy-btn" onclick="copyAddr('${currency}')">📋 Copy Address</button>
-                        <p class="rate-note" style="color:#f59e0b;margin-top:6px;">⚠️ Send only ${currency === 'USDT' ? 'USDT on TRC20 (Tron)' : 'LTC on Litecoin network'}</p>
-                    `;
-                } else {
-                    inner.innerHTML = `<p style="color:#f44;font-size:12px;text-align:center;">Error: ${data.error || 'Could not load address'}</p>`;
-                }
-            } catch(e) {
-                inner.innerHTML = `<p style="color:#f44;font-size:12px;text-align:center;">Network error. Try again.</p>`;
-            }
-        };
-
-        window.copyAddr = function(currency) {
-            const addr = document.getElementById('addr-' + currency)?.innerText;
-            if (!addr) return;
-            navigator.clipboard.writeText(addr).then(() => {
-                event.target.innerText = '✅ Copied!';
-                setTimeout(() => event.target.innerText = '📋 Copy Address', 2000);
-            });
-        };
-
-        document.querySelectorAll('input').forEach(input => {
-            input.addEventListener('focus', () => document.body.classList.add('keyboard-open'));
-            input.addEventListener('blur',  () => document.body.classList.remove('keyboard-open'));
-        });
-
-        // ─── Withdraw ────────────────────────────────────────────────
         function getWithdrawnToday(type) {
             const key    = type === 'usdt' ? 'withdrawDay' : type === 'ltc' ? 'withdrawDayLtc' : 'withdrawDaySol';
             const valKey = type === 'usdt' ? 'withdrawnToday' : type === 'ltc' ? 'withdrawnTodayLtc' : 'withdrawnTodaySol';
@@ -335,14 +285,15 @@
             return Number(localStorage.getItem(valKey)) || 0;
         }
 
-        window.handleWithdraw = async function(type) {
-            const btn        = event.target;
-            const points     = Number(document.getElementById('wd-points-' + type).value);
-            const email      = document.getElementById('wd-email-' + type).value.trim();
+        window.handleWithdraw = async function() {
+            const type       = withdrawCoin;
+            const btn        = document.getElementById('wd-submit-btn');
+            const points     = Number(document.getElementById('wd-points').value);
+            const email      = document.getElementById('wd-email').value.trim();
             const minCoins   = type === 'usdt' ? MIN_USDT : type === 'ltc' ? MIN_LTC : MIN_SOL;
             const dailyLimit = type === 'usdt' ? DAILY_LIMIT_USDT : type === 'ltc' ? DAILY_LIMIT_LTC : DAILY_LIMIT_SOL;
             const balance    = type === 'usdt' ? coins : type === 'ltc' ? ltcCoins : solCoins;
-            const label      = type.toUpperCase();
+            const label      = WD_LABEL[type];
 
             if (!points || points < minCoins) return alert('Minimum ' + minCoins + ' ' + label + ' Coins!');
             if (points > balance)             return alert('Not enough ' + label + ' Coins!');
@@ -371,6 +322,7 @@
                     const valKey = type === 'usdt' ? 'withdrawnToday' : type === 'ltc' ? 'withdrawnTodayLtc' : 'withdrawnTodaySol';
                     localStorage.setItem(valKey, String(getWithdrawnToday(type) + points));
                     alert('✅ Success! Funds sent to your FaucetPay!');
+                    document.getElementById('wd-points').value = '';
                 } else {
                     alert('❌ ' + (result.message || JSON.stringify(result)));
                 }
@@ -379,6 +331,75 @@
             } finally {
                 btn.disabled  = false;
                 btn.innerText = 'Withdraw ' + label;
+            }
+        };
+
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('focus', () => document.body.classList.add('keyboard-open'));
+            input.addEventListener('blur',  () => document.body.classList.remove('keyboard-open'));
+        });
+
+        // ─── Deposit — compact pill selector ───────────────────────────
+        const loadedAddresses = {};
+        let depositCoin = 'USDT';
+
+        window.selectDepositCoin = async function(currency) {
+            depositCoin = currency;
+            document.querySelectorAll('.coin-pill').forEach(p => { if (p.id.startsWith('dep-pill-')) p.classList.remove('active'); });
+            document.getElementById('dep-pill-' + currency.toLowerCase()).classList.add('active');
+            await loadDepositAddress(currency);
+        };
+
+        async function loadDepositAddress(currency) {
+            const inner = document.getElementById('dep-inner');
+            if (loadedAddresses[currency]) { inner.innerHTML = loadedAddresses[currency]; return; }
+            inner.innerHTML = '<p class="deposit-loading">⏳ Loading deposit address...</p>';
+
+            const userId = localStorage.getItem('firebase_uid') || 'guest_' + Date.now();
+            try {
+                const resp = await fetch('/api/deposit-address', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, currency }),
+                });
+                const data = await resp.json();
+                if (data.address) {
+                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(data.address)}`;
+                    const html = `
+                        <label>${currency === 'USDT' ? 'USDT TRC20' : 'LTC'} Deposit Address</label>
+                        <div class="qr-wrap"><img src="${qrUrl}" alt="QR"></div>
+                        <div class="addr-box" id="addr-${currency}">${data.address}</div>
+                        ${data.memo ? `<div class="addr-box" style="margin-top:6px;"><span style="color:#8b949e;font-size:10px;">MEMO: </span>${data.memo}</div>` : ''}
+                        <button class="copy-btn" onclick="copyAddr('${currency}')">📋 Copy Address</button>
+                        <p class="rate-note" style="color:#f59e0b;margin-top:6px;">⚠️ Send only ${currency === 'USDT' ? 'USDT on TRC20 (Tron)' : 'LTC on Litecoin network'}</p>
+                    `;
+                    loadedAddresses[currency] = html;
+                    inner.innerHTML = html;
+                } else {
+                    inner.innerHTML = `<p style="color:#f44;font-size:12px;text-align:center;">Error: ${data.error || 'Could not load address'}</p>`;
+                }
+            } catch(e) {
+                inner.innerHTML = `<p style="color:#f44;font-size:12px;text-align:center;">Network error. Try again.</p>`;
+            }
+        }
+
+        window.copyAddr = function(currency) {
+            const addr = document.getElementById('addr-' + currency)?.innerText;
+            if (!addr) return;
+            navigator.clipboard.writeText(addr).then(() => {
+                event.target.innerText = '✅ Copied!';
+                setTimeout(() => event.target.innerText = '📋 Copy Address', 2000);
+            });
+        };
+
+        // Load USDT address by default the first time the Deposit tab is opened.
+        let depositInitialized = false;
+        const origSwitchTab = window.switchTab;
+        window.switchTab = function(tab) {
+            origSwitchTab(tab);
+            if (tab === 'deposit' && !depositInitialized) {
+                depositInitialized = true;
+                loadDepositAddress('USDT');
             }
         };
 
