@@ -194,10 +194,12 @@
                 const baseUsdtRate = g.base_usdt_rate != null ? g.base_usdt_rate : USDT_RATE;
                 const baseLtcRate  = g.base_ltc_rate  != null ? g.base_ltc_rate  : LTC_RATE;
                 const baseSolRate  = g.base_sol_rate  != null ? g.base_sol_rate  : SOL_RATE;
+            // Capped at base rate — a thin pool can only reduce the
+                // effective payout below base, never raise it above.
                 currentRate = {
-                    usdt: (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : baseUsdtRate,
-                    ltc:  (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : baseLtcRate,
-                    sol:  (solPool  != null && activeSol  > 0) ? (solPool  / (24 * activeSol))  : baseSolRate,
+                    usdt: (usdtPool != null && activeUsdt > 0) ? Math.min(usdtPool / (24 * activeUsdt), baseUsdtRate) : baseUsdtRate,
+                    ltc:  (ltcPool  != null && activeLtc  > 0) ? Math.min(ltcPool  / (24 * activeLtc),  baseLtcRate)  : baseLtcRate,
+                    sol:  (solPool  != null && activeSol  > 0) ? Math.min(solPool  / (24 * activeSol),  baseSolRate)  : baseSolRate,
                 };
                 currentPower = {
                     nano: g.nano_power != null ? g.nano_power : 0.1,
