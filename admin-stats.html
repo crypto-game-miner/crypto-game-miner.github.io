@@ -109,6 +109,7 @@
 
     const BASE_USDT_RATE = 1.1;
     const BASE_LTC_RATE  = 2.5;
+    const BASE_SOL_RATE  = 1.5;
 
     function todayKey() { return new Date().toISOString().slice(0, 10); }
     function yesterdayKey() { return new Date(Date.now() - 86400000).toISOString().slice(0, 10); }
@@ -142,11 +143,13 @@
             const usdtClaims = d.usdt_from_claims || 0;
             const usdtMining = d.usdt_from_mining || 0;
             const ltcMining  = d.ltc_from_mining  || 0;
+            const solMining  = d.sol_from_mining  || 0;
 
             const y = yesterdaySnap.exists() ? yesterdaySnap.data() : {};
             const yUsdtClaims = y.usdt_from_claims || 0;
             const yUsdtMining = y.usdt_from_mining || 0;
             const yLtcMining  = y.ltc_from_mining  || 0;
+            const ySolMining  = y.sol_from_mining  || 0;
 
             function realUsdValue(usdtCoins, ltcCoins) {
                 const usdtPart = usdtCoins * USDT_COIN_TO_REAL_USD;
@@ -161,8 +164,10 @@
             const g = globalSnap.exists() ? globalSnap.data() : {};
             const usdtPool = g.usdt_pool != null ? g.usdt_pool : null;
             const ltcPool  = g.ltc_pool  != null ? g.ltc_pool  : null;
+            const solPool  = g.sol_pool  != null ? g.sol_pool  : null;
             const activeUsdt = g.activeHashrateUsdt || 0;
             const activeLtc  = g.activeHashrateLtc  || 0;
+            const activeSol  = g.activeHashrateSol  || 0;
             const rewardGuest  = g.usdt_reward_guest  != null ? g.usdt_reward_guest  : 4;
             const rewardLogged = g.usdt_reward_logged != null ? g.usdt_reward_logged : 5;
             const gameCoinsReward = g.game_coins_reward != null ? g.game_coins_reward : 7;
@@ -176,10 +181,12 @@
             const withdrawMaxSol  = g.withdraw_max_sol  != null ? g.withdraw_max_sol  : 5000000;
             const baseUsdtRate = g.base_usdt_rate != null ? g.base_usdt_rate : BASE_USDT_RATE;
             const baseLtcRate  = g.base_ltc_rate  != null ? g.base_ltc_rate  : BASE_LTC_RATE;
+            const baseSolRate  = g.base_sol_rate  != null ? g.base_sol_rate  : BASE_SOL_RATE;
             const swapFeePct = g.swap_fee_pct != null ? g.swap_fee_pct : 5;
 
             const effUsdtRate = (usdtPool != null && activeUsdt > 0) ? (usdtPool / (24 * activeUsdt)) : baseUsdtRate;
             const effLtcRate  = (ltcPool  != null && activeLtc  > 0) ? (ltcPool  / (24 * activeLtc))  : baseLtcRate;
+            const effSolRate  = (solPool  != null && activeSol  > 0) ? (solPool  / (24 * activeSol))  : baseSolRate;
 
             container.innerHTML = `
                 <div class="card">
@@ -188,6 +195,7 @@
                     <div class="info-row"><span>USDT from Mining</span><span>${yUsdtMining.toFixed(2)}</span></div>
                     <div class="info-row"><span>Total USDT earned (claims+mining)</span><span style="color:#facc15;">${(yUsdtClaims + yUsdtMining).toFixed(2)}</span></div>
                     <div class="info-row"><span>LTC from Mining</span><span>${yLtcMining.toFixed(4)}</span></div>
+                    <div class="info-row"><span>SOL from Mining</span><span>${ySolMining.toFixed(4)}</span></div>
                     <div class="info-row"><span>💵 Real $ value paid out</span><span style="color:#22c55e;">$${realUsdValue(yUsdtClaims + yUsdtMining, yLtcMining).toFixed(6)}</span></div>
                 </div>
                 <div class="card">
@@ -196,8 +204,9 @@
                     <div class="info-row"><span>USDT from Mining</span><span>${usdtMining.toFixed(2)}</span></div>
                     <div class="info-row"><span>Total USDT earned (claims+mining)</span><span style="color:#facc15;">${(usdtClaims + usdtMining).toFixed(2)}</span></div>
                     <div class="info-row"><span>LTC from Mining</span><span>${ltcMining.toFixed(4)}</span></div>
+                    <div class="info-row"><span>SOL from Mining</span><span>${solMining.toFixed(4)}</span></div>
                     <div class="info-row"><span>💵 Real $ value paid out</span><span style="color:#22c55e;">$${realUsdValue(usdtClaims + usdtMining, ltcMining).toFixed(6)}</span></div>
-                    <div style="font-size:9px; color:#8b949e; margin-top:8px;">${priceNote}</div>
+                    <div style="font-size:9px; color:#8b949e; margin-top:8px;">${priceNote} (SOL not yet included in $ totals)</div>
                 </div>
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">🎟️ CLAIM REWARDS</div>
@@ -226,7 +235,7 @@
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">💸 WITHDRAW LIMITS</div>
                     <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
-                        Min per withdrawal, max per day, per currency. Enforced server-side. SOL is in lamports (1 SOL Coin = 1 lamport, 1 SOL = 1,000,000,000 lamports) — not yet live-tested with FaucetPay, verify with a small withdrawal first.
+                        Min per withdrawal, max per day, per currency. Enforced server-side. SOL is 8-decimal "coin-satoshis" (1 SOL Coin = 0.00000001 SOL) — not yet live-tested with FaucetPay, verify with a small withdrawal first.
                     </div>
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT — Min per withdrawal</label>
                     <input type="number" id="wd-min-usdt-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMinUsdt}">
@@ -236,9 +245,9 @@
                     <input type="number" id="wd-min-ltc-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMinLtc}">
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC — Max per day</label>
                     <input type="number" id="wd-max-ltc-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${withdrawMaxLtc}">
-                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">SOL — Min per withdrawal (lamports)</label>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">SOL — Min per withdrawal</label>
                     <input type="number" id="wd-min-sol-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1000" min="0" value="${withdrawMinSol}">
-                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">SOL — Max per day (lamports)</label>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">SOL — Max per day</label>
                     <input type="number" id="wd-max-sol-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1000" min="0" value="${withdrawMaxSol}">
                     <button class="btn-approve" style="width:100%;" onclick="saveWithdrawLimits()">💾 Save Withdraw Limits</button>
                 </div>
@@ -246,13 +255,16 @@
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">⚙️ DAILY POOLS (Mining only)</div>
                     <div class="info-row"><span>Active USDT-track Hashrate</span><span>${activeUsdt.toFixed(1)} GH/S</span></div>
                     <div class="info-row"><span>Active LTC-track Hashrate</span><span>${activeLtc.toFixed(1)} GH/S</span></div>
+                    <div class="info-row"><span>Active SOL-track Hashrate</span><span>${activeSol.toFixed(1)} GH/S</span></div>
                     <div style="font-size:10px; color:#8b949e; margin:10px 0 4px;">
                         Set a daily budget per coin — divided across everyone currently mining that track, live. Leave blank to fall back to the base rate below (used when no pool is set or nobody's mining that track).
                     </div>
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT Pool / day (effective: ${effUsdtRate.toFixed(3)}/GH/S/hr)</label>
                     <input type="number" id="usdt-pool-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${usdtPool != null ? usdtPool : ''}" placeholder="blank = base rate">
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC Pool / day (effective: ${effLtcRate.toFixed(3)}/GH/S/hr)</label>
-                    <input type="number" id="ltc-pool-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1" min="0" value="${ltcPool != null ? ltcPool : ''}" placeholder="blank = base rate">
+                    <input type="number" id="ltc-pool-input" class="days-input" style="width:100%; margin-bottom:10px;" step="1" min="0" value="${ltcPool != null ? ltcPool : ''}" placeholder="blank = base rate">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">SOL Pool / day (effective: ${effSolRate.toFixed(3)}/GH/S/hr)</label>
+                    <input type="number" id="sol-pool-input" class="days-input" style="width:100%; margin-bottom:12px;" step="1" min="0" value="${solPool != null ? solPool : ''}" placeholder="blank = base rate">
                     <button class="btn-approve" style="width:100%;" onclick="savePools()">💾 Save Pools</button>
                 </div>
                 <div class="card">
@@ -263,7 +275,9 @@
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT Coins per GH/S per hour</label>
                     <input type="number" id="base-usdt-rate-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.1" min="0" value="${baseUsdtRate}">
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">LTC Coins per GH/S per hour</label>
-                    <input type="number" id="base-ltc-rate-input" class="days-input" style="width:100%; margin-bottom:12px;" step="0.1" min="0" value="${baseLtcRate}">
+                    <input type="number" id="base-ltc-rate-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.1" min="0" value="${baseLtcRate}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">SOL Coins per GH/S per hour</label>
+                    <input type="number" id="base-sol-rate-input" class="days-input" style="width:100%; margin-bottom:12px;" step="0.1" min="0" value="${baseSolRate}">
                     <button class="btn-approve" style="width:100%;" onclick="saveBaseRates()">💾 Save Base Rates</button>
                 </div>
                 <div class="card">
@@ -347,11 +361,12 @@
     window.savePools = async function() {
         const usdtVal = document.getElementById('usdt-pool-input').value;
         const ltcVal  = document.getElementById('ltc-pool-input').value;
+        const solVal  = document.getElementById('sol-pool-input').value;
         try {
             const res = await fetch('/api/moderate-ad', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_pools', usdtPool: usdtVal, ltcPool: ltcVal })
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_pools', usdtPool: usdtVal, ltcPool: ltcVal, solPool: solVal })
             });
             const data = await res.json();
             if (!data.success) { alert(data.error || 'Error saving pools'); return; }
@@ -365,11 +380,12 @@
     window.saveBaseRates = async function() {
         const baseUsdtRate = document.getElementById('base-usdt-rate-input').value;
         const baseLtcRate  = document.getElementById('base-ltc-rate-input').value;
+        const baseSolRate  = document.getElementById('base-sol-rate-input').value;
         try {
             const res = await fetch('/api/moderate-ad', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_base_rates', baseUsdtRate, baseLtcRate })
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_base_rates', baseUsdtRate, baseLtcRate, baseSolRate })
             });
             const data = await res.json();
             if (!data.success) { alert(data.error || 'Error saving base rates'); return; }
