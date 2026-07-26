@@ -7,11 +7,15 @@
 //     (stats/global.swap_fee_pct)
 //
 // Currencies supported for withdraw: usdt, ltc, sol.
-// SOL Coins follow the same "1 in-game Coin = 1 smallest real on-chain unit"
-// pattern as LTC (1 LTC Coin = 1 litoshi): 1 SOL Coin = 1 lamport
-// (1 SOL = 1,000,000,000 lamports). NOT YET VERIFIED against FaucetPay's
-// actual expected amount granularity for SOL — test with a small real
-// withdrawal to your own FaucetPay account before enabling this for users.
+// Coin-to-real-unit ratios follow a consistent "Bitcoin-satoshi-style"
+// 8-decimal pattern across LTC and SOL (NOT each coin's native on-chain
+// decimal count): 1 LTC Coin = 0.00000001 LTC (litoshi, matches LTC's real
+// 8 decimals), 1 SOL Coin = 0.00000001 SOL (does NOT match SOL's real
+// 9-decimal lamport — this is intentional per product decision, not a bug).
+// Since FaucetPay's "amount" field is assumed to expect real lamports
+// (SOL's actual on-chain smallest unit, 1e-9 SOL), 1 SOL Coin = 10 real
+// lamports, so amount sent to FaucetPay = points * 10. UNVERIFIED — test
+// with a small real withdrawal to your own FaucetPay account first.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -19,14 +23,14 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 // Fallback defaults — used only if stats/global doesn't have a value set yet.
 const DEFAULT_MIN_USDT = 200;
 const DEFAULT_MIN_LTC  = 400;
-const DEFAULT_MIN_SOL  = 1000000;       // 0.001 SOL, in lamports
+const DEFAULT_MIN_SOL  = 1000000;
 const DEFAULT_DAILY_LIMIT_USDT = 700;
 const DEFAULT_DAILY_LIMIT_LTC  = 1500;
-const DEFAULT_DAILY_LIMIT_SOL  = 5000000; // 0.005 SOL, in lamports
+const DEFAULT_DAILY_LIMIT_SOL  = 5000000;
 
 const USDT_COIN_TO_REAL_USD = 0.000001;
 const LTC_COIN_TO_LTC = 0.00000001;
-const SOL_COIN_TO_SOL = 0.000000001;
+const SOL_COIN_TO_SOL = 0.00000001; // Bitcoin-satoshi-style 8 decimals, not native lamport (9 decimals)
 const DEFAULT_SWAP_FEE_PCT = 5;
 
 const BALANCE_FIELD = { usdt: 'coins', ltc: 'ltc', sol: 'sol' };
@@ -167,10 +171,11 @@ async function handleWithdraw(req, res, body) {
     amount = Math.round(points);
     fpCurrency = 'LTC';
   } else {
-    // SOL: 1 SOL Coin = 1 lamport, sent raw — UNVERIFIED against FaucetPay's
-    // actual expected granularity for this currency. Test with a small real
-    // withdrawal before relying on this.
-    amount = Math.round(points);
+    // SOL: 1 SOL Coin = 0.00000001 SOL = 10 real lamports (SOL's actual
+    // on-chain unit is 1e-9 SOL). UNVERIFIED against FaucetPay's actual
+    // expected amount granularity — test with a small real withdrawal
+    // before relying on this.
+    amount = Math.round(points * 10);
     fpCurrency = 'SOL';
   }
 
