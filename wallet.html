@@ -38,15 +38,15 @@
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
         body { text-transform: uppercase; }
-        input { text-transform: none !important; }
+        input, select { text-transform: none !important; }
         .keyboard-open .banner-area, .keyboard-open .nav-bar { display: none !important; }
         .info-row { display: flex; justify-content: space-between; font-size: 10px; padding: 4px 0; border-bottom: 1px solid #2a2015; }
         .info-row:last-child { border-bottom: none; }
         .info-row span:first-child { color: #8b949e; }
         .info-row span:last-child { color: #facc15; font-weight: bold; }
-        .swap-dir-tabs { display: flex; background: rgba(0,0,0,0.4); border-radius: 8px; margin-bottom: 14px; padding: 3px; border: 1px solid #3d2b1f; }
-        .swap-dir-btn { flex: 1; padding: 8px 0; border: none; background: transparent; color: #8b949e; font-size: 11px; font-family: 'Courier New', monospace; cursor: pointer; border-radius: 6px; font-weight: bold; text-transform: uppercase; }
-        .swap-dir-btn.active { background: #a78bfa; color: #1a1613; }
+        .swap-pair-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+        .swap-coin-select { flex: 1; background: #1a1613; border: 1px solid #3d2b1f; padding: 10px 8px; color: white; border-radius: 8px; font-family: monospace; font-size: 13px; outline: none; text-transform: uppercase; }
+        .swap-flip-btn { background: #a78bfa; color: #1a1613; border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 16px; font-weight: bold; cursor: pointer; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -140,11 +140,20 @@
 
             <div id="tab-swap" class="tab-content">
                 <h3 style="color:#facc15; margin-bottom:4px; font-size:14px;">Swap Coins</h3>
-                <p style="font-size:10px; color:#8b949e; margin:0 0 12px;">Convert between USDT Coins and LTC Coins based on their real-dollar value. <span id="swap-fee-note">5%</span> fee applies. 🔜 SOL swap coming soon.</p>
+                <p style="font-size:10px; color:#8b949e; margin:0 0 12px;">Convert between USDT, LTC, and SOL Coins based on their real-dollar value. <span id="swap-fee-note">5%</span> fee applies.</p>
 
-                <div class="swap-dir-tabs">
-                    <button class="swap-dir-btn active" id="swap-dir-usdt-ltc" onclick="setSwapDirection('usdt_to_ltc')">USDT → LTC</button>
-                    <button class="swap-dir-btn" id="swap-dir-ltc-usdt" onclick="setSwapDirection('ltc_to_usdt')">LTC → USDT</button>
+                <div class="swap-pair-row">
+                    <select class="swap-coin-select" id="swap-from-select" onchange="onSwapCoinChange()">
+                        <option value="usdt">USDT</option>
+                        <option value="ltc">LTC</option>
+                        <option value="sol">SOL</option>
+                    </select>
+                    <button class="swap-flip-btn" onclick="flipSwap()">⇄</button>
+                    <select class="swap-coin-select" id="swap-to-select" onchange="onSwapCoinChange()">
+                        <option value="ltc">LTC</option>
+                        <option value="usdt">USDT</option>
+                        <option value="sol">SOL</option>
+                    </select>
                 </div>
 
                 <label style="display:block; color:#facc15; font-size:11px; margin-bottom:4px; text-transform:uppercase;" id="swap-input-label">USDT Coins To Swap</label>
@@ -155,7 +164,7 @@
                     <div class="info-row"><span>Fee (<span id="swap-fee-pct">5</span>%)</span><span id="swap-preview-fee">—</span></div>
                     <div class="info-row"><span>You receive (approx.)</span><span id="swap-preview-out">—</span></div>
                 </div>
-                <p class="rate-note" id="swap-price-note">Loading live LTC price...</p>
+                <p class="rate-note" id="swap-price-note">Loading live prices...</p>
 
                 <button class="collect-btn" onclick="handleSwap()">Swap</button>
             </div>
@@ -376,72 +385,96 @@
         // ─── Swap ────────────────────────────────────────────────────
         const USDT_COIN_TO_REAL_USD = 0.000001;
         const LTC_COIN_TO_LTC = 0.00000001;
-        let swapDirection = 'usdt_to_ltc';
-        let cachedLtcPrice = null;
+        const SOL_COIN_TO_SOL = 0.000000001;
+        let cachedPrices = null; // { ltc, sol }
 
-        async function refreshLtcPrice() {
+        function coinLabel(coin) { return coin === 'usdt' ? 'USDT' : coin === 'ltc' ? 'LTC' : 'SOL'; }
+        function coinBalance(coin) { return coin === 'usdt' ? coins : coin === 'ltc' ? ltcCoins : solCoins; }
+        function coinUsdValue(coin, amount) {
+            if (!cachedPrices) return null;
+            if (coin === 'usdt') return amount * USDT_COIN_TO_REAL_USD;
+            if (coin === 'ltc')  return amount * LTC_COIN_TO_LTC * cachedPrices.ltc;
+            return amount * SOL_COIN_TO_SOL * cachedPrices.sol;
+        }
+        function usdValuePerUnit(coin) {
+            if (!cachedPrices) return null;
+            if (coin === 'usdt') return USDT_COIN_TO_REAL_USD;
+            if (coin === 'ltc')  return LTC_COIN_TO_LTC * cachedPrices.ltc;
+            return SOL_COIN_TO_SOL * cachedPrices.sol;
+        }
+
+        async function refreshPrices() {
             try {
-                const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin&vs_currencies=usd');
+                const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin,solana&vs_currencies=usd');
                 const data = await resp.json();
-                cachedLtcPrice = data?.litecoin?.usd || null;
-                document.getElementById('swap-price-note').innerText = cachedLtcPrice
-                    ? `LTC price: $${cachedLtcPrice.toLocaleString()} (live, CoinGecko)`
-                    : `⚠️ Couldn't fetch live LTC price — try again shortly`;
+                const ltc = data?.litecoin?.usd, sol = data?.solana?.usd;
+                cachedPrices = (ltc && sol) ? { ltc, sol } : null;
+                document.getElementById('swap-price-note').innerText = cachedPrices
+                    ? `LTC: $${ltc.toLocaleString()} · SOL: $${sol.toLocaleString()} (live, CoinGecko)`
+                    : `⚠️ Couldn't fetch live prices — try again shortly`;
                 previewSwap();
             } catch(e) {
-                cachedLtcPrice = null;
-                document.getElementById('swap-price-note').innerText = `⚠️ Couldn't fetch live LTC price — try again shortly`;
+                cachedPrices = null;
+                document.getElementById('swap-price-note').innerText = `⚠️ Couldn't fetch live prices — try again shortly`;
             }
         }
-        refreshLtcPrice();
-        setInterval(refreshLtcPrice, 60000);
+        refreshPrices();
+        setInterval(refreshPrices, 60000);
 
-        window.setSwapDirection = function(dir) {
-            swapDirection = dir;
-            document.getElementById('swap-dir-usdt-ltc').classList.toggle('active', dir === 'usdt_to_ltc');
-            document.getElementById('swap-dir-ltc-usdt').classList.toggle('active', dir === 'ltc_to_usdt');
-            document.getElementById('swap-input-label').innerText = dir === 'usdt_to_ltc' ? 'USDT Coins To Swap' : 'LTC Coins To Swap';
+        window.onSwapCoinChange = function() {
+            const fromSel = document.getElementById('swap-from-select');
+            const toSel   = document.getElementById('swap-to-select');
+            // Prevent selecting the same coin on both sides — bump "to" forward.
+            if (fromSel.value === toSel.value) {
+                const opts = ['usdt', 'ltc', 'sol'].filter(c => c !== fromSel.value);
+                toSel.value = opts[0];
+            }
+            document.getElementById('swap-input-label').innerText = coinLabel(fromSel.value) + ' Coins To Swap';
+            document.getElementById('swap-amount').value = '';
+            previewSwap();
+        };
+
+        window.flipSwap = function() {
+            const fromSel = document.getElementById('swap-from-select');
+            const toSel   = document.getElementById('swap-to-select');
+            const tmp = fromSel.value;
+            fromSel.value = toSel.value;
+            toSel.value = tmp;
+            document.getElementById('swap-input-label').innerText = coinLabel(fromSel.value) + ' Coins To Swap';
             document.getElementById('swap-amount').value = '';
             previewSwap();
         };
 
         window.previewSwap = function() {
+            const fromCoin = document.getElementById('swap-from-select').value;
+            const toCoin   = document.getElementById('swap-to-select').value;
             const amt = Number(document.getElementById('swap-amount').value);
             const inLabel   = document.getElementById('swap-preview-in');
             const feeLabel  = document.getElementById('swap-preview-fee');
             const outLabel  = document.getElementById('swap-preview-out');
 
-            if (!amt || amt <= 0 || !cachedLtcPrice) {
+            if (!amt || amt <= 0 || !cachedPrices) {
                 inLabel.innerText = '—'; feeLabel.innerText = '—'; outLabel.innerText = '—';
                 return;
             }
 
-            let usdValue, outUnit;
-            if (swapDirection === 'usdt_to_ltc') {
-                usdValue = amt * USDT_COIN_TO_REAL_USD;
-                inLabel.innerText = amt.toFixed(4) + ' USDT Coins';
-                outUnit = 'LTC Coins';
-            } else {
-                usdValue = amt * LTC_COIN_TO_LTC * cachedLtcPrice;
-                inLabel.innerText = amt.toFixed(4) + ' LTC Coins';
-                outUnit = 'USDT Coins';
-            }
-
+            const usdValue = coinUsdValue(fromCoin, amt);
             const feeUsd = usdValue * (swapFeePct / 100);
             const usdAfterFee = usdValue - feeUsd;
-            const outAmt = swapDirection === 'usdt_to_ltc'
-                ? (usdAfterFee / cachedLtcPrice) / LTC_COIN_TO_LTC
-                : usdAfterFee / USDT_COIN_TO_REAL_USD;
+            const outAmt = usdAfterFee / usdValuePerUnit(toCoin);
 
+            inLabel.innerText  = amt.toFixed(4) + ' ' + coinLabel(fromCoin) + ' Coins';
             feeLabel.innerText = '$' + feeUsd.toFixed(6);
-            outLabel.innerText = outAmt.toFixed(4) + ' ' + outUnit;
+            outLabel.innerText = outAmt.toFixed(4) + ' ' + coinLabel(toCoin) + ' Coins';
         };
 
         window.handleSwap = async function() {
             const btn = event.target;
+            const fromCoin = document.getElementById('swap-from-select').value;
+            const toCoin   = document.getElementById('swap-to-select').value;
             const amt = Number(document.getElementById('swap-amount').value);
             if (!amt || amt <= 0) return alert('Enter a valid amount.');
-            const balance = swapDirection === 'usdt_to_ltc' ? coins : ltcCoins;
+            const balance = coinBalance(fromCoin);
             if (amt > balance) return alert('Not enough balance.');
 
             btn.disabled  = true;
@@ -452,11 +485,11 @@
                 const resp = await fetch('/api/withdraw', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid, action: 'swap', direction: swapDirection, amount: amt }),
+                    body: JSON.stringify({ uid, action: 'swap', fromCoin, toCoin, amount: amt }),
                 });
                 const result = await resp.json();
                 if (!result.success) { alert(result.error || 'Swap failed'); return; }
-                alert(`✅ Swapped! Received ${result.amountOut.toFixed(4)} ${swapDirection === 'usdt_to_ltc' ? 'LTC' : 'USDT'} Coins.`);
+                alert(`✅ Swapped! Received ${result.amountOut.toFixed(4)} ${coinLabel(toCoin)} Coins.`);
                 document.getElementById('swap-amount').value = '';
                 previewSwap();
             } catch(e) {
