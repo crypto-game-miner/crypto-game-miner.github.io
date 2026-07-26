@@ -38,10 +38,10 @@ export default async function handler(req, res) {
 
   const {
     secret, action, reqId, views, bannerUrl, clickUrl,
-    usdtPool, ltcPool, rewardGuest, rewardLogged, dailyLinkUrl,
+    usdtPool, ltcPool, solPool, rewardGuest, rewardLogged, dailyLinkUrl,
     minUsdt, maxUsdt, minLtc, maxLtc, minSol, maxSol, storeConfig,
     gameCoinsReward, claimBoostAmount,
-    baseUsdtRate, baseLtcRate, swapFeePct,
+    baseUsdtRate, baseLtcRate, baseSolRate, swapFeePct,
   } = req.body || {};
 
   if (secret !== ADMIN_SECRET) {
@@ -67,16 +67,18 @@ export default async function handler(req, res) {
     }
     const usdt = parsePool(usdtPool);
     const ltc  = parsePool(ltcPool);
-    if (usdt === undefined || ltc === undefined) {
+    const sol  = parsePool(solPool);
+    if (usdt === undefined || ltc === undefined || sol === undefined) {
       return res.status(400).json({ success: false, error: 'Pools must be non-negative numbers, or blank to disable.' });
     }
     try {
       await db.collection('stats').doc('global').set({
         usdt_pool: usdt,
         ltc_pool: ltc,
+        sol_pool: sol,
         poolsUpdatedAt: Timestamp.now(),
       }, { merge: true });
-      return res.status(200).json({ success: true, usdt_pool: usdt, ltc_pool: ltc });
+      return res.status(200).json({ success: true, usdt_pool: usdt, ltc_pool: ltc, sol_pool: sol });
     } catch (e) {
       console.error('Set-pools error:', e.message || e);
       return res.status(500).json({ success: false, error: 'Server error' });
@@ -86,16 +88,18 @@ export default async function handler(req, res) {
   if (action === 'set_base_rates') {
     const usdt = parseFloat(baseUsdtRate);
     const ltc  = parseFloat(baseLtcRate);
-    if (!isFinite(usdt) || usdt < 0 || !isFinite(ltc) || ltc < 0) {
+    const sol  = parseFloat(baseSolRate);
+    if (!isFinite(usdt) || usdt < 0 || !isFinite(ltc) || ltc < 0 || !isFinite(sol) || sol < 0) {
       return res.status(400).json({ success: false, error: 'Base rates must be non-negative numbers.' });
     }
     try {
       await db.collection('stats').doc('global').set({
         base_usdt_rate: usdt,
         base_ltc_rate: ltc,
+        base_sol_rate: sol,
         baseRatesUpdatedAt: Timestamp.now(),
       }, { merge: true });
-      return res.status(200).json({ success: true, base_usdt_rate: usdt, base_ltc_rate: ltc });
+      return res.status(200).json({ success: true, base_usdt_rate: usdt, base_ltc_rate: ltc, base_sol_rate: sol });
     } catch (e) {
       console.error('Set-base-rates error:', e.message || e);
       return res.status(500).json({ success: false, error: 'Server error' });
