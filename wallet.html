@@ -8,9 +8,10 @@
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
-        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
-        .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
-        .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
+        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 10px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .balance-cell { background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 10px; text-align: left; }
+        .balance-cell .bc-label { font-size: 9px; color: #8b949e; margin-bottom: 2px; }
+        .balance-cell .bc-value { font-size: 15px; font-weight: bold; }
         .wallet-area { padding: 15px; text-align: left; overflow-y: auto; padding-bottom: 180px; flex: 1; }
         .tabs { display: flex; background: rgba(0,0,0,0.4); border-radius: 10px; margin-bottom: 14px; padding: 4px; border: 1px solid #3d2b1f; }
         .tab-btn { flex: 1; padding: 9px 0; border: none; background: transparent; color: #8b949e; font-size: 12px; font-family: 'Courier New', monospace; cursor: pointer; border-radius: 8px; font-weight: bold; text-transform: uppercase; transition: all 0.2s; }
@@ -56,21 +57,21 @@
     <div id="main-content">
         <div class="header">Wallet</div>
         <div class="balance-container">
-            <div class="balance-row">
-                <span style="color:#22c55e;">Game Coins</span>
-                <span style="font-weight:bold; color:#22c55e;" id="game-coins">—</span>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#22c55e;">Game Coins</div>
+                <div class="bc-value" style="color:#22c55e;" id="game-coins">—</div>
             </div>
-            <div class="balance-row">
-                <span style="color:#facc15;">USDT Coins</span>
-                <span style="font-weight:bold;" id="balance">—</span>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#facc15;">USDT Coins</div>
+                <div class="bc-value" id="balance">—</div>
             </div>
-            <div class="balance-row">
-                <span style="color:#a78bfa;">LTC Coins</span>
-                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">—</span>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#a78bfa;">LTC Coins</div>
+                <div class="bc-value" style="color:#a78bfa;" id="ltc-balance">—</div>
             </div>
-            <div class="balance-row">
-                <span style="color:#14f195;">SOL Coins</span>
-                <span style="font-weight:bold; color:#14f195;" id="sol-balance">—</span>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#14f195;">SOL Coins</div>
+                <div class="bc-value" style="color:#14f195;" id="sol-balance">—</div>
             </div>
         </div>
 
