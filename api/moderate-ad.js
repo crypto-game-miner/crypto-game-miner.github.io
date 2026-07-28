@@ -42,6 +42,7 @@ export default async function handler(req, res) {
     minUsdt, maxUsdt, minLtc, maxLtc, minSol, maxSol, storeConfig,
     gameCoinsReward, claimBoostAmount,
     baseUsdtRate, baseLtcRate, baseSolRate, swapFeePct,
+    claimPoolUsdt, claimPoolDecayPct,
   } = req.body || {};
 
   if (secret !== ADMIN_SECRET) {
@@ -146,6 +147,39 @@ export default async function handler(req, res) {
     }
   }
 
+  if (action === 'set_claim_pool') {
+    function parsePoolVal(val) {
+      if (val === null || val === undefined || val === '') return null; // blank = disable pool
+      const n = parseFloat(val);
+      if (!isFinite(n) || n < 0) return undefined;
+      return n;
+    }
+    const pool = parsePoolVal(claimPoolUsdt);
+    if (pool === undefined) {
+      return res.status(400).json({ success: false, error: 'Pool budget must be a non-negative number, or blank to disable.' });
+    }
+    const decay = parseFloat(claimPoolDecayPct);
+    if (!isFinite(decay) || decay <= 0 || decay > 100) {
+      return res.status(400).json({ success: false, error: 'Decay % must be a number between 0 and 100 (exclusive of 0).' });
+    }
+    try {
+      // Enabling or changing the budget resets the remaining amount and
+      // day marker, so the new settings take effect immediately rather
+      // than continuing to deplete a stale remaining balance from before.
+      await db.collection('stats').doc('global').set({
+        claim_pool_usdt: pool,
+        claim_pool_decay_pct: decay,
+        claim_pool_remaining: pool,
+        claim_pool_day: new Date().toISOString().slice(0, 10),
+        claimPoolUpdatedAt: Timestamp.now(),
+      }, { merge: true });
+      return res.status(200).json({ success: true, claim_pool_usdt: pool, claim_pool_decay_pct: decay });
+    } catch (e) {
+      console.error('Set-claim-pool error:', e.message || e);
+      return res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
   if (action === 'set_daily_link') {
     const url = (dailyLinkUrl || '').trim();
     if (!url || !/^https?:\/\//i.test(url)) {
@@ -233,14 +267,6 @@ export default async function handler(req, res) {
   }
 
   if (action === 'migrate_fix_task_bonus') {
-    // One-time migration: removes the old baked-in miner power from
-    // task_bonus_hashrate (which used to accumulate nano/mega power at
-    // purchase time, before power became live-computed in home.html from
-    // miner_nano/miner_mega × current admin-set power). Uses the historical
-    // flat rates (0.1/0.2) that were hardcoded before this admin panel
-    // existed — those are the only rates any existing purchase could have
-    // used. Leaves any other value in task_bonus_hashrate (e.g. one-time
-    // task bonuses) untouched.
     const OLD_NANO_POWER = 0.1;
     const OLD_MEGA_POWER = 0.2;
     try {
@@ -252,7 +278,7 @@ export default async function handler(req, res) {
         const ownedNano = d.miner_nano || 0;
         const ownedMega = d.miner_mega || 0;
         const bakedMinerPower = ownedNano * OLD_NANO_POWER + ownedMega * OLD_MEGA_POWER;
-        if (bakedMinerPower <= 0) return; // nothing to fix for this user
+        if (bakedMinerPower <= 0) return;
         const current = d.task_bonus_hashrate || 0;
         const fixed = Math.max(0, Math.round((current - bakedMinerPower) * 100) / 100);
         if (fixed !== current) {
