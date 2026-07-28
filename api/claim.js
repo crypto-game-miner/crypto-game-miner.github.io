@@ -23,10 +23,10 @@ const DAILY_LINK_BOOST_AMOUNT = 0.17; // +0.17 GH/s for 24h, once per day
 const DAILY_LINK_COOLDOWN_MS  = 86400000; // 24h
 
 // Claim pool defaults — used only if the admin enables a pool (claim_pool_usdt
-// set) but hasn't set claim_pool_decay_pct / claim_pool_max_reward.
+// set) but hasn't set claim_pool_decay_pct.
 const DEFAULT_CLAIM_POOL_DECAY_PCT = 2;
-const DEFAULT_CLAIM_POOL_MAX_REWARD = 7; // hard cap per claim, regardless of how much % of pool that would be
 const MIN_POOL_REWARD = 0.01; // never round a live claim reward down to literally zero
+const MAX_POOL_REWARD = 7;    // hard cap — even early in the day when the pool is fullest, no single claim pays more than this
 
 function initFirebase() {
   if (!getApps().length) {
@@ -162,9 +162,9 @@ export default async function handler(req, res) {
       // 1. Flat (default): guest/logged fixed reward, unlimited.
       // 2. Declining pool (opt-in via claim_pool_usdt): a shared, site-wide
       //    daily budget that depletes as ANY user claims — each claim pays
-      //    out a % of whatever's left, so early claims of the day pay more
-      //    and it tapers off as the day goes on. Capped at claim_pool_max_reward
-      //    per claim regardless of how much % of the pool that would be.
+      //    out a % of whatever's left (capped at MAX_POOL_REWARD so even the
+      //    very first claim of the day can't spike too high), so early
+      //    claims of the day pay more and it tapers off as the day goes on.
       //    Resets to the full budget at the start of each UTC day.
       const isRealLogin = !!data.email; // email only set once user links Google
       const claimPoolUsdt = g.claim_pool_usdt != null ? g.claim_pool_usdt : null;
@@ -173,13 +173,12 @@ export default async function handler(req, res) {
 
       if (claimPoolUsdt != null) {
         const decayPct = g.claim_pool_decay_pct != null ? g.claim_pool_decay_pct : DEFAULT_CLAIM_POOL_DECAY_PCT;
-        const maxReward = g.claim_pool_max_reward != null ? g.claim_pool_max_reward : DEFAULT_CLAIM_POOL_MAX_REWARD;
         const poolDay = g.claim_pool_day;
         const remaining = (poolDay === today && g.claim_pool_remaining != null)
           ? g.claim_pool_remaining
           : claimPoolUsdt; // fresh day (or first-ever claim) — reset to full budget
         const rawReward = Math.max(remaining * (decayPct / 100), MIN_POOL_REWARD);
-        usdtReward = Math.min(remaining, rawReward, maxReward);
+        usdtReward = Math.min(remaining, rawReward, MAX_POOL_REWARD);
         const newRemaining = Math.max(0, Math.round((remaining - usdtReward) * 1e6) / 1e6);
         poolUpdate = { claim_pool_remaining: newRemaining, claim_pool_day: today };
       } else {
