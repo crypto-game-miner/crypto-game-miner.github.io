@@ -25,8 +25,8 @@ const DAILY_LINK_COOLDOWN_MS  = 86400000; // 24h
 // Claim pool defaults — used only if the admin enables a pool (claim_pool_usdt
 // set) but hasn't set claim_pool_decay_pct.
 const DEFAULT_CLAIM_POOL_DECAY_PCT = 2;
-const MIN_POOL_REWARD = 0.01; // never round a live claim reward down to literally zero
-const MAX_POOL_REWARD = 7;    // hard cap — even early in the day when the pool is fullest, no single claim pays more than this
+const MIN_POOL_REWARD = 0.01; // never let the per-claim reward round down to literally zero
+const MAX_POOL_REWARD = 7;    // hard ceiling — also doubles as the DAY'S STARTING reward (first claim of the day pays this, or less if the budget is smaller than this)
 
 function initFirebase() {
   if (!getApps().length) {
@@ -161,11 +161,17 @@ export default async function handler(req, res) {
       // Two modes:
       // 1. Flat (default): guest/logged fixed reward, unlimited.
       // 2. Declining pool (opt-in via claim_pool_usdt): a shared, site-wide
-      //    daily budget that depletes as ANY user claims — each claim pays
-      //    out a % of whatever's left (capped at MAX_POOL_REWARD so even the
-      //    very first claim of the day can't spike too high), so early
-      //    claims of the day pay more and it tapers off as the day goes on.
-      //    Resets to the full budget at the start of each UTC day.
+      //    daily budget. Unlike a naive "% of remaining budget" scheme
+      //    (which stays flat at the MAX_POOL_REWARD ceiling for a long
+      //    stretch whenever the budget is large relative to the decay %),
+      //    this tracks the CURRENT per-claim reward directly: it starts
+      //    the day at MAX_POOL_REWARD (or less if the budget itself is
+      //    smaller), and multiplies by (1 - decayPct/100) after every
+      //    single claim — so the visible reward decreases every claim
+      //    from the very first one, not just once it eventually drops
+      //    below the cap. The remaining budget is still tracked as a
+      //    separate hard stop — once it hits 0, further claims (that
+      //    day) get nothing from the pool.
       const isRealLogin = !!data.email; // email only set once user links Google
       const claimPoolUsdt = g.claim_pool_usdt != null ? g.claim_pool_usdt : null;
       let usdtReward;
@@ -174,13 +180,21 @@ export default async function handler(req, res) {
       if (claimPoolUsdt != null) {
         const decayPct = g.claim_pool_decay_pct != null ? g.claim_pool_decay_pct : DEFAULT_CLAIM_POOL_DECAY_PCT;
         const poolDay = g.claim_pool_day;
-        const remaining = (poolDay === today && g.claim_pool_remaining != null)
-          ? g.claim_pool_remaining
-          : claimPoolUsdt; // fresh day (or first-ever claim) — reset to full budget
-        const rawReward = Math.max(remaining * (decayPct / 100), MIN_POOL_REWARD);
-        usdtReward = Math.min(remaining, rawReward, MAX_POOL_REWARD);
+        const isFreshDay = poolDay !== today || g.claim_pool_remaining == null || g.claim_pool_current_reward == null;
+
+        const remaining = isFreshDay ? claimPoolUsdt : g.claim_pool_remaining;
+        const currentReward = isFreshDay
+          ? Math.min(claimPoolUsdt, MAX_POOL_REWARD)
+          : g.claim_pool_current_reward;
+
+        usdtReward = Math.max(Math.min(remaining, currentReward), remaining > 0 ? MIN_POOL_REWARD : 0);
         const newRemaining = Math.max(0, Math.round((remaining - usdtReward) * 1e6) / 1e6);
-        poolUpdate = { claim_pool_remaining: newRemaining, claim_pool_day: today };
+        const newCurrentReward = Math.max(currentReward * (1 - decayPct / 100), MIN_POOL_REWARD);
+        poolUpdate = {
+          claim_pool_remaining: newRemaining,
+          claim_pool_current_reward: newCurrentReward,
+          claim_pool_day: today,
+        };
       } else {
         usdtReward = isRealLogin ? rewardLogged : rewardGuest;
       }
@@ -207,7 +221,8 @@ export default async function handler(req, res) {
         updatedAt: Timestamp.fromMillis(now),
       }, { merge: true });
 
-      // Write back the pool's remaining budget, if pool mode is active.
+      // Write back the pool's remaining budget + next per-claim reward,
+      // if pool mode is active.
       if (poolUpdate) {
         tx.set(statsGlobalRef, poolUpdate, { merge: true });
       }
