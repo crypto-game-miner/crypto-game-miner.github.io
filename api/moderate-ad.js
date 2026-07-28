@@ -162,14 +162,17 @@ export default async function handler(req, res) {
     if (!isFinite(decay) || decay <= 0 || decay > 100) {
       return res.status(400).json({ success: false, error: 'Decay % must be a number between 0 and 100 (exclusive of 0).' });
     }
+    const MAX_POOL_REWARD = 7;
     try {
-      // Enabling or changing the budget resets the remaining amount and
-      // day marker, so the new settings take effect immediately rather
-      // than continuing to deplete a stale remaining balance from before.
+      // Enabling or changing the settings resets remaining budget AND the
+      // current per-claim reward (back to the day's starting value), and
+      // marks it as "today" — so the new settings apply from the very
+      // next claim instead of continuing a stale decay curve from before.
       await db.collection('stats').doc('global').set({
         claim_pool_usdt: pool,
         claim_pool_decay_pct: decay,
         claim_pool_remaining: pool,
+        claim_pool_current_reward: pool != null ? Math.min(pool, MAX_POOL_REWARD) : null,
         claim_pool_day: new Date().toISOString().slice(0, 10),
         claimPoolUpdatedAt: Timestamp.now(),
       }, { merge: true });
@@ -344,3 +347,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
