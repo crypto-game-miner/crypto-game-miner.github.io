@@ -118,9 +118,7 @@
     const LTC_COIN_TO_LTC = 0.00000001;
     const SOL_COIN_TO_SOL = 0.00000001; // matches the same 8-decimal convention used in api/withdraw.js
 
-    // Fetches BOTH LTC and SOL prices in one call — previously this only
-    // fetched LTC, which is why SOL was silently excluded from every $
-    // total on this page even though sol_from_mining was being tracked.
+    // Fetches BOTH LTC and SOL prices in one call.
     async function fetchPricesUsd() {
         try {
             const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin,solana&vs_currencies=usd');
@@ -180,6 +178,11 @@
             const rewardLogged = g.usdt_reward_logged != null ? g.usdt_reward_logged : 5;
             const gameCoinsReward = g.game_coins_reward != null ? g.game_coins_reward : 7;
             const claimBoostAmount = g.claim_boost_amount != null ? g.claim_boost_amount : 0.1;
+            const claimPoolUsdt = g.claim_pool_usdt != null ? g.claim_pool_usdt : '';
+            const claimPoolDecayPct = g.claim_pool_decay_pct != null ? g.claim_pool_decay_pct : 2;
+            const claimPoolRemaining = g.claim_pool_remaining != null ? g.claim_pool_remaining : null;
+            const claimPoolDay = g.claim_pool_day || null;
+            const claimPoolIsToday = claimPoolDay === todayKey();
             const dailyLinkUrl = g.daily_link_url || '';
             const withdrawMinUsdt = g.withdraw_min_usdt != null ? g.withdraw_min_usdt : 200;
             const withdrawMaxUsdt = g.withdraw_max_usdt != null ? g.withdraw_max_usdt : 700;
@@ -221,7 +224,7 @@
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">🎟️ CLAIM REWARDS</div>
                     <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
-                        Everything paid out per faucet claim: USDT coins, Game Coins, and the 24h mining power boost.
+                        Everything paid out per faucet claim: USDT coins, Game Coins, and the 24h mining power boost. Only used when the Claim Pool below is disabled.
                     </div>
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">USDT — Guest reward (per claim)</label>
                     <input type="number" id="reward-guest-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.5" min="0" value="${rewardGuest}">
@@ -232,6 +235,18 @@
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Boost power (GH/s per claim, 24h)</label>
                     <input type="number" id="reward-boost-input" class="days-input" style="width:100%; margin-bottom:12px;" step="0.01" min="0" value="${claimBoostAmount}">
                     <button class="btn-approve" style="width:100%;" onclick="saveClaimRewards()">💾 Save Rewards</button>
+                </div>
+                <div class="card">
+                    <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">📉 CLAIM POOL (declining rewards)</div>
+                    <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
+                        Optional: a shared daily USDT budget across ALL users' claims. Each claim pays a % of whatever's left (capped at 7 USDT Coins max per claim, even early in the day) — early claims pay the most, tapering off as the day goes on. Resets to full budget every day (UTC). Leave the budget field blank to disable and use the flat guest/logged rewards above instead.
+                    </div>
+                    ${claimPoolUsdt !== '' ? `<div class="info-row"><span>Remaining today${claimPoolIsToday ? '' : ' (stale — resets on next claim)'}</span><span>${(claimPoolRemaining ?? claimPoolUsdt).toFixed(2)} / ${claimPoolUsdt} USDT Coins</span></div>` : ''}
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px; margin-top:${claimPoolUsdt !== '' ? '10px' : '0'};">Total daily budget (USDT Coins) — blank disables the pool</label>
+                    <input type="number" id="claim-pool-usdt-input" class="days-input" style="width:100%; margin-bottom:10px;" step="10" min="0" value="${claimPoolUsdt}" placeholder="blank = disabled">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Decay % per claim (how much of what's left is paid out)</label>
+                    <input type="number" id="claim-pool-decay-input" class="days-input" style="width:100%; margin-bottom:12px;" step="0.5" min="0.1" max="100" value="${claimPoolDecayPct}">
+                    <button class="btn-approve" style="width:100%;" onclick="saveClaimPool()">💾 Save Claim Pool</button>
                 </div>
                 <div class="card">
                     <div style="color:#a78bfa; font-size:13px; font-weight:bold; margin-bottom:10px;">🔗 DAILY BONUS LINK</div>
@@ -323,6 +338,24 @@
             const data = await res.json();
             if (!data.success) { alert(data.error || 'Error saving rewards'); return; }
             alert('✅ Claim rewards updated.');
+            loadStats();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
+    window.saveClaimPool = async function() {
+        const claimPoolUsdt = document.getElementById('claim-pool-usdt-input').value;
+        const claimPoolDecayPct = document.getElementById('claim-pool-decay-input').value;
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_claim_pool', claimPoolUsdt, claimPoolDecayPct })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving claim pool'); return; }
+            alert('✅ Claim pool updated.');
             loadStats();
         } catch(e) {
             alert('Error: ' + e.message);
