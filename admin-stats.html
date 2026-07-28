@@ -181,6 +181,7 @@
             const claimPoolUsdt = g.claim_pool_usdt != null ? g.claim_pool_usdt : '';
             const claimPoolDecayPct = g.claim_pool_decay_pct != null ? g.claim_pool_decay_pct : 2;
             const claimPoolRemaining = g.claim_pool_remaining != null ? g.claim_pool_remaining : null;
+            const claimPoolCurrentReward = g.claim_pool_current_reward != null ? g.claim_pool_current_reward : null;
             const claimPoolDay = g.claim_pool_day || null;
             const claimPoolIsToday = claimPoolDay === todayKey();
             const dailyLinkUrl = g.daily_link_url || '';
@@ -241,7 +242,10 @@
                     <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
                         Optional: a shared daily USDT budget across ALL users' claims. Each claim pays a % of whatever's left (capped at 7 USDT Coins max per claim, even early in the day) — early claims pay the most, tapering off as the day goes on. Resets to full budget every day (UTC). Leave the budget field blank to disable and use the flat guest/logged rewards above instead.
                     </div>
-                    ${claimPoolUsdt !== '' ? `<div class="info-row"><span>Remaining today${claimPoolIsToday ? '' : ' (stale — resets on next claim)'}</span><span>${(claimPoolRemaining ?? claimPoolUsdt).toFixed(2)} / ${claimPoolUsdt} USDT Coins</span></div>` : ''}
+                    ${claimPoolUsdt !== '' ? `
+                    <div class="info-row"><span>Remaining today${claimPoolIsToday ? '' : ' (stale — resets on next claim)'}</span><span>${(claimPoolRemaining ?? claimPoolUsdt).toFixed(2)} / ${claimPoolUsdt} USDT Coins</span></div>
+                    <div class="info-row"><span>Next claim will pay</span><span style="color:#22c55e;">${(claimPoolCurrentReward ?? Math.min(claimPoolUsdt || 0, 7)).toFixed(4)} USDT Coins</span></div>
+                    ` : ''}
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px; margin-top:${claimPoolUsdt !== '' ? '10px' : '0'};">Total daily budget (USDT Coins) — blank disables the pool</label>
                     <input type="number" id="claim-pool-usdt-input" class="days-input" style="width:100%; margin-bottom:10px;" step="10" min="0" value="${claimPoolUsdt}" placeholder="blank = disabled">
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Decay % per claim (how much of what's left is paid out)</label>
