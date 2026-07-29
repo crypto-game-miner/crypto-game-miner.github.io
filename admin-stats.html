@@ -209,8 +209,8 @@
                     <div class="info-row"><span>USDT from Claims</span><span>${yUsdtClaims.toFixed(2)}</span></div>
                     <div class="info-row"><span>USDT from Mining</span><span>${yUsdtMining.toFixed(2)}</span></div>
                     <div class="info-row"><span>Total USDT earned (claims+mining)</span><span style="color:#facc15;">${(yUsdtClaims + yUsdtMining).toFixed(2)}</span></div>
-                    <div class="info-row"><span>LTC from Mining</span><span>${yLtcMining.toFixed(4)}</span></div>
-                    <div class="info-row"><span>SOL from Mining</span><span>${ySolMining.toFixed(4)}</span></div>
+                   <div class="info-row"><span>LTC from Mining</span><span>${yLtcMining.toFixed(4)} LTC${ltcPriceUsd != null ? ` <span style="color:#22c55e;">($${(yLtcMining * LTC_COIN_TO_LTC * ltcPriceUsd).toFixed(6)})</span>` : ''}</span></div>
+                    <div class="info-row"><span>SOL from Mining</span><span>${ySolMining.toFixed(4)} SOL${solPriceUsd != null ? ` <span style="color:#22c55e;">($${(ySolMining * SOL_COIN_TO_SOL * solPriceUsd).toFixed(6)})</span>` : ''}</span></div>
                     <div class="info-row"><span>💵 Real $ value paid out</span><span style="color:#22c55e;">$${realUsdValue(yUsdtClaims + yUsdtMining, yLtcMining, ySolMining).toFixed(6)}</span></div>
                 </div>
                 <div class="card">
@@ -218,8 +218,8 @@
                     <div class="info-row"><span>USDT from Claims</span><span>${usdtClaims.toFixed(2)}</span></div>
                     <div class="info-row"><span>USDT from Mining</span><span>${usdtMining.toFixed(2)}</span></div>
                     <div class="info-row"><span>Total USDT earned (claims+mining)</span><span style="color:#facc15;">${(usdtClaims + usdtMining).toFixed(2)}</span></div>
-                    <div class="info-row"><span>LTC from Mining</span><span>${ltcMining.toFixed(4)}</span></div>
-                    <div class="info-row"><span>SOL from Mining</span><span>${solMining.toFixed(4)}</span></div>
+                    <div class="info-row"><span>LTC from Mining</span><span>${ltcMining.toFixed(4)} LTC${ltcPriceUsd != null ? ` <span style="color:#22c55e;">($${(ltcMining * LTC_COIN_TO_LTC * ltcPriceUsd).toFixed(6)})</span>` : ''}</span></div>
+                    <div class="info-row"><span>SOL from Mining</span><span>${solMining.toFixed(4)} SOL${solPriceUsd != null ? ` <span style="color:#22c55e;">($${(solMining * SOL_COIN_TO_SOL * solPriceUsd).toFixed(6)})</span>` : ''}</span></div>
                     <div class="info-row"><span>💵 Real $ value paid out</span><span style="color:#22c55e;">$${realUsdValue(usdtClaims + usdtMining, ltcMining, solMining).toFixed(6)}</span></div>
                     <div style="font-size:9px; color:#8b949e; margin-top:8px;">${priceNote}</div>
                 </div>
@@ -466,3 +466,4 @@
 </script>
 </body>
 </html>
+
