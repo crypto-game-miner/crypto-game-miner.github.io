@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     minUsdt, maxUsdt, minLtc, maxLtc, minSol, maxSol, storeConfig,
     gameCoinsReward, claimBoostAmount,
     baseUsdtRate, baseLtcRate, baseSolRate, swapFeePct,
-    claimPoolUsdt, claimPoolDecayPct,
+    claimPoolUsdt, claimPoolDecayPct, claimPoolStartReward,
   } = req.body || {};
 
   if (secret !== ADMIN_SECRET) {
@@ -162,21 +162,26 @@ export default async function handler(req, res) {
     if (!isFinite(decay) || decay <= 0 || decay > 100) {
       return res.status(400).json({ success: false, error: 'Decay % must be a number between 0 and 100 (exclusive of 0).' });
     }
-    const MAX_POOL_REWARD = 7;
+    const MAX_POOL_REWARD_CEILING = 7;
+    const startReward = parseFloat(claimPoolStartReward);
+    if (!isFinite(startReward) || startReward <= 0 || startReward > MAX_POOL_REWARD_CEILING) {
+      return res.status(400).json({ success: false, error: `Starting reward must be a number between 0 and ${MAX_POOL_REWARD_CEILING} (exclusive of 0).` });
+    }
     try {
       // Enabling or changing the settings resets remaining budget AND the
-      // current per-claim reward (back to the day's starting value), and
+      // current per-claim reward (back to the new starting value), and
       // marks it as "today" — so the new settings apply from the very
       // next claim instead of continuing a stale decay curve from before.
       await db.collection('stats').doc('global').set({
         claim_pool_usdt: pool,
         claim_pool_decay_pct: decay,
+        claim_pool_start_reward: startReward,
         claim_pool_remaining: pool,
-        claim_pool_current_reward: pool != null ? Math.min(pool, MAX_POOL_REWARD) : null,
+        claim_pool_current_reward: pool != null ? Math.min(pool, startReward, MAX_POOL_REWARD_CEILING) : null,
         claim_pool_day: new Date().toISOString().slice(0, 10),
         claimPoolUpdatedAt: Timestamp.now(),
       }, { merge: true });
-      return res.status(200).json({ success: true, claim_pool_usdt: pool, claim_pool_decay_pct: decay });
+      return res.status(200).json({ success: true, claim_pool_usdt: pool, claim_pool_decay_pct: decay, claim_pool_start_reward: startReward });
     } catch (e) {
       console.error('Set-claim-pool error:', e.message || e);
       return res.status(500).json({ success: false, error: 'Server error' });
@@ -347,4 +352,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
-
