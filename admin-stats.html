@@ -180,6 +180,7 @@
             const claimBoostAmount = g.claim_boost_amount != null ? g.claim_boost_amount : 0.1;
             const claimPoolUsdt = g.claim_pool_usdt != null ? g.claim_pool_usdt : '';
             const claimPoolDecayPct = g.claim_pool_decay_pct != null ? g.claim_pool_decay_pct : 2;
+            const claimPoolStartReward = g.claim_pool_start_reward != null ? g.claim_pool_start_reward : 7;
             const claimPoolRemaining = g.claim_pool_remaining != null ? g.claim_pool_remaining : null;
             const claimPoolCurrentReward = g.claim_pool_current_reward != null ? g.claim_pool_current_reward : null;
             const claimPoolDay = g.claim_pool_day || null;
@@ -240,15 +241,17 @@
                 <div class="card">
                     <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">📉 CLAIM POOL (declining rewards)</div>
                     <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
-                        Optional: a shared daily USDT budget across ALL users' claims. Each claim pays a % of whatever's left (capped at 7 USDT Coins max per claim, even early in the day) — early claims pay the most, tapering off as the day goes on. Resets to full budget every day (UTC). Leave the budget field blank to disable and use the flat guest/logged rewards above instead.
+                        Optional: a shared daily USDT budget across ALL users' claims. The first claim of the day pays the Starting Reward below (or less, if the budget itself is smaller), then each subsequent claim pays Decay % less than the one before — so rewards taper off through the day. Hard ceiling of 7 USDT Coins per claim regardless. Resets to full budget every day (UTC). Leave the budget field blank to disable and use the flat guest/logged rewards above instead.
                     </div>
                     ${claimPoolUsdt !== '' ? `
                     <div class="info-row"><span>Remaining today${claimPoolIsToday ? '' : ' (stale — resets on next claim)'}</span><span>${(claimPoolRemaining ?? claimPoolUsdt).toFixed(2)} / ${claimPoolUsdt} USDT Coins</span></div>
-                    <div class="info-row"><span>Next claim will pay</span><span style="color:#22c55e;">${(claimPoolCurrentReward ?? Math.min(claimPoolUsdt || 0, 7)).toFixed(4)} USDT Coins</span></div>
+                    <div class="info-row"><span>Next claim will pay</span><span style="color:#22c55e;">${(claimPoolCurrentReward ?? Math.min(claimPoolUsdt || 0, claimPoolStartReward)).toFixed(4)} USDT Coins</span></div>
                     ` : ''}
                     <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px; margin-top:${claimPoolUsdt !== '' ? '10px' : '0'};">Total daily budget (USDT Coins) — blank disables the pool</label>
                     <input type="number" id="claim-pool-usdt-input" class="days-input" style="width:100%; margin-bottom:10px;" step="10" min="0" value="${claimPoolUsdt}" placeholder="blank = disabled">
-                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Decay % per claim (how much of what's left is paid out)</label>
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Starting reward — what the 1st claim of the day pays (max 7)</label>
+                    <input type="number" id="claim-pool-start-input" class="days-input" style="width:100%; margin-bottom:10px;" step="0.5" min="0.1" max="7" value="${claimPoolStartReward}">
+                    <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">Decay % per claim (how much each claim drops vs. the last one)</label>
                     <input type="number" id="claim-pool-decay-input" class="days-input" style="width:100%; margin-bottom:12px;" step="0.5" min="0.1" max="100" value="${claimPoolDecayPct}">
                     <button class="btn-approve" style="width:100%;" onclick="saveClaimPool()">💾 Save Claim Pool</button>
                 </div>
@@ -350,12 +353,13 @@
 
     window.saveClaimPool = async function() {
         const claimPoolUsdt = document.getElementById('claim-pool-usdt-input').value;
+        const claimPoolStartReward = document.getElementById('claim-pool-start-input').value;
         const claimPoolDecayPct = document.getElementById('claim-pool-decay-input').value;
         try {
             const res = await fetch('/api/moderate-ad', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_claim_pool', claimPoolUsdt, claimPoolDecayPct })
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_claim_pool', claimPoolUsdt, claimPoolStartReward, claimPoolDecayPct })
             });
             const data = await res.json();
             if (!data.success) { alert(data.error || 'Error saving claim pool'); return; }
