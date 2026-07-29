@@ -23,10 +23,11 @@ const DAILY_LINK_BOOST_AMOUNT = 0.17; // +0.17 GH/s for 24h, once per day
 const DAILY_LINK_COOLDOWN_MS  = 86400000; // 24h
 
 // Claim pool defaults — used only if the admin enables a pool (claim_pool_usdt
-// set) but hasn't set claim_pool_decay_pct.
+// set) but hasn't set claim_pool_decay_pct / claim_pool_start_reward.
 const DEFAULT_CLAIM_POOL_DECAY_PCT = 2;
+const DEFAULT_CLAIM_POOL_START_REWARD = 7; // what the very first claim of the day pays, before decay
 const MIN_POOL_REWARD = 0.01; // never let the per-claim reward round down to literally zero
-const MAX_POOL_REWARD = 7;    // hard ceiling — also doubles as the DAY'S STARTING reward (first claim of the day pays this, or less if the budget is smaller than this)
+const MAX_POOL_REWARD_CEILING = 7; // absolute hard ceiling regardless of admin's starting-reward setting
 
 function initFirebase() {
   if (!getApps().length) {
@@ -161,17 +162,15 @@ export default async function handler(req, res) {
       // Two modes:
       // 1. Flat (default): guest/logged fixed reward, unlimited.
       // 2. Declining pool (opt-in via claim_pool_usdt): a shared, site-wide
-      //    daily budget. Unlike a naive "% of remaining budget" scheme
-      //    (which stays flat at the MAX_POOL_REWARD ceiling for a long
-      //    stretch whenever the budget is large relative to the decay %),
-      //    this tracks the CURRENT per-claim reward directly: it starts
-      //    the day at MAX_POOL_REWARD (or less if the budget itself is
-      //    smaller), and multiplies by (1 - decayPct/100) after every
-      //    single claim — so the visible reward decreases every claim
-      //    from the very first one, not just once it eventually drops
-      //    below the cap. The remaining budget is still tracked as a
-      //    separate hard stop — once it hits 0, further claims (that
-      //    day) get nothing from the pool.
+      //    daily budget. Tracks the CURRENT per-claim reward directly (not
+      //    a % of remaining budget, which would stay flat at the ceiling
+      //    for a long stretch when the budget is large). The first claim
+      //    of the day pays the admin's configured starting reward (capped
+      //    at MAX_POOL_REWARD_CEILING and at the budget itself, whichever
+      //    is smaller), then multiplies by (1 - decayPct/100) after every
+      //    single claim — so the reward decreases visibly from the very
+      //    first claim. The remaining budget is a separate hard stop —
+      //    once it hits 0, further claims (that day) get nothing from the pool.
       const isRealLogin = !!data.email; // email only set once user links Google
       const claimPoolUsdt = g.claim_pool_usdt != null ? g.claim_pool_usdt : null;
       let usdtReward;
@@ -179,12 +178,13 @@ export default async function handler(req, res) {
 
       if (claimPoolUsdt != null) {
         const decayPct = g.claim_pool_decay_pct != null ? g.claim_pool_decay_pct : DEFAULT_CLAIM_POOL_DECAY_PCT;
+        const startReward = g.claim_pool_start_reward != null ? g.claim_pool_start_reward : DEFAULT_CLAIM_POOL_START_REWARD;
         const poolDay = g.claim_pool_day;
         const isFreshDay = poolDay !== today || g.claim_pool_remaining == null || g.claim_pool_current_reward == null;
 
         const remaining = isFreshDay ? claimPoolUsdt : g.claim_pool_remaining;
         const currentReward = isFreshDay
-          ? Math.min(claimPoolUsdt, MAX_POOL_REWARD)
+          ? Math.min(claimPoolUsdt, startReward, MAX_POOL_REWARD_CEILING)
           : g.claim_pool_current_reward;
 
         usdtReward = Math.max(Math.min(remaining, currentReward), remaining > 0 ? MIN_POOL_REWARD : 0);
