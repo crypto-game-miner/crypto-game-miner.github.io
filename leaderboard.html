@@ -142,6 +142,12 @@
                 document.getElementById('s-bucket-1').innerText = bucket1;
                 document.getElementById('s-bucket-2').innerText = bucket2;
 
+                // This doc (stats/global) is only rewritten by
+                // refreshGlobalStats() in api/sync-mining.js, which is now
+                // throttled to run at most once per hour. Its updatedAt
+                // field is therefore the real "leaderboard last recomputed"
+                // time — unlike the page-load timestamp this used to show.
+                let statsUpdatedMs = null;
                 try {
                     const globalSnap = await getDoc(doc(db, 'stats', 'global'));
                     const g = globalSnap.exists() ? globalSnap.data() : {};
@@ -154,9 +160,17 @@
                     const usdtPerHour = (usdtPool != null && activeUsdt > 0) ? Math.round(usdtPool / (24 * activeUsdt) * 1000) / 1000 : 1.1;
                     document.getElementById('s-rate').innerText = ltcPerHour + ' LTC/GH/S/HR';
                     document.getElementById('s-rate-day').innerText = usdtPerHour + ' USDT/GH/S/HR';
+
+                    statsUpdatedMs = g.updatedAt?.toMillis ? g.updatedAt.toMillis() : null;
                 } catch(e) {
                     document.getElementById('s-rate').innerText = '2.5 LTC/GH/S/HR';
                     document.getElementById('s-rate-day').innerText = '1.1 USDT/GH/S/HR';
+                }
+
+                if (statsUpdatedMs) {
+                    document.getElementById('updated').innerText = 'Leaderboard updated: ' + new Date(statsUpdatedMs).toLocaleString();
+                } else {
+                    document.getElementById('updated').innerText = 'Leaderboard update time unavailable';
                 }
 
                 if (users.length === 0) {
@@ -190,7 +204,6 @@
                 });
 
                 document.getElementById('main-area').innerHTML = html;
-                document.getElementById('updated').innerText = 'Updated: ' + new Date().toLocaleTimeString();
 
             } catch(e) {
                 document.getElementById('main-area').innerHTML = `<div class="loading">Error: ${e.message}</div>`;
@@ -239,6 +252,7 @@
     </script>
 </body>
 </html>
+
 
 
 
