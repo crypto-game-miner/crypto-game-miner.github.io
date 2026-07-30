@@ -9,6 +9,14 @@ const DEFAULT_SOL_RATE  = 1.5;
 const MAX_SECONDS = 86400;
 const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
+// Minimum time between full leaderboard_public scans (refreshGlobalStats).
+// Was running on every single sync call (every ~60s per open tab), reading
+// the entire leaderboard_public collection each time — this is what blew
+// through the Firestore Spark plan's free daily read quota. Now it only
+// runs once this interval has elapsed, triggered by whichever sync call
+// happens to land first after that.
+const STATS_REFRESH_INTERVAL_MS = 3600000; // 1 hour
+
 function initFirebase() {
   if (!getApps().length) {
     const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -81,6 +89,11 @@ export default async function handler(req, res) {
       const baseUsdtRate = g.base_usdt_rate != null ? g.base_usdt_rate : DEFAULT_USDT_RATE;
       const baseLtcRate  = g.base_ltc_rate  != null ? g.base_ltc_rate  : DEFAULT_LTC_RATE;
       const baseSolRate  = g.base_sol_rate  != null ? g.base_sol_rate  : DEFAULT_SOL_RATE;
+
+      // When stats/global was last recomputed by refreshGlobalStats() —
+      // used after the transaction to decide whether a fresh recompute is
+      // due yet (see STATS_REFRESH_INTERVAL_MS).
+      const statsUpdatedMs = g.updatedAt?.toMillis ? g.updatedAt.toMillis() : 0;
 
       const data = snap.data();
       const now = Date.now();
@@ -169,16 +182,24 @@ export default async function handler(req, res) {
         totalHashrate,
         miningPaused,
         level,
+        statsUpdatedMs,
       };
     });
 
-    try {
-      await refreshGlobalStats(db);
-    } catch (e) {
-      console.error('Global stats refresh failed (sync still succeeds):', e.message || e);
+    // Only recompute the site-wide leaderboard stats (a full scan of
+    // leaderboard_public) if it's been at least an hour since the last
+    // recompute. This is what keeps Firestore reads within the free quota
+    // — previously this ran on every single sync call.
+    if (Date.now() - (result.statsUpdatedMs || 0) >= STATS_REFRESH_INTERVAL_MS) {
+      try {
+        await refreshGlobalStats(db);
+      } catch (e) {
+        console.error('Global stats refresh failed (sync still succeeds):', e.message || e);
+      }
     }
 
-    return res.status(200).json({ success: true, ...result });
+    const { statsUpdatedMs, ...publicResult } = result;
+    return res.status(200).json({ success: true, ...publicResult });
   } catch (e) {
     console.error('Sync mining error:', e.message || e);
     return res.status(500).json({ success: false, error: 'Server error' });
@@ -188,7 +209,8 @@ export default async function handler(req, res) {
 // Recomputes stats/global (totalPlayers, totalHashrate, activeHashrate)
 // from leaderboard_public — cheap since it only has the few public fields,
 // not the full users collection. Runs after the main response so it never
-// delays the claim/sync itself; failure here is non-fatal.
+// delays the claim/sync itself; failure here is non-fatal. Throttled to
+// run at most once per STATS_REFRESH_INTERVAL_MS (see call site above).
 async function refreshGlobalStats(db) {
   const snap = await db.collection('leaderboard_public').get();
   const now = Date.now();
@@ -225,6 +247,7 @@ async function refreshGlobalStats(db) {
     updatedAt: Timestamp.fromMillis(Date.now()),
   }, { merge: true });
 }
+
 
 
 
