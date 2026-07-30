@@ -287,10 +287,17 @@
                     document.getElementById('balance').innerText     = visualCoins.toFixed(4);
                     document.getElementById('ltc-balance').innerText = visualLtc.toFixed(4);
                     document.getElementById('sol-balance').innerText = visualSol.toFixed(4);
+                } else {
+                    // TEMPORARY DEBUG — remove once the cause is found.
+                    console.error('sync-mining failed:', resp.status, data);
+                    alert('SYNC FAILED: ' + resp.status + ' — ' + (data.error || JSON.stringify(data)));
                 }
-            } catch(e) {}
+            } catch(e) {
+                // TEMPORARY DEBUG — remove once the cause is found.
+                console.error('sync-mining network error:', e);
+                alert('SYNC NETWORK ERROR: ' + e.message);
+            }
         }
-
         function getLevel(exp) {
             let level = 1, total = 0;
             for (let i = 0; i < EXP_PER_LEVEL.length; i++) {
