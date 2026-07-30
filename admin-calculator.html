@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Calculator</title>
+    <style>
+        html, body { margin: 0; padding: 0; background: #1a1613; color: white; font-family: 'Courier New', monospace; }
+        body { padding: 16px 16px 40px; }
+        .header { color: #facc15; font-size: 18px; font-weight: bold; margin-bottom: 16px; text-transform: uppercase; }
+        .login-box { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 10px; padding: 20px; max-width: 320px; margin: 60px auto; }
+        .login-box input { width: 100%; box-sizing: border-box; background: #0d0d0d; border: 1px solid #3d2b1f; border-radius: 8px; color: white; padding: 10px; font-size: 14px; font-family: monospace; outline: none; margin-bottom: 12px; }
+        .login-box button { background: #facc15; color: #1a1613; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; font-family: monospace; }
+        #panel { display: none; }
+        .card { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+        .info-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; border-bottom: 1px solid #2a2015; }
+        .info-row:last-child { border-bottom: none; }
+        .info-row span:first-child { color: #8b949e; }
+        .btn-approve { background: #22c55e; color: #000; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; font-family: monospace; }
+        .days-input { background: #0d0d0d; border: 1px solid #facc15; border-radius: 6px; color: white; padding: 8px 10px; font-size: 13px; font-family: monospace; box-sizing: border-box; outline: none; }
+        .empty { text-align: center; color: #555; padding: 40px 0; font-size: 14px; }
+        .tab-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .tab { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: 1px solid #3d2b1f; background: transparent; color: #8b949e; font-family: monospace; text-transform: uppercase; text-decoration: none; display: inline-block; }
+        .tab.active { background: #facc15; color: #1a1613; border-color: #facc15; }
+        .conv-row { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); border: 1px solid #3d2b1f; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+        .conv-label { font-size: 12px; color: #8b949e; }
+        .conv-value { font-size: 15px; font-weight: bold; color: #facc15; margin-top: 4px; }
+        .conv-btn { background: #a78bfa; color: #1a1613; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; font-size: 11px; cursor: pointer; font-family: monospace; text-transform: uppercase; white-space: nowrap; margin-left: 10px; }
+        .conv-btn:disabled { background: #555; color: #999; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div id="login-box" class="login-box">
+    <div style="color:#facc15; font-size:16px; font-weight:bold; margin-bottom:16px; text-align:center;">🔐 Admin Panel</div>
+    <input type="password" id="pwd" placeholder="Password" onkeydown="if(event.key==='Enter')checkPwd()">
+    <button onclick="checkPwd()">Enter</button>
+</div>
+
+<div id="panel">
+    <div class="header">🧮 Currency Calculator</div>
+    <div class="tab-row">
+        <a class="tab" href="admin.html">📢 Ads</a>
+        <a class="tab" href="admin-stats.html">📊 Stats</a>
+        <a class="tab" href="admin-miners.html">⛏️ Miners</a>
+        <button class="tab active">🧮 Calculator</button>
+    </div>
+
+    <div class="card">
+        <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:10px;">💵 Convert Real $ → Coins</div>
+        <div style="font-size:10px; color:#8b949e; margin-bottom:10px;">
+            Enter how much of your real ad revenue (in $) you want to allocate to a pool. Below shows what that same $ amount equals in each coin, using the LIVE market price right now — not a historical average. Each "Set as..." button saves that value directly as the pool, without touching your other pool settings.
+        </div>
+        <label style="font-size:11px; color:#8b949e; display:block; margin-bottom:4px;">$ Amount to allocate</label>
+        <input type="number" id="usd-amount-input" class="days-input" style="width:100%; margin-bottom:4px;" step="1" min="0" placeholder="e.g. 600" oninput="recalc()">
+        <p style="font-size:9px; color:#8b949e; margin:4px 0 0;" id="price-note">Loading live prices...</p>
+    </div>
+
+    <div class="card">
+        <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:12px;">🎟️ Claim Pool (Faucet claims)</div>
+        <div class="conv-row">
+            <div>
+                <div class="conv-label">USDT Coins equivalent</div>
+                <div class="conv-value" id="conv-claim-usdt">—</div>
+            </div>
+            <button class="conv-btn" id="btn-claim-usdt" onclick="setClaimPool()" disabled>Set as Claim Pool</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div style="color:#facc15; font-size:13px; font-weight:bold; margin-bottom:12px;">⚙️ Mining Pools</div>
+        <div class="conv-row">
+            <div>
+                <div class="conv-label">USDT Coins equivalent</div>
+                <div class="conv-value" id="conv-mining-usdt">—</div>
+            </div>
+            <button class="conv-btn" id="btn-mining-usdt" onclick="setMiningPool('usdt')" disabled>Set as USDT Pool</button>
+        </div>
+        <div class="conv-row">
+            <div>
+                <div class="conv-label">LTC Coins equivalent</div>
+                <div class="conv-value" id="conv-mining-ltc">—</div>
+            </div>
+            <button class="conv-btn" id="btn-mining-ltc" onclick="setMiningPool('ltc')" disabled>Set as LTC Pool</button>
+        </div>
+        <div class="conv-row">
+            <div>
+                <div class="conv-label">SOL Coins equivalent</div>
+                <div class="conv-value" id="conv-mining-sol">—</div>
+            </div>
+            <button class="conv-btn" id="btn-mining-sol" onclick="setMiningPool('sol')" disabled>Set as SOL Pool</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+    import { getAuth, signInAnonymously, inMemoryPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+    import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+
+    let ADMIN_PASSWORD = sessionStorage.getItem('admin_pwd');
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+        authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+        projectId: "crypto-miner-game-f45dc",
+        storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+        messagingSenderId: "33690622473",
+        appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+    };
+
+    const app  = initializeApp(firebaseConfig, 'admin-panel');
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    const USDT_COIN_TO_REAL_USD = 0.000001;
+    const LTC_COIN_TO_LTC = 0.00000001;
+    const SOL_COIN_TO_SOL = 0.00000001; // matches the same 8-decimal convention used in api/withdraw.js
+
+    async function doLogin(pwd) {
+        try {
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: pwd, action: 'verify' })
+            });
+            const data = await res.json();
+            if (!data.success) return false;
+        } catch(e) {
+            return false;
+        }
+        try {
+            await setPersistence(auth, inMemoryPersistence);
+            await signInAnonymously(auth);
+        } catch(e) {
+            return false;
+        }
+        return true;
+    }
+
+    window.checkPwd = async function() {
+        const pwd = document.getElementById('pwd').value;
+        const ok = await doLogin(pwd);
+        if (!ok) { alert('Wrong password'); return; }
+        ADMIN_PASSWORD = pwd;
+        sessionStorage.setItem('admin_pwd', pwd);
+        document.getElementById('login-box').style.display = 'none';
+        document.getElementById('panel').style.display = 'block';
+        init();
+    };
+
+    (async function autoLogin() {
+        if (!ADMIN_PASSWORD) return;
+        const ok = await doLogin(ADMIN_PASSWORD);
+        if (ok) {
+            document.getElementById('login-box').style.display = 'none';
+            document.getElementById('panel').style.display = 'block';
+            init();
+        } else {
+            sessionStorage.removeItem('admin_pwd');
+            ADMIN_PASSWORD = null;
+        }
+    })();
+
+    let cachedPrices = null; // { ltc, sol }
+
+    async function fetchPricesUsd() {
+        try {
+            const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin,solana&vs_currencies=usd');
+            const data = await resp.json();
+            const ltc = data?.litecoin?.usd, sol = data?.solana?.usd;
+            return (ltc && sol) ? { ltc, sol } : null;
+        } catch(e) {
+            return null;
+        }
+    }
+
+    function init() {
+        refreshPrices();
+        setInterval(refreshPrices, 60000);
+    }
+
+    async function refreshPrices() {
+        cachedPrices = await fetchPricesUsd();
+        document.getElementById('price-note').innerText = cachedPrices
+            ? `LTC: $${cachedPrices.ltc.toLocaleString()} · SOL: $${cachedPrices.sol.toLocaleString()} (live, CoinGecko)`
+            : `⚠️ Couldn't fetch live prices — try again shortly`;
+        recalc();
+    }
+
+    let lastUsdtCoins = null, lastLtcCoins = null, lastSolCoins = null;
+
+    window.recalc = function() {
+        const usd = Number(document.getElementById('usd-amount-input').value);
+        const valid = usd > 0 && cachedPrices;
+
+        if (!valid) {
+            ['conv-claim-usdt', 'conv-mining-usdt', 'conv-mining-ltc', 'conv-mining-sol'].forEach(id => {
+                document.getElementById(id).innerText = '—';
+            });
+            ['btn-claim-usdt', 'btn-mining-usdt', 'btn-mining-ltc', 'btn-mining-sol'].forEach(id => {
+                document.getElementById(id).disabled = true;
+            });
+            return;
+        }
+
+        lastUsdtCoins = usd / USDT_COIN_TO_REAL_USD;
+        lastLtcCoins  = (usd / cachedPrices.ltc) / LTC_COIN_TO_LTC;
+        lastSolCoins  = (usd / cachedPrices.sol) / SOL_COIN_TO_SOL;
+
+        document.getElementById('conv-claim-usdt').innerText  = lastUsdtCoins.toFixed(2) + ' USDT Coins';
+        document.getElementById('conv-mining-usdt').innerText = lastUsdtCoins.toFixed(2) + ' USDT Coins';
+        document.getElementById('conv-mining-ltc').innerText  = lastLtcCoins.toFixed(2) + ' LTC Coins';
+        document.getElementById('conv-mining-sol').innerText  = lastSolCoins.toFixed(2) + ' SOL Coins';
+
+        ['btn-claim-usdt', 'btn-mining-usdt', 'btn-mining-ltc', 'btn-mining-sol'].forEach(id => {
+            document.getElementById(id).disabled = false;
+        });
+    };
+
+    window.setClaimPool = async function() {
+        if (lastUsdtCoins == null) return;
+        const btn = document.getElementById('btn-claim-usdt');
+        btn.disabled = true;
+        btn.innerText = 'Saving...';
+        try {
+            // Preserve existing decay/start-reward settings — only the
+            // budget itself changes here.
+            const snap = await getDoc(doc(db, 'stats', 'global'));
+            const g = snap.exists() ? snap.data() : {};
+            const claimPoolStartReward = g.claim_pool_start_reward != null ? g.claim_pool_start_reward : 7;
+            const claimPoolDecayPct = g.claim_pool_decay_pct != null ? g.claim_pool_decay_pct : 2;
+
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    secret: ADMIN_PASSWORD, action: 'set_claim_pool',
+                    claimPoolUsdt: lastUsdtCoins, claimPoolStartReward, claimPoolDecayPct,
+                })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving claim pool'); return; }
+            alert(`✅ Claim pool set to ${lastUsdtCoins.toFixed(2)} USDT Coins.`);
+        } catch(e) {
+            alert('Error: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Set as Claim Pool';
+        }
+    };
+
+    window.setMiningPool = async function(coin) {
+        const amount = coin === 'usdt' ? lastUsdtCoins : coin === 'ltc' ? lastLtcCoins : lastSolCoins;
+        if (amount == null) return;
+        const btn = document.getElementById('btn-mining-' + coin);
+        btn.disabled = true;
+        btn.innerText = 'Saving...';
+        try {
+            // Preserve the other two pools — only the selected one changes.
+            const snap = await getDoc(doc(db, 'stats', 'global'));
+            const g = snap.exists() ? snap.data() : {};
+            const usdtPool = coin === 'usdt' ? amount : (g.usdt_pool != null ? g.usdt_pool : '');
+            const ltcPool  = coin === 'ltc'  ? amount : (g.ltc_pool  != null ? g.ltc_pool  : '');
+            const solPool  = coin === 'sol'  ? amount : (g.sol_pool  != null ? g.sol_pool  : '');
+
+            const res = await fetch('/api/moderate-ad', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret: ADMIN_PASSWORD, action: 'set_pools', usdtPool, ltcPool, solPool })
+            });
+            const data = await res.json();
+            if (!data.success) { alert(data.error || 'Error saving pool'); return; }
+            alert(`✅ ${coin.toUpperCase()} pool set to ${amount.toFixed(2)} ${coin.toUpperCase()} Coins.`);
+        } catch(e) {
+            alert('Error: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Set as ' + coin.toUpperCase() + ' Pool';
+        }
+    };
+</script>
+</body>
+</html>
