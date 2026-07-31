@@ -16,18 +16,22 @@
         .miner-row { background: rgba(0,0,0,0.4); border: 1px solid #3d2b1f; border-radius: 12px; padding: 14px 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
         .miner-row.active { border-color: #22c55e; }
         .miner-row.rare { border-color: #a78bfa; }
+        .miner-row.quantum { border-color: #22d3ee; }
         .miner-svg { width: 48px; height: 48px; flex-shrink: 0; }
         .miner-info { flex: 1; }
         .miner-name { font-size: 13px; font-weight: bold; color: #facc15; text-transform: uppercase; }
         .miner-name.rare { color: #a78bfa; }
+        .miner-name.quantum { color: #22d3ee; }
         .miner-desc { font-size: 10px; color: #8b949e; margin-top: 2px; text-transform: uppercase; }
         .miner-badges { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
         .badge { background: rgba(0,0,0,0.3); border-radius: 6px; padding: 4px 8px; font-size: 10px; text-transform: uppercase; }
         .badge.purple { color: #a78bfa; border: 1px solid #a78bfa33; }
         .badge.rare { color: #f97316; border: 1px solid #f9731633; }
+        .badge.cyan { color: #22d3ee; border: 1px solid #22d3ee33; }
         .miner-count { text-align: right; flex-shrink: 0; }
         .count-num { font-size: 28px; font-weight: bold; color: #facc15; line-height: 1; }
         .count-num.rare { color: #a78bfa; }
+        .count-num.quantum { color: #22d3ee; }
         .count-max { font-size: 10px; color: #8b949e; text-transform: uppercase; }
         .empty-state { text-align: center; padding: 40px 20px; }
         .empty-icon { font-size: 48px; margin-bottom: 12px; }
@@ -60,7 +64,8 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
-        import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+        import { getFirestore, doc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -71,8 +76,9 @@
             appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db  = getFirestore(app);
+        const app  = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db   = getFirestore(app);
 
         // SVG art stays fixed per miner type; power/max come from Firestore
         // (stats/global) so admin.html's "⛏️ Miners" tab controls them —
@@ -147,15 +153,82 @@
             }
         };
 
-        async function render() {
-            const area = document.getElementById('main-area');
+        // Season Pass Level 2 reward. In Firestore this is NOT a discrete
+        // owned unit like nano/mega — api/season-claim.js grants it as a
+        // flat bonus added to users/{uid}.season_bonus_hashrate. So it's
+        // rendered here as a permanent "active" card, not an owned-count card.
+        const QUANTUM_SVG = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="14" width="60" height="36" rx="5" fill="#062a30" stroke="#22d3ee" stroke-width="2"/>
+          <rect x="4" y="16" width="56" height="32" rx="4" fill="#03181c"/>
+          <rect x="7" y="20" width="3" height="24" rx="1" fill="#0e3a41"/>
+          <rect x="12" y="20" width="3" height="24" rx="1" fill="#0e3a41"/>
+          <rect x="17" y="20" width="3" height="24" rx="1" fill="#0e3a41"/>
+          <rect x="24" y="18" width="18" height="22" rx="3" fill="#02100f" stroke="#22d3ee" stroke-width="1.5"/>
+          <rect x="26" y="20" width="14" height="18" rx="2" fill="#03181c"/>
+          <rect x="27" y="21" width="4" height="4" rx="0.5" fill="#22d3ee" opacity="0.9"/>
+          <rect x="33" y="21" width="4" height="4" rx="0.5" fill="#22d3ee" opacity="0.9"/>
+          <rect x="27" y="27" width="4" height="4" rx="0.5" fill="#facc15" opacity="1"/>
+          <rect x="33" y="27" width="4" height="4" rx="0.5" fill="#22d3ee" opacity="0.9"/>
+          <rect x="27" y="33" width="4" height="4" rx="0.5" fill="#22d3ee" opacity="0.7"/>
+          <rect x="33" y="33" width="4" height="4" rx="0.5" fill="#facc15" opacity="1"/>
+          <circle cx="50" cy="26" r="8" fill="#062a30" stroke="#22d3ee" stroke-width="1.5"/>
+          <circle cx="50" cy="26" r="6" fill="#03181c"/>
+          <line x1="50" y1="20" x2="50" y2="32" stroke="#22d3ee" stroke-width="1.2"/>
+          <line x1="44" y1="26" x2="56" y2="26" stroke="#22d3ee" stroke-width="1.2"/>
+          <line x1="45.8" y1="21.8" x2="54.2" y2="30.2" stroke="#22d3ee" stroke-width="1.2"/>
+          <line x1="54.2" y1="21.8" x2="45.8" y2="30.2" stroke="#22d3ee" stroke-width="1.2"/>
+          <circle cx="50" cy="26" r="2.5" fill="#22d3ee"/>
+          <circle cx="8" cy="42" r="2.5" fill="#22d3ee"/>
+          <circle cx="14" cy="42" r="2.5" fill="#22c55e"/>
+          <rect x="8" y="48" width="48" height="4" rx="1" fill="#02100f" stroke="#0e3a41" stroke-width="0.5"/>
+          <rect x="11" y="49" width="6" height="2" rx="0.5" fill="#0e3a41"/>
+          <rect x="20" y="49" width="6" height="2" rx="0.5" fill="#0e3a41"/>
+          <rect x="29" y="49" width="6" height="2" rx="0.5" fill="#0e3a41"/>
+          <rect x="38" y="49" width="6" height="2" rx="0.5" fill="#0e3a41"/>
+          <rect x="47" y="49" width="6" height="2" rx="0.5" fill="#0e3a41"/>
+        </svg>`;
 
-            let g = {};
+        let globalStats = {};
+        let userData = null; // null until first Firestore read comes back
+
+        async function loadGlobalStats() {
             try {
                 const snap = await getDoc(doc(db, 'stats', 'global'));
-                g = snap.exists() ? snap.data() : {};
-            } catch(e) {}
+                globalStats = snap.exists() ? snap.data() : {};
+            } catch (e) {}
+        }
 
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                onSnapshot(doc(db, 'users', user.uid), (snap) => {
+                    userData = snap.exists() ? snap.data() : {};
+                    // Keep localStorage in sync so other pages (home.html
+                    // power calc, etc.) that still read it stay correct.
+                    if (userData.miner_nano != null) localStorage.setItem('miner_nano', userData.miner_nano);
+                    if (userData.miner_mega != null) localStorage.setItem('miner_mega', userData.miner_mega);
+                    if (userData.season_bonus_hashrate != null) localStorage.setItem('season_bonus_hashrate', userData.season_bonus_hashrate);
+                    if (userData.task_bonus_hashrate != null) localStorage.setItem('task_bonus_hashrate', userData.task_bonus_hashrate);
+                    render();
+                });
+            } else {
+                try { await signInAnonymously(auth); } catch (e) {}
+            }
+        });
+
+        function render() {
+            const area = document.getElementById('main-area');
+
+            // Firestore is the source of truth once loaded; fall back to
+            // localStorage only for the first paint before the snapshot
+            // arrives, so the page isn't blank.
+            const d = userData || {
+                miner_nano: Number(localStorage.getItem('miner_nano')) || 0,
+                miner_mega: Number(localStorage.getItem('miner_mega')) || 0,
+                season_bonus_hashrate: Number(localStorage.getItem('season_bonus_hashrate')) || 0,
+                task_bonus_hashrate: Number(localStorage.getItem('task_bonus_hashrate')) || 0,
+            };
+
+            const g = globalStats;
             const MINERS = [
                 { ...MINER_ART.nano, power: g.nano_power != null ? g.nano_power : 0.1, max: g.nano_max != null ? g.nano_max : 10 },
                 { ...MINER_ART.mega, power: g.mega_power != null ? g.mega_power : 0.2, max: g.mega_max != null ? g.mega_max : 2 },
@@ -166,13 +239,19 @@
             let hasAny = false;
 
             const rows = MINERS.map(m => {
-                const owned = Number(localStorage.getItem(m.key)) || 0;
+                const owned = Number(d[m.key]) || 0;
                 if (owned > 0) hasAny = true;
                 const power = Math.round(owned * m.power * 100) / 100;
                 totalPower += power;
                 totalMiners += owned;
                 return { m, owned, power };
             });
+
+            const seasonBonus = Math.round((Number(d.season_bonus_hashrate) || 0) * 100) / 100;
+            const taskBonus = Math.round((Number(d.task_bonus_hashrate) || 0) * 100) / 100;
+            if (seasonBonus > 0) { hasAny = true; totalPower += seasonBonus; totalMiners += 1; }
+            if (taskBonus > 0) { hasAny = true; totalPower += taskBonus; }
+            totalPower = Math.round(totalPower * 100) / 100;
 
             if (!hasAny) {
                 area.innerHTML = `
@@ -222,11 +301,50 @@
                 </div>`;
             });
 
+            if (seasonBonus > 0) {
+                html += `
+                <div class="miner-row quantum">
+                    <div class="miner-svg">${QUANTUM_SVG}</div>
+                    <div class="miner-info">
+                        <div class="miner-name quantum">QuantumMiner S3</div>
+                        <div class="miner-desc">Season Pass Level 2 reward</div>
+                        <div class="miner-badges">
+                            <span class="badge cyan">🎫 Season Reward</span>
+                            <span class="badge cyan">+${seasonBonus.toFixed(2)} GH/S</span>
+                        </div>
+                    </div>
+                    <div class="miner-count">
+                        <div class="count-num quantum">✓</div>
+                        <div class="count-max">Active</div>
+                    </div>
+                </div>`;
+            }
+
+            if (taskBonus > 0) {
+                html += `
+                <div class="miner-row quantum">
+                    <div class="miner-svg">${QUANTUM_SVG}</div>
+                    <div class="miner-info">
+                        <div class="miner-name quantum">Task Rewards Bonus</div>
+                        <div class="miner-desc">Earned from completed one-time tasks</div>
+                        <div class="miner-badges">
+                            <span class="badge cyan">📋 Tasks</span>
+                            <span class="badge cyan">+${taskBonus.toFixed(2)} GH/S</span>
+                        </div>
+                    </div>
+                    <div class="miner-count">
+                        <div class="count-num quantum">✓</div>
+                        <div class="count-max">Active</div>
+                    </div>
+                </div>`;
+            }
+
             area.innerHTML = html;
         }
 
-        render();
+        loadGlobalStats().then(render);
     </script>
 </body>
 </html>
+
 
