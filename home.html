@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -74,6 +74,7 @@
         <a href="store.html" class="side-menu-item"><span class="menu-icon">🛒</span>Store<span class="menu-badge">New</span></a>
         <a href="miners.html" class="side-menu-item"><span class="menu-icon">⛏️</span>My Miners<span class="menu-badge purple" id="miners-badge" style="display:none;">0</span></a>
         <a href="advertise.html" class="side-menu-item"><span class="menu-icon">📢</span>Advertise<span class="menu-badge green">$</span></a>
+        <a href="about.html" class="side-menu-item"><span class="menu-icon">ℹ️</span>About</a>
         <a href="settings.html" class="side-menu-item"><span class="menu-icon">⚙️</span>Settings</a>
         <a href="season.html" class="side-menu-item"><span class="menu-icon">🎫</span>Season Pass<span class="menu-badge purple">New</span></a>
     </div>
@@ -165,17 +166,10 @@
         const db   = getFirestore(app);
 
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
-        // These are only the ultimate fallback if the admin hasn't set
-        // base_usdt_rate/base_ltc_rate/base_sol_rate in Firestore yet.
         const LTC_RATE  = 2.5;
         const USDT_RATE = 1.1;
         const SOL_RATE  = 1.5;
 
-        // Live effective rate — mirrors the same pool math api/sync-mining.js
-        // actually uses for real earnings, instead of always assuming the
-        // flat base rate. Also pulls miner power (nano/mega), so admin
-        // changes to those apply retroactively to miners already owned —
-        // not just future purchases. Refreshed alongside syncMining().
         let currentRate  = { ltc: LTC_RATE, usdt: USDT_RATE, sol: SOL_RATE };
         let currentPower = { nano: 0.1, mega: 0.2 };
 
@@ -192,8 +186,6 @@
                 const baseUsdtRate = g.base_usdt_rate != null ? g.base_usdt_rate : USDT_RATE;
                 const baseLtcRate  = g.base_ltc_rate  != null ? g.base_ltc_rate  : LTC_RATE;
                 const baseSolRate  = g.base_sol_rate  != null ? g.base_sol_rate  : SOL_RATE;
-            // Capped at base rate — a thin pool can only reduce the
-                // effective payout below base, never raise it above.
                 currentRate = {
                     usdt: (usdtPool != null && activeUsdt > 0) ? Math.min(usdtPool / (24 * activeUsdt), baseUsdtRate) : baseUsdtRate,
                     ltc:  (ltcPool  != null && activeLtc  > 0) ? Math.min(ltcPool  / (24 * activeLtc),  baseLtcRate)  : baseLtcRate,
@@ -211,7 +203,6 @@
         let miningCoin   = localStorage.getItem('miningCoin') || 'ltc';
         let sessionMined = 0;
         let tickInterval = null;
-        // Visual balance tracking (updated every second, synced to server every 60s)
         let visualCoins  = 0;
         let visualLtc    = 0;
         let visualSol    = 0;
@@ -222,7 +213,6 @@
                 localStorage.setItem('firebase_uid', user.uid);
                 onSnapshot(doc(db, 'users', user.uid), (snap) => {
                     userData = snap.exists() ? snap.data() : {};
-                    // Sync lastClaimTime and claimBoosts to localStorage
                     const lastClaimMs = userData.lastClaimTime?.toMillis ? userData.lastClaimTime.toMillis() : 0;
                     if (lastClaimMs) localStorage.setItem('lastClaimTime', lastClaimMs);
                     const boosts = (userData.claimBoosts || []).map(b => ({
@@ -233,18 +223,11 @@
                     if (userData.season_bonus_hashrate != null) {
                         localStorage.setItem('season_bonus_hashrate', userData.season_bonus_hashrate);
                     }
-                    // Server (Firestore) is the source of truth for
-                    // task_bonus_hashrate — always overwrite the local
-                    // cache with it, so admin-side corrections reach the
-                    // device on the next snapshot.
                     if (userData.task_bonus_hashrate != null) {
                         localStorage.setItem('task_bonus_hashrate', userData.task_bonus_hashrate);
                     }
-                    // Keep miner counts in sync too, so miners.html (and this
-                    // page's own power calc) always reflect the latest state.
                     if (userData.miner_nano != null) localStorage.setItem('miner_nano', userData.miner_nano);
                     if (userData.miner_mega != null) localStorage.setItem('miner_mega', userData.miner_mega);
-                    // Only reset visual balances from server on first load
                     if (!initialized) {
                         visualCoins = parseFloat(userData.coins || 0);
                         visualLtc   = parseFloat(userData.ltc   || 0);
@@ -272,7 +255,6 @@
                 });
                 const data = await resp.json();
                 if (data.success) {
-                    // Update visual balance with server values after sync
                     if (data.coin === 'ltc') {
                         visualLtc   = parseFloat(data.ltc   || visualLtc);
                     } else if (data.coin === 'sol') {
@@ -305,17 +287,12 @@
             return Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 100) / 100;
         }
 
-        // Live-computed from owned counts × CURRENT admin-set power — so
-        // changing nano_power/mega_power in admin.html applies immediately
-        // to miners the user already owns, not just future purchases.
         function getMinerPower() {
             const ownedNano = userData.miner_nano || 0;
             const ownedMega = userData.miner_mega || 0;
             return Math.round((ownedNano * currentPower.nano + ownedMega * currentPower.mega) * 100) / 100;
         }
 
-        // 100% right when you claim, decays linearly to 0% over 24h.
-        // 0% == equipment stopped == same moment mining would've paused.
         function getHealthPct() {
             const lastClaimMs = userData.lastClaimTime?.toMillis ? userData.lastClaimTime.toMillis() : 0;
             if (!lastClaimMs) return 0;
@@ -345,7 +322,6 @@
         function coinLabel(coin) { return coin === 'usdt' ? 'USDT' : coin === 'sol' ? 'SOL' : 'LTC'; }
 
         function renderHome() {
-            // Balances
             document.getElementById('balance').innerText     = visualCoins.toFixed(4);
             document.getElementById('game-coins').innerText  = userData.game_coins || 0;
             document.getElementById('ltc-balance').innerText = visualLtc.toFixed(4);
@@ -353,7 +329,6 @@
 
             renderHealthBar();
 
-            // Level
             const exp = userData.exp || 0;
             const { level, currentExp, needed } = getLevel(exp);
             document.getElementById('level-num').innerText   = level;
@@ -362,9 +337,6 @@
             const pct = needed === 'MAX' ? 100 : (currentExp / needed * 100);
             document.getElementById('exp-bar').style.width = pct + '%';
 
-            // Hashrate — task_bonus_hashrate now only holds one-time task
-            // rewards (register/zerads from tasks.html), NOT miner power.
-            // Miner power is computed live below via getMinerPower().
             const baseHashrate  = level >= 2 ? 0.5 : 0;
             const taskBonus     = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
             const seasonBonus   = parseFloat(localStorage.getItem('season_bonus_hashrate')) || 0;
@@ -377,7 +349,6 @@
             document.getElementById('boost-rate').innerText     = '+' + boostTotal.toFixed(2) + ' GH/s';
             document.getElementById('total-hashrate').innerText = totalHashrate.toFixed(2) + ' GH/s';
 
-            // Mining status from Firebase lastClaimTime — paused once equipment health hits 0
             const miningPaused = getHealthPct() <= 0;
 
             const rate = currentRate[miningCoin];
@@ -388,7 +359,6 @@
             document.getElementById('mining-status').innerText   = active ? 'Active ✅' : (totalHashrate === 0 ? 'Inactive' : 'Paused ⚠️');
             document.getElementById('mining-status').style.color = active ? '#22c55e' : '#ef4444';
 
-            // Start visual ticker
             if (tickInterval) clearInterval(tickInterval);
             if (active) {
                 tickInterval = setInterval(() => {
@@ -397,7 +367,6 @@
                     const earned  = total * rate / 3600;
                     sessionMined += earned;
 
-                    // Update visual balance every second
                     if (miningCoin === 'ltc') {
                         visualLtc += earned;
                         document.getElementById('ltc-balance').innerText = visualLtc.toFixed(4);
@@ -445,6 +414,4 @@
     </script>
 </body>
 </html>
-
-
 
