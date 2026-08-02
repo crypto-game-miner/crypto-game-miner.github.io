@@ -69,13 +69,13 @@
                     <div class="level-num">LEVEL 1</div>
                     <div class="level-icon">🟢</div>
                     <div class="level-reward">+20 Game Coins</div>
-                    <button class="level-btn" id="lvl1-btn" onclick="claimAction('lvl1')">Claim</button>
+                    <button class="level-btn" id="lvl1-btn" onclick="claimAction('lvl1', this)">Claim</button>
                 </div>
                 <div class="level-card locked" id="lvl2-card">
                     <div class="level-num">LEVEL 2 · 100 XP</div>
                     <div class="level-icon">⚙️</div>
                     <div class="level-reward">QuantumMiner S3<br>+0.23 GH/S</div>
-                    <button class="level-btn locked" id="lvl2-btn" onclick="claimAction('lvl2')" disabled>Locked</button>
+                    <button class="level-btn locked" id="lvl2-btn" onclick="claimAction('lvl2', this)" disabled>Locked</button>
                 </div>
             </div>
 
@@ -128,6 +128,8 @@
 
         let currentUser = null;
         let userData = {};
+        let accountReady = false;
+        let pendingAction = null; // { action, btnEl } — set when Claim is tapped before we're ready
 
         function todayKey() { return new Date().toISOString().slice(0, 10); }
 
@@ -153,6 +155,7 @@
         });
 
         function render() {
+            accountReady = true;
             const today = todayKey();
 
             const dailyLinkMs = userData.dailyLinkTs?.toMillis ? userData.dailyLinkTs.toMillis() : 0;
@@ -208,7 +211,7 @@
 
                 let btnHtml;
                 if (claimedToday) btnHtml = `<button class="quest-btn claimed" disabled>✅ ${q.daily ? 'Claimed Today' : 'Claimed'}</button>`;
-                else if (done) btnHtml = `<button class="quest-btn claim" onclick="claimAction('${q.id}')">Claim +${q.xp} XP</button>`;
+                else if (done) btnHtml = `<button class="quest-btn claim" onclick="claimAction('${q.id}', this)">Claim +${q.xp} XP</button>`;
                 else btnHtml = `<button class="quest-btn locked" disabled>In Progress: ${q.progress(userData, ctx)}</button>`;
 
                 const card = document.createElement('div');
@@ -223,10 +226,27 @@
                 `;
                 container.appendChild(card);
             });
+
+            // If Claim was tapped before the account/user doc was confirmed
+            // ready, run it now instead of leaving it stuck.
+            if (pendingAction) {
+                const { action, btnEl } = pendingAction;
+                pendingAction = null;
+                claimAction(action, btnEl);
+            }
         }
 
-        window.claimAction = async function(action) {
-            if (!currentUser) return;
+        window.claimAction = async function(action, btnEl) {
+            if (!currentUser || !accountReady) {
+                // Not ready yet — queue it, render() fires it automatically
+                // once the account/user doc is confirmed loaded.
+                pendingAction = { action, btnEl };
+                if (btnEl) {
+                    btnEl.disabled = true;
+                    btnEl.innerText = 'CONNECTING...';
+                }
+                return;
+            }
             try {
                 const resp = await fetch('/api/season-claim', {
                     method: 'POST',
@@ -250,4 +270,5 @@
     </script>
 </body>
 </html>
+
 
