@@ -8,9 +8,10 @@
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
-        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
-        .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
-        .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
+        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 10px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .balance-cell { background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 10px; text-align: left; }
+        .balance-cell .bc-label { font-size: 9px; color: #8b949e; margin-bottom: 2px; }
+        .balance-cell .bc-value { font-size: 15px; font-weight: bold; }
         .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 290px; }
         .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 14px 0; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 5px 0 #a16207; width: 60%; }
         .collect-btn:disabled { background: #555; box-shadow: none; color: #999; }
@@ -52,6 +53,7 @@
         <a href="miners.html" class="side-menu-item"><span class="menu-icon">⛏️</span>My Miners</a>
         <a href="advertise.html" class="side-menu-item"><span class="menu-icon">📢</span>Advertise<span class="menu-badge green">$</span></a>
         <a href="about.html" class="side-menu-item"><span class="menu-icon">ℹ️</span>About</a>
+        <a href="faq.html" class="side-menu-item"><span class="menu-icon">❓</span>FAQ</a>
         <a href="settings.html" class="side-menu-item"><span class="menu-icon">⚙️</span>Settings</a>
         <a href="season.html" class="side-menu-item"><span class="menu-icon">🎫</span>Season Pass<span class="menu-badge purple">New</span></a>
     </div>
@@ -71,9 +73,22 @@
             <button class="burger-btn" onclick="openMenu()"><span></span><span></span><span></span></button>
         </div>
         <div class="balance-container">
-            <div class="balance-row"><span style="color:#22c55e;">Game Coins</span><span style="font-weight:bold;color:#22c55e;" id="game-coins">0</span></div>
-            <div class="balance-row"><span style="color:#facc15;">USDT Coins</span><span style="font-weight:bold;" id="balance">0.0000</span></div>
-            <div class="balance-row"><span style="color:#a78bfa;">LTC Coins</span><span style="font-weight:bold;color:#a78bfa;" id="ltc-balance">0.0000</span></div>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#22c55e;">Game Coins</div>
+                <div class="bc-value" style="color:#22c55e;" id="game-coins">0</div>
+            </div>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#facc15;">USDT Coins</div>
+                <div class="bc-value" style="color:#facc15;" id="balance">0.0000</div>
+            </div>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#a78bfa;">LTC Coins</div>
+                <div class="bc-value" style="color:#a78bfa;" id="ltc-balance">0.0000</div>
+            </div>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#14f195;">SOL Coins</div>
+                <div class="bc-value" style="color:#14f195;" id="sol-balance">0.0000</div>
+            </div>
         </div>
         <div class="game-area">
             <div style="font-size:90px;margin-bottom:10px;">⛏️</div>
@@ -202,6 +217,7 @@
             document.getElementById('balance').innerText = parseFloat(userData.coins || 0).toFixed(4);
             document.getElementById('game-coins').innerText = userData.game_coins || 0;
             document.getElementById('ltc-balance').innerText = parseFloat(userData.ltc || 0).toFixed(4);
+            document.getElementById('sol-balance').innerText = parseFloat(userData.sol || 0).toFixed(4);
 
             const today = todayKey();
             const claimsToday = userData.claimsDay === today ? (userData.claimsToday || 0) : 0;
@@ -356,6 +372,7 @@
     </script>
 </body>
 </html>
+
 
 
 
