@@ -3,30 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Crypto Miner</title>
+    <title>Crypto Miner — Tasks</title>
     <style>
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
+        html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
-        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
+        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
         .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 10px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .balance-cell { background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 10px; text-align: left; }
         .balance-cell .bc-label { font-size: 9px; color: #8b949e; margin-bottom: 2px; }
         .balance-cell .bc-value { font-size: 15px; font-weight: bold; }
-        .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 290px; }
-        .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 14px 0; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 5px 0 #a16207; width: 60%; }
-        .collect-btn:disabled { background: #555; box-shadow: none; color: #999; }
-        .banner-area { position: fixed; bottom: 70px; left: 0; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; gap: 10px; padding: 8px 0; }
-        .banner-scale { transform: scale(0.7); transform-origin: center center; display: block; }
+        .tasks-area { padding: 15px 20px; overflow-y: auto; padding-bottom: 90px; flex: 1; }
+        .section-divider { display: flex; align-items: center; gap: 10px; margin: 22px 0 12px; text-align: left; }
+        .section-divider:first-of-type { margin-top: 0; }
+        .section-divider .line { flex: 1; height: 1px; background: #3d2b1f; }
+        .section-divider .label { color: #facc15; font-size: 12px; font-weight: bold; letter-spacing: 1px; white-space: nowrap; }
+        .task-card { background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px; padding: 14px; margin-bottom: 12px; text-align: left; }
+        .task-card.done { border-color: #22c55e; opacity: 0.6; }
+        .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .task-title { color: #facc15; font-size: 14px; font-weight: bold; }
+        .task-reward { color: #a78bfa; font-size: 12px; font-weight: bold; }
+        .task-desc { color: #8b949e; font-size: 11px; margin-bottom: 10px; }
+        .task-btn { background: #facc15; color: #1a1613; border: none; padding: 8px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; width: 100%; }
+        .task-btn.done { background: #22c55e; color: white; cursor: not-allowed; }
+        .task-btn:disabled { background: #555; color: #999; cursor: not-allowed; }
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
         .nav-item.active { color: #facc15; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
-        #ad-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 100001; flex-direction: column; align-items: center; justify-content: center; }
-        #ad-content img { width: 300px; max-width: 90vw; height: auto; background: #0d0d0d; border-radius: 8px; border: 1px solid #3d2b1f; }
-        #ad-cancel-btn { margin-top: 18px; background: transparent; color: #8b949e; border: 1px solid #3d2b1f; padding: 8px 22px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 11px; cursor: pointer; text-transform: uppercase; }
-        #ad-cancel-btn:active { border-color: #ef4444; color: #ef4444; }
         body { text-transform: uppercase; }
-        .header { display: flex; justify-content: space-between; align-items: center; }
+        input { text-transform: none !important; }
         .burger-btn { background: none; border: none; cursor: pointer; padding: 4px; display: flex; flex-direction: column; gap: 5px; }
         .burger-btn span { display: block; width: 22px; height: 2px; background: #facc15; border-radius: 2px; }
         .side-menu { position: fixed; top: 0; right: -260px; width: 240px; height: 100%; background: #0d0b09; border-left: 2px solid #3d2b1f; z-index: 100000; transition: right 0.3s ease; display: flex; flex-direction: column; padding-top: 20px; }
@@ -59,17 +64,8 @@
     </div>
 
     <div id="main-content">
-        <div id="ad-overlay">
-            <div style="font-size:40px;">💎</div>
-            <h2 id="ad-status" style="color:#facc15;">VERIFYING...</h2>
-            <div style="margin:10px 0;" id="ad-content">
-                <iframe id="zerads-frame" src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
-            </div>
-            <p>Wait <span id="ad-timer" style="font-size:20px;color:#facc15;">10</span>s</p>
-            <button id="ad-cancel-btn" onclick="cancelClaim()">← Back (claim won't count)</button>
-        </div>
         <div class="header">
-            <span>Faucet</span>
+            <span>Tasks</span>
             <button class="burger-btn" onclick="openMenu()"><span></span><span></span><span></span></button>
         </div>
         <div class="balance-container">
@@ -80,6 +76,7 @@
             <div class="balance-cell">
                 <div class="bc-label" style="color:#facc15;">USDT Coins</div>
                 <div class="bc-value" style="color:#facc15;" id="balance">0.0000</div>
+
             </div>
             <div class="balance-cell">
                 <div class="bc-label" style="color:#a78bfa;">LTC Coins</div>
@@ -90,36 +87,70 @@
                 <div class="bc-value" style="color:#14f195;" id="sol-balance">0.0000</div>
             </div>
         </div>
-        <div class="game-area">
-            <div style="font-size:90px;margin-bottom:10px;">⛏️</div>
-            <button id="collect-btn" class="collect-btn" onclick="doClaim()">CLAIM</button>
-            <p id="claims-left" style="color:#8b949e;font-size:12px;margin-top:10px;"></p>
-            <p id="boost-info" style="font-size:11px;margin-top:4px;color:#a78bfa;"></p>
-            <p id="login-hint" style="font-size:11px;margin-top:4px;color:#facc15;"></p>
-        </div>
-        <div class="banner-area">
-            <!-- BEGIN AADS AD UNIT 2448740 -->
-            <div id="frame" style="width: 320px; height: 50px; margin: auto; position: relative; z-index: 99998; overflow: hidden;">
-                      <iframe data-aa='2448740' src='//acceptable.a-ads.com/2448740/?size=320x50'
-                                        style='border:0; padding:0; width:320px; height:50px; overflow:hidden;display: block;margin: auto'></iframe>
+
+        <div class="tasks-area">
+            <!-- BEGIN AADS AD UNIT 2447216 -->
+            <div id="frame" style="width: 100%;margin: auto;position: relative; z-index: 99998; margin-bottom: 15px;">
+                      <iframe data-aa='2447216' src='//acceptable.a-ads.com/2447216/?size=Adaptive'
+                                        style='border:0; padding:0; width:70%; height:auto; overflow:hidden;display: block;margin: auto'></iframe>
                     </div>
-            <!-- END AADS AD UNIT 2448740 -->
-            <div class="banner-scale">
-                <iframe src="https://zerads.com/ad/ad.php?width=468&ref=11364" marginwidth="0" marginheight="0" width="468" height="60" scrolling="no" border="0" frameborder="0"></iframe>
+            <!-- END AADS AD UNIT 2447216 -->
+
+            <p style="color:#8b949e; font-size:12px; margin-bottom:15px; text-align:left;">Complete Tasks To Earn Mining Power!</p>
+
+            <div class="section-divider">
+                <span class="line"></span>
+                <span class="label">⭐ ONE-TIME TASKS</span>
+                <span class="line"></span>
             </div>
-            <iframe src="//ads.coinserom.com/pub?adsunit=353639&size=320x50" style="width:320px;height:50px;border:0;padding:0;background-color:transparent;overflow:auto;"></iframe>
+
+            <div class="task-card" id="task-register-bonus">
+                <div class="task-header">
+                    <span class="task-title">🔑 Register Account</span>
+                    <span class="task-reward">+0.3 GH/s</span>
+                </div>
+                <div class="task-desc">Sign In With Google In Settings To Get A Permanent Mining Power Boost!</div>
+                <button class="task-btn" id="task-register-bonus-btn" onclick="goToSettings()">Go To Settings</button>
+            </div>
+
+            <div class="task-card" id="task-zerads">
+                <div class="task-header">
+                    <span class="task-title">⛏️ Boost Mining Power</span>
+                    <span class="task-reward">+0.2 GH/s</span>
+                </div>
+                <div class="task-desc">Visit Our Partner Site And Claim Your Mining Power Boost. One-Time Reward!</div>
+                <button class="task-btn" id="task-zerads-btn" onclick="doTask('zerads', 'https://zerads.com/e3AhcEW', 0.2)">Start Task</button>
+            </div>
+
+            <div class="section-divider">
+                <span class="line"></span>
+                <span class="label">🔄 DAILY TASKS</span>
+                <span class="line"></span>
+            </div>
+
+            <div class="task-card" id="task-daily-link">
+                <div class="task-header">
+                    <span class="task-title">🔗 Daily Bonus Link</span>
+                    <span class="task-reward">+0.17 GH/s</span>
+                </div>
+                <div class="task-desc">Visit The Link Once A Day For A 24-Hour Mining Power Boost!</div>
+                <button class="task-btn" id="task-daily-link-btn" onclick="doDailyLink()" disabled>Claim</button>
+            </div>
+
         </div>
+
         <div class="nav-bar">
             <a href="home.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
-            <div class="nav-item active"><span class="nav-icon">🚰</span>Faucet</div>
-            <a href="tasks.html" class="nav-item"><span class="nav-icon">📋</span>Tasks</a>
+            <a href="index.html" class="nav-item"><span class="nav-icon">🚰</span>Faucet</a>
+            <div class="nav-item active"><span class="nav-icon">📋</span>Tasks</div>
             <a href="wallet.html" class="nav-item"><span class="nav-icon">👛</span>Wallet</a>
         </div>
     </div>
+
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
         import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
-        import { getFirestore, doc, onSnapshot, collection, query, where, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+        import { getFirestore, doc, onSnapshot, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
@@ -130,235 +161,140 @@
             appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
         };
 
-        const app = initializeApp(firebaseConfig);
+        const app  = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
-        const MAX_CLAIMS = 20;
+        const db   = getFirestore(app);
 
-        const MAX_CONCURRENT_ADS = 5;
-        const AD_CLAIM_BASE_A = 2;
-        const AD_CLAIM_BASE_B = 7;
-
+        // Fallback used only until the admin sets a real link in Firestore.
+        let dailyLinkUrl = 'https://za.gl/qLw9k2';
         let currentUser = null;
-        let userData = {};
-        let activeClaimTimer = null;
-        let uiRendered = false;
-        let pendingClaim = false; // set when the visitor taps Claim before Firebase is ready
 
-        // If auth/Firestore hasn't resolved within 5s, tell the visitor
-        // we're still connecting instead of leaving a disabled button with
-        // no explanation — avoids the page looking permanently broken on a
-        // slow connection or first cold load.
-        setTimeout(() => {
-            if (!uiRendered) {
-                document.getElementById('collect-btn').innerText = 'CONNECTING...';
-                document.getElementById('claims-left').innerText = 'Still connecting, please wait…';
-            }
-        }, 5000);
+        // Live-updates if the admin changes the link while the page is open.
+        onSnapshot(doc(db, 'stats', 'global'), (snap) => {
+            const g = snap.exists() ? snap.data() : {};
+            if (g.daily_link_url) dailyLinkUrl = g.daily_link_url;
+        });
 
-        function todayKey() {
-            return new Date().toISOString().slice(0, 10);
-        }
-
-        function adPositionForClaim(claimNum) {
-            if (claimNum >= AD_CLAIM_BASE_A && claimNum < AD_CLAIM_BASE_A + MAX_CONCURRENT_ADS) {
-                return claimNum - AD_CLAIM_BASE_A;
-            }
-            if (claimNum >= AD_CLAIM_BASE_B && claimNum < AD_CLAIM_BASE_B + MAX_CONCURRENT_ADS) {
-                return claimNum - AD_CLAIM_BASE_B;
-            }
-            return null;
-        }
-
-        async function fetchAdForClaim(claimNum) {
-            const position = adPositionForClaim(claimNum);
-            if (position === null) return null;
-            try {
-                const q = query(
-                    collection(db, 'ad_slots'),
-                    where('status', '==', 'active'),
-                    orderBy('createdAt', 'asc'),
-                    limit(MAX_CONCURRENT_ADS)
-                );
-                const snap = await getDocs(q);
-                if (snap.docs.length <= position) return null;
-                const d = snap.docs[position].data();
-                return { banner_url: d.banner_url, click_url: d.click_url };
-            } catch (e) {
-                console.error('Ad lookup failed, falling back to zerads:', e.message);
-                return null;
-            }
-        }
-
+        // ── Auth + live balance ───────────────────────────────────────
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
                 localStorage.setItem('firebase_uid', user.uid);
                 onSnapshot(doc(db, 'users', user.uid), (snap) => {
-                    userData = snap.exists() ? snap.data() : {};
-                    const lastClaimMs = userData.lastClaimTime?.toMillis ? userData.lastClaimTime.toMillis() : 0;
-                    if (lastClaimMs) localStorage.setItem('lastClaimTime', lastClaimMs);
-                    const boosts = (userData.claimBoosts || []).map(b => ({
-                        time: b.time?.toMillis ? b.time.toMillis() : b.time,
-                        amount: b.amount
-                    }));
-                    localStorage.setItem('claimBoosts', JSON.stringify(boosts));
-                    renderUI();
+                    const data = snap.exists() ? snap.data() : {};
+                    document.getElementById('balance').innerText     = parseFloat(data.coins || 0).toFixed(4);
+                    document.getElementById('game-coins').innerText  = data.game_coins || 0;
+                    document.getElementById('ltc-balance').innerText = parseFloat(data.ltc || 0).toFixed(4);
+                    document.getElementById('sol-balance').innerText = parseFloat(data.sol || 0).toFixed(4);
+                    renderDailyLink(data.dailyLinkTs);
                 });
-                syncMining(user.uid);
             } else {
-                try { await signInAnonymously(auth); }
-                catch(e) { document.getElementById('collect-btn').innerText = 'CONNECTION ERROR'; }
+                try { await signInAnonymously(auth); } catch(e) {}
             }
         });
 
-        function renderUI() {
-            uiRendered = true;
-            document.getElementById('balance').innerText = parseFloat(userData.coins || 0).toFixed(4);
-            document.getElementById('game-coins').innerText = userData.game_coins || 0;
-            document.getElementById('ltc-balance').innerText = parseFloat(userData.ltc || 0).toFixed(4);
-            document.getElementById('sol-balance').innerText = parseFloat(userData.sol || 0).toFixed(4);
-
-            const today = todayKey();
-            const claimsToday = userData.claimsDay === today ? (userData.claimsToday || 0) : 0;
-            document.getElementById('claims-left').innerText = claimsToday < MAX_CLAIMS
-                ? `Claims Today: ${claimsToday}/${MAX_CLAIMS}`
-                : 'Daily Limit Reached! Come Back Tomorrow.';
-
-            const now = Date.now();
-            const boosts = (userData.claimBoosts || []).filter(b => {
-                const t = b.time?.toMillis ? b.time.toMillis() : b.time;
-                return now - t < 86400000;
-            });
-            const total = Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 10) / 10;
-            document.getElementById('boost-info').innerText = total > 0 ? `⚡ +${total.toFixed(1)} GH/s Boost Active` : '';
-            document.getElementById('login-hint').innerHTML = userData.email ? '' :
-                '🔒 <a href="settings.html" style="color:#facc15;">Sign in</a> for higher rewards!';
-
-            const btn = document.getElementById('collect-btn');
-            btn.disabled = false;
-            btn.innerText = 'CLAIM';
-
-            // If the visitor tapped Claim before we were ready, run it now.
-            if (pendingClaim) {
-                pendingClaim = false;
-                doClaim();
-            }
+        // ── Sync mining on page load ──────────────────────────────────
+        const uid = localStorage.getItem('firebase_uid');
+        if (uid) {
+            fetch('/api/sync-mining', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid, miningCoin: localStorage.getItem('miningCoin') || 'ltc' }),
+            }).catch(() => {});
         }
 
-        async function syncMining(uid) {
-            try {
-                await fetch('/api/sync-mining', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid, miningCoin: localStorage.getItem('miningCoin') || 'ltc' }),
-                });
-            } catch(e) {}
+        // ── Task logic ────────────────────────────────────────────────
+        function checkDone(taskId) {
+            return localStorage.getItem('task_' + taskId) === 'done';
         }
 
-        setInterval(() => { if (currentUser) syncMining(currentUser.uid); }, 60000);
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && currentUser) syncMining(currentUser.uid);
-        });
-
-        async function verifyAd() {
-            try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 6000);
-                await fetch('https://zerads.com/favicon.ico', { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
-                clearTimeout(timeout);
-                return true;
-            }
-            catch { return false; }
+        function setDone(taskId) {
+            const card = document.getElementById('task-' + taskId);
+            const btn  = document.getElementById('task-' + taskId + '-btn');
+            if (card) card.classList.add('done');
+            if (btn)  { btn.innerText = '✅ Completed'; btn.classList.add('done'); btn.disabled = true; }
         }
 
-        window.doClaim = async function() {
-            if (!currentUser) {
-                // Not ready yet — queue the claim, it fires automatically
-                // as soon as auth + user data finish loading (see renderUI).
-                pendingClaim = true;
-                const waitBtn = document.getElementById('collect-btn');
-                waitBtn.disabled = true;
-                waitBtn.innerText = 'CONNECTING...';
-                return;
-            }
-            const today = todayKey();
-            const claimsToday = userData.claimsDay === today ? (userData.claimsToday || 0) : 0;
-            if (claimsToday >= MAX_CLAIMS) return alert('Daily Limit Reached! Come Back Tomorrow.');
+        if (localStorage.getItem('locked_google_email') || checkDone('register-bonus')) {
+            localStorage.setItem('task_register_bonus', 'done');
+            setDone('register-bonus');
+        }
+        if (checkDone('zerads')) setDone('zerads');
 
-            const btn = document.getElementById('collect-btn');
-            btn.disabled = true;
+        window.goToSettings = function() {
+            if (checkDone('register-bonus')) return;
+            window.location.href = 'settings.html';
+        };
 
-            const nextClaim = claimsToday + 1;
-            const purchasedAd = await fetchAdForClaim(nextClaim);
-
-            const overlay   = document.getElementById('ad-overlay');
-            const adContent = document.getElementById('ad-content');
-            const status    = document.getElementById('ad-status');
-
-            let adPromise = Promise.resolve(true);
-
-            if (purchasedAd) {
-                adContent.innerHTML = `<a href="${purchasedAd.click_url}" target="_blank" rel="noopener"><img src="${purchasedAd.banner_url}" alt="ad"></a>`;
-                status.innerText = 'SPONSORED';
-                status.style.color = '#facc15';
-            } else {
-                adContent.innerHTML = `<iframe id="zerads-frame" src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>`;
-                status.innerText = 'VERIFYING...';
-                status.style.color = '#facc15';
-                // Kick off verification in the background instead of
-                // awaiting it before the timer starts — a slow/hanging ad
-                // request no longer freezes the countdown. Read below once
-                // the countdown finishes.
-                adPromise = verifyAd();
-            }
-
-            overlay.style.display = 'flex';
-
-            let timeLeft = 10;
-            document.getElementById('ad-timer').innerText = timeLeft;
-            activeClaimTimer = setInterval(async () => {
-                timeLeft--;
-                document.getElementById('ad-timer').innerText = timeLeft;
-                if (timeLeft <= 0) {
-                    clearInterval(activeClaimTimer);
-                    activeClaimTimer = null;
-
-                    const ok = await adPromise;
-                    if (!purchasedAd) {
-                        status.innerText = ok ? 'AD LOADED ✅' : 'ADBLOCK DETECTED! ❌';
-                        status.style.color = ok ? '#00ff00' : '#ff4444';
-                    }
-
-                    overlay.style.display = 'none';
-                    if (ok) {
-                        try {
-                            const resp = await fetch('/api/claim', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ uid: currentUser.uid }),
-                            });
-                            const result = await resp.json();
-                            if (!result.success) alert(result.error || 'Claim failed');
-                            else syncMining(currentUser.uid);
-                        } catch(e) { alert('Network error: ' + e.message); }
-                    } else {
-                        alert('⚠️ Ad did not load in time — claim was not credited. Please try again.');
-                    }
-                    btn.disabled = false;
+        window.doTask = function(taskId, url, ghReward) {
+            if (checkDone(taskId)) return;
+            window.open(url, '_blank');
+            const btn = document.getElementById('task-' + taskId + '-btn');
+            btn.disabled  = true;
+            btn.innerText = 'Verifying... 15s';
+            let t = 15;
+            const timer = setInterval(() => {
+                t--;
+                btn.innerText = 'Verifying... ' + t + 's';
+                if (t <= 0) {
+                    clearInterval(timer);
+                    let taskBonus = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
+                    taskBonus = Math.round((taskBonus + ghReward) * 10) / 10;
+                    localStorage.setItem('task_bonus_hashrate', taskBonus);
+                    localStorage.setItem('task_' + taskId, 'done');
+                    setDone(taskId);
+                    alert('🎉 +' + ghReward + ' GH/s Added To Your Mining Power!');
                 }
             }, 1000);
         };
 
-        window.cancelClaim = function() {
-            if (activeClaimTimer) {
-                clearInterval(activeClaimTimer);
-                activeClaimTimer = null;
+        // ── Daily bonus link ────────────────────────────────────────────
+        function renderDailyLink(dailyLinkTs) {
+            const btn = document.getElementById('task-daily-link-btn');
+            const ms = dailyLinkTs?.toMillis ? dailyLinkTs.toMillis() : 0;
+            const hoursLeft = 24 - (Date.now() - ms) / 3600000;
+            if (ms && hoursLeft > 0) {
+                btn.disabled = true;
+                btn.innerText = 'Come Back In ' + Math.ceil(hoursLeft) + 'h';
+            } else {
+                btn.disabled = false;
+                btn.innerText = 'Claim';
             }
-            document.getElementById('ad-overlay').style.display = 'none';
-            const btn = document.getElementById('collect-btn');
-            btn.disabled = false;
-            btn.innerText = 'CLAIM';
+        }
+
+        window.doDailyLink = function() {
+            if (!currentUser) return;
+            const btn = document.getElementById('task-daily-link-btn');
+            if (btn.disabled) return;
+
+            window.open(dailyLinkUrl, '_blank');
+            btn.disabled = true;
+            let t = 15;
+            btn.innerText = 'Verifying... ' + t + 's';
+            const timer = setInterval(async () => {
+                t--;
+                if (t > 0) { btn.innerText = 'Verifying... ' + t + 's'; return; }
+                clearInterval(timer);
+                try {
+                    const resp = await fetch('/api/claim', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ uid: currentUser.uid, action: 'daily_link' }),
+                    });
+                    const result = await resp.json();
+                    if (!result.success) {
+                        alert(result.error || 'Claim failed');
+                        btn.disabled = false;
+                        btn.innerText = 'Claim';
+                    } else {
+                        alert('🎉 +0.17 GH/s Added For 24 Hours!');
+                    }
+                } catch(e) {
+                    alert('Network error: ' + e.message);
+                    btn.disabled = false;
+                    btn.innerText = 'Claim';
+                }
+            }, 1000);
         };
 
         window.openMenu = function() {
@@ -372,5 +308,4 @@
     </script>
 </body>
 </html>
-
 
