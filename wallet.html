@@ -59,19 +59,19 @@
         <div class="balance-container">
             <div class="balance-cell">
                 <div class="bc-label" style="color:#22c55e;">Game Coins</div>
-                <div class="bc-value" style="color:#22c55e;" id="game-coins">—</div>
+                <div class="bc-value" style="color:#22c55e;" id="game-coins">0</div>
             </div>
             <div class="balance-cell">
                 <div class="bc-label" style="color:#facc15;">USDT Coins</div>
-                <div class="bc-value" id="balance">—</div>
+                <div class="bc-value" style="color:#facc15;" id="balance">0.0000</div>
             </div>
             <div class="balance-cell">
                 <div class="bc-label" style="color:#a78bfa;">LTC Coins</div>
-                <div class="bc-value" style="color:#a78bfa;" id="ltc-balance">—</div>
+                <div class="bc-value" style="color:#a78bfa;" id="ltc-balance">0.0000</div>
             </div>
             <div class="balance-cell">
                 <div class="bc-label" style="color:#14f195;">SOL Coins</div>
-                <div class="bc-value" style="color:#14f195;" id="sol-balance">—</div>
+                <div class="bc-value" style="color:#14f195;" id="sol-balance">0.0000</div>
             </div>
         </div>
 
@@ -154,9 +154,9 @@
                 <input type="number" id="swap-amount" placeholder="Amount" oninput="previewSwap()" style="width:100%; background:#1a1613; border:1px solid #3d2b1f; padding:8px; color:white; border-radius:5px; margin-bottom:10px; box-sizing:border-box; font-family:monospace; outline:none; font-size:13px;">
 
                 <div style="background:rgba(0,0,0,0.3); border:1px solid #3d2b1f; border-radius:10px; padding:10px; margin-bottom:12px;">
-                    <div class="info-row"><span>You send</span><span id="swap-preview-in">—</span></div>
-                    <div class="info-row"><span>Fee (<span id="swap-fee-pct">5</span>%)</span><span id="swap-preview-fee">—</span></div>
-                    <div class="info-row"><span>You receive (approx.)</span><span id="swap-preview-out">—</span></div>
+                    <div class="info-row"><span>You send</span><span id="swap-preview-in">0</span></div>
+                    <div class="info-row"><span>Fee (<span id="swap-fee-pct">5</span>%)</span><span id="swap-preview-fee">0</span></div>
+                    <div class="info-row"><span>You receive (approx.)</span><span id="swap-preview-out">0</span></div>
                 </div>
                 <p class="rate-note" id="swap-price-note">Loading live prices...</p>
 
@@ -193,14 +193,11 @@
         const auth = getAuth(app);
         const db   = getFirestore(app);
 
-        // Defaults used only until stats/global loads (or if the admin
-        // hasn't set custom values yet).
         let MIN_USDT = 200, DAILY_LIMIT_USDT = 700;
         let MIN_LTC  = 400, DAILY_LIMIT_LTC  = 1500;
         let MIN_SOL  = 1000000, DAILY_LIMIT_SOL = 5000000;
         let swapFeePct = 5;
 
-        // Live-updates if the admin changes limits/fee while the page is open.
         onSnapshot(doc(db, 'stats', 'global'), (snap) => {
             const g = snap.exists() ? snap.data() : {};
             if (g.withdraw_min_usdt != null) MIN_USDT = g.withdraw_min_usdt;
@@ -217,17 +214,14 @@
             previewSwap();
         });
 
-        // These track the SERVER balance (from Firebase)
         let coins    = 0;
         let gameCoins = 0;
         let ltcCoins = 0;
         let solCoins = 0;
 
-        // ── Auth + live balance from Firebase ────────────────────────
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 localStorage.setItem('firebase_uid', user.uid);
-                // Listen to real-time balance updates
                 onSnapshot(doc(db, 'users', user.uid), (snap) => {
                     const data = snap.exists() ? snap.data() : {};
                     coins     = parseFloat(data.coins || 0);
@@ -244,7 +238,6 @@
             }
         });
 
-        // ─── Tabs ────────────────────────────────────────────────────
         window.switchTab = function(tab) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -252,7 +245,6 @@
             event.target.classList.add('active');
         };
 
-        // ─── Withdraw — compact pill selector + single form ───────────
         let withdrawCoin = 'usdt';
         const WD_LABEL = { usdt: 'USDT', ltc: 'LTC', sol: 'SOL' };
 
@@ -476,7 +468,7 @@
             const outLabel  = document.getElementById('swap-preview-out');
 
             if (!amt || amt <= 0 || !cachedPrices) {
-                inLabel.innerText = '—'; feeLabel.innerText = '—'; outLabel.innerText = '—';
+                inLabel.innerText = '0'; feeLabel.innerText = '0'; outLabel.innerText = '0';
                 return;
             }
 
@@ -524,3 +516,4 @@
     </script>
 </body>
 </html>
+
