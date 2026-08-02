@@ -8,9 +8,10 @@
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
-        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; }
-        .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
-        .balance-row:not(:last-child) { border-bottom: 1px solid #3d2b1f; margin-bottom: 6px; padding-bottom: 6px; }
+        .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 10px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .balance-cell { background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 10px; text-align: left; }
+        .balance-cell .bc-label { font-size: 9px; color: #8b949e; margin-bottom: 2px; }
+        .balance-cell .bc-value { font-size: 15px; font-weight: bold; }
         .tasks-area { padding: 15px 20px; overflow-y: auto; padding-bottom: 90px; flex: 1; }
         .section-divider { display: flex; align-items: center; gap: 10px; margin: 22px 0 12px; text-align: left; }
         .section-divider:first-of-type { margin-top: 0; }
@@ -37,17 +38,21 @@
     <div id="main-content">
         <div class="header">Tasks</div>
         <div class="balance-container">
-            <div class="balance-row">
-                <span style="color:#22c55e;">Game Coins</span>
-                <span style="font-weight:bold; color:#22c55e;" id="game-coins">—</span>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#22c55e;">Game Coins</div>
+                <div class="bc-value" style="color:#22c55e;" id="game-coins">0</div>
             </div>
-            <div class="balance-row">
-                <span style="color:#facc15;">USDT Coins</span>
-                <span style="font-weight:bold;" id="balance">—</span>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#facc15;">USDT Coins</div>
+                <div class="bc-value" style="color:#facc15;" id="balance">0.0000</div>
             </div>
-            <div class="balance-row">
-                <span style="color:#a78bfa;">LTC Coins</span>
-                <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">—</span>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#a78bfa;">LTC Coins</div>
+                <div class="bc-value" style="color:#a78bfa;" id="ltc-balance">0.0000</div>
+            </div>
+            <div class="balance-cell">
+                <div class="bc-label" style="color:#14f195;">SOL Coins</div>
+                <div class="bc-value" style="color:#14f195;" id="sol-balance">0.0000</div>
             </div>
         </div>
 
@@ -97,7 +102,7 @@
                     <span class="task-reward">+0.17 GH/s</span>
                 </div>
                 <div class="task-desc">Visit The Link Once A Day For A 24-Hour Mining Power Boost!</div>
-                <button class="task-btn" id="task-daily-link-btn" onclick="doDailyLink()" disabled>Loading...</button>
+                <button class="task-btn" id="task-daily-link-btn" onclick="doDailyLink()" disabled>Claim</button>
             </div>
 
         </div>
@@ -148,6 +153,7 @@
                     document.getElementById('balance').innerText     = parseFloat(data.coins || 0).toFixed(4);
                     document.getElementById('game-coins').innerText  = data.game_coins || 0;
                     document.getElementById('ltc-balance').innerText = parseFloat(data.ltc || 0).toFixed(4);
+                    document.getElementById('sol-balance').innerText = parseFloat(data.sol || 0).toFixed(4);
                     renderDailyLink(data.dailyLinkTs);
                 });
             } else {
