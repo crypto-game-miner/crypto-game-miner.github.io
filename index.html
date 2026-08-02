@@ -116,7 +116,6 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const MAX_CLAIMS = 20;
-        const POPUP_ON = [1, 10];
 
         const MAX_CONCURRENT_ADS = 5;
         const AD_CLAIM_BASE_A = 2;
@@ -267,10 +266,6 @@
             const nextClaim = claimsToday + 1;
             const purchasedAd = await fetchAdForClaim(nextClaim);
 
-            if (!purchasedAd && POPUP_ON.includes(nextClaim)) {
-                window.open('https://zerads.com/ad/pop.php?ref=11364', '_blank');
-            }
-
             const overlay   = document.getElementById('ad-overlay');
             const adContent = document.getElementById('ad-content');
             const status    = document.getElementById('ad-status');
@@ -330,6 +325,7 @@
     </script>
 </body>
 </html>
+
 
 
 
