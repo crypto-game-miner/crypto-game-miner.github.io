@@ -242,7 +242,13 @@
         });
 
         async function verifyAd() {
-            try { await fetch('https://zerads.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' }); return true; }
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 6000);
+                await fetch('https://zerads.com/favicon.ico', { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+                clearTimeout(timeout);
+                return true;
+            }
             catch { return false; }
         }
 
@@ -270,7 +276,7 @@
             const adContent = document.getElementById('ad-content');
             const status    = document.getElementById('ad-status');
 
-            let ok = true;
+            let adPromise = Promise.resolve(true);
 
             if (purchasedAd) {
                 adContent.innerHTML = `<a href="${purchasedAd.click_url}" target="_blank" rel="noopener"><img src="${purchasedAd.banner_url}" alt="ad"></a>`;
@@ -280,22 +286,29 @@
                 adContent.innerHTML = `<iframe id="zerads-frame" src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>`;
                 status.innerText = 'VERIFYING...';
                 status.style.color = '#facc15';
+                // Kick off verification in the background instead of
+                // awaiting it before the timer starts — a slow/hanging ad
+                // request no longer freezes the countdown. Read below once
+                // the countdown finishes.
+                adPromise = verifyAd();
             }
 
             overlay.style.display = 'flex';
 
-            if (!purchasedAd) {
-                ok = await verifyAd();
-                status.innerText = ok ? 'AD LOADED ✅' : 'ADBLOCK DETECTED! ❌';
-                status.style.color = ok ? '#00ff00' : '#ff4444';
-            }
-
             let timeLeft = 10;
+            document.getElementById('ad-timer').innerText = timeLeft;
             const timer = setInterval(async () => {
                 timeLeft--;
                 document.getElementById('ad-timer').innerText = timeLeft;
                 if (timeLeft <= 0) {
                     clearInterval(timer);
+
+                    const ok = await adPromise;
+                    if (!purchasedAd) {
+                        status.innerText = ok ? 'AD LOADED ✅' : 'ADBLOCK DETECTED! ❌';
+                        status.style.color = ok ? '#00ff00' : '#ff4444';
+                    }
+
                     overlay.style.display = 'none';
                     if (ok) {
                         try {
@@ -308,6 +321,8 @@
                             if (!result.success) alert(result.error || 'Claim failed');
                             else syncMining(currentUser.uid);
                         } catch(e) { alert('Network error: ' + e.message); }
+                    } else {
+                        alert('⚠️ Ad did not load in time — claim was not credited. Please try again.');
                     }
                     btn.disabled = false;
                 }
@@ -325,6 +340,7 @@
     </script>
 </body>
 </html>
+
 
 
 
