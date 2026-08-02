@@ -7,7 +7,7 @@
     <style>
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
-        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
+        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
         .balance-container { background: rgba(0,0,0,0.4); margin: 5px 20px; padding: 10px; border-radius: 10px; border: 2px solid #3d2b1f; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .balance-cell { background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 10px; text-align: left; }
         .balance-cell .bc-label { font-size: 9px; color: #8b949e; margin-bottom: 2px; }
@@ -51,11 +51,42 @@
         .swap-pair-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
         .swap-coin-select { flex: 1; background: #1a1613; border: 1px solid #3d2b1f; padding: 10px 8px; color: white; border-radius: 8px; font-family: monospace; font-size: 13px; outline: none; text-transform: uppercase; }
         .swap-flip-btn { background: #a78bfa; color: #1a1613; border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 16px; font-weight: bold; cursor: pointer; flex-shrink: 0; }
+        .burger-btn { background: none; border: none; cursor: pointer; padding: 4px; display: flex; flex-direction: column; gap: 5px; }
+        .burger-btn span { display: block; width: 22px; height: 2px; background: #facc15; border-radius: 2px; }
+        .side-menu { position: fixed; top: 0; right: -260px; width: 240px; height: 100%; background: #0d0b09; border-left: 2px solid #3d2b1f; z-index: 100000; transition: right 0.3s ease; display: flex; flex-direction: column; padding-top: 20px; }
+        .side-menu.open { right: 0; }
+        .side-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; }
+        .side-overlay.open { display: block; }
+        .side-menu-header { color: #facc15; font-size: 16px; font-weight: bold; padding: 0 20px 20px; border-bottom: 1px solid #3d2b1f; display: flex; justify-content: space-between; align-items: center; }
+        .close-btn { background: none; border: none; color: #8b949e; font-size: 22px; cursor: pointer; }
+        .side-menu-item { display: flex; align-items: center; padding: 16px 20px; color: white; text-decoration: none; font-size: 14px; font-weight: bold; border-bottom: 1px solid #1a1613; gap: 14px; }
+        .side-menu-item .menu-icon { font-size: 22px; }
+        .side-menu-item .menu-badge { background: #facc15; color: #1a1613; font-size: 9px; padding: 2px 6px; border-radius: 10px; margin-left: auto; }
+        .side-menu-item .menu-badge.green { background: #22c55e; }
+        .side-menu-item .menu-badge.purple { background: #a78bfa; }
+        .side-menu-item.disabled { color: #555; cursor: default; }
+        .side-menu-item.disabled .menu-icon { opacity: 0.4; }
+        .side-menu-item .menu-badge.soon { background: #3d2b1f; color: #8b949e; }
     </style>
 </head>
 <body>
+    <div class="side-overlay" id="overlay" onclick="closeMenu()"></div>
+    <div class="side-menu" id="side-menu">
+        <div class="side-menu-header"><span>Menu</span><button class="close-btn" onclick="closeMenu()">✕</button></div>
+        <a href="store.html" class="side-menu-item"><span class="menu-icon">🛒</span>Store<span class="menu-badge">New</span></a>
+        <a href="miners.html" class="side-menu-item"><span class="menu-icon">⛏️</span>My Miners</a>
+        <a href="advertise.html" class="side-menu-item"><span class="menu-icon">📢</span>Advertise<span class="menu-badge green">$</span></a>
+        <a href="about.html" class="side-menu-item"><span class="menu-icon">ℹ️</span>About</a>
+        <a href="faq.html" class="side-menu-item"><span class="menu-icon">❓</span>FAQ</a>
+        <a href="settings.html" class="side-menu-item"><span class="menu-icon">⚙️</span>Settings</a>
+        <a href="season.html" class="side-menu-item"><span class="menu-icon">🎫</span>Season Pass<span class="menu-badge purple">New</span></a>
+    </div>
+
     <div id="main-content">
-        <div class="header">Wallet</div>
+        <div class="header">
+            <span>Wallet</span>
+            <button class="burger-btn" onclick="openMenu()"><span></span><span></span><span></span></button>
+        </div>
         <div class="balance-container">
             <div class="balance-cell">
                 <div class="bc-label" style="color:#22c55e;">Game Coins</div>
@@ -513,7 +544,17 @@
                 btn.innerText = 'Swap';
             }
         };
+
+        window.openMenu = function() {
+            document.getElementById('side-menu').classList.add('open');
+            document.getElementById('overlay').classList.add('open');
+        };
+        window.closeMenu = function() {
+            document.getElementById('side-menu').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        };
     </script>
 </body>
 </html>
+
 
