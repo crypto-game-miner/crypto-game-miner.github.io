@@ -346,9 +346,6 @@
                             alert(result.error || 'Claim failed');
                         } else {
                             syncMining(currentUser.uid);
-                            if (!ok) {
-                                alert('⚠️ Adblock detected — claim counted, but no USDT Coins this time. Disable adblock for full rewards!');
-                            }
                         }
                     } catch(e) { alert('Network error: ' + e.message); }
                     btn.disabled = false;
@@ -378,6 +375,7 @@
     </script>
 </body>
 </html>
+
 
 
 
