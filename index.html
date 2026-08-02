@@ -74,7 +74,7 @@
         </div>
         <div class="game-area">
             <div style="font-size:90px;margin-bottom:10px;">⛏️</div>
-            <button id="collect-btn" class="collect-btn" onclick="doClaim()" disabled>CLAIM</button>
+            <button id="collect-btn" class="collect-btn" onclick="doClaim()">CLAIM</button>
             <p id="claims-left" style="color:#8b949e;font-size:12px;margin-top:10px;"></p>
             <p id="boost-info" style="font-size:11px;margin-top:4px;color:#a78bfa;"></p>
             <p id="login-hint" style="font-size:11px;margin-top:4px;color:#facc15;"></p>
@@ -125,6 +125,7 @@
         let currentUser = null;
         let userData = {};
         let uiRendered = false;
+        let pendingClaim = false; // set when the visitor taps Claim before Firebase is ready
 
         // If auth/Firestore hasn't resolved within 5s, tell the visitor
         // we're still connecting instead of leaving a disabled button with
@@ -218,6 +219,12 @@
             const btn = document.getElementById('collect-btn');
             btn.disabled = false;
             btn.innerText = 'CLAIM';
+
+            // If the visitor tapped Claim before we were ready, run it now.
+            if (pendingClaim) {
+                pendingClaim = false;
+                doClaim();
+            }
         }
 
         async function syncMining(uid) {
@@ -241,7 +248,15 @@
         }
 
         window.doClaim = async function() {
-            if (!currentUser) return;
+            if (!currentUser) {
+                // Not ready yet — queue the claim, it fires automatically
+                // as soon as auth + user data finish loading (see renderUI).
+                pendingClaim = true;
+                const waitBtn = document.getElementById('collect-btn');
+                waitBtn.disabled = true;
+                waitBtn.innerText = 'CONNECTING...';
+                return;
+            }
             const today = todayKey();
             const claimsToday = userData.claimsDay === today ? (userData.claimsToday || 0) : 0;
             if (claimsToday >= MAX_CLAIMS) return alert('Daily Limit Reached! Come Back Tomorrow.');
@@ -315,5 +330,6 @@
     </script>
 </body>
 </html>
+
 
 
