@@ -49,6 +49,7 @@
         <a href="store.html" class="side-menu-item"><span class="menu-icon">🛒</span>Store<span class="menu-badge">New</span></a>
         <a href="miners.html" class="side-menu-item"><span class="menu-icon">⛏️</span>My Miners</a>
         <a href="advertise.html" class="side-menu-item"><span class="menu-icon">📢</span>Advertise<span class="menu-badge green">$</span></a>
+        <a href="about.html" class="side-menu-item"><span class="menu-icon">ℹ️</span>About</a>
         <a href="settings.html" class="side-menu-item"><span class="menu-icon">⚙️</span>Settings</a>
         <a href="season.html" class="side-menu-item"><span class="menu-icon">🎫</span>Season Pass<span class="menu-badge purple">New</span></a>
     </div>
@@ -67,13 +68,13 @@
             <button class="burger-btn" onclick="openMenu()"><span></span><span></span><span></span></button>
         </div>
         <div class="balance-container">
-            <div class="balance-row"><span style="color:#22c55e;">Game Coins</span><span style="font-weight:bold;color:#22c55e;" id="game-coins">—</span></div>
-            <div class="balance-row"><span style="color:#facc15;">USDT Coins</span><span style="font-weight:bold;" id="balance">—</span></div>
-            <div class="balance-row"><span style="color:#a78bfa;">LTC Coins</span><span style="font-weight:bold;color:#a78bfa;" id="ltc-balance">—</span></div>
+            <div class="balance-row"><span style="color:#22c55e;">Game Coins</span><span style="font-weight:bold;color:#22c55e;" id="game-coins">0</span></div>
+            <div class="balance-row"><span style="color:#facc15;">USDT Coins</span><span style="font-weight:bold;" id="balance">0.0000</span></div>
+            <div class="balance-row"><span style="color:#a78bfa;">LTC Coins</span><span style="font-weight:bold;color:#a78bfa;" id="ltc-balance">0.0000</span></div>
         </div>
         <div class="game-area">
             <div style="font-size:90px;margin-bottom:10px;">⛏️</div>
-            <button id="collect-btn" class="collect-btn" onclick="doClaim()" disabled>LOADING...</button>
+            <button id="collect-btn" class="collect-btn" onclick="doClaim()" disabled>CLAIM</button>
             <p id="claims-left" style="color:#8b949e;font-size:12px;margin-top:10px;"></p>
             <p id="boost-info" style="font-size:11px;margin-top:4px;color:#a78bfa;"></p>
             <p id="login-hint" style="font-size:11px;margin-top:4px;color:#facc15;"></p>
@@ -117,17 +118,25 @@
         const MAX_CLAIMS = 20;
         const POPUP_ON = [1, 10];
 
-        // Must mirror api/claim.js exactly, or the banner shown to the user
-        // won't match the campaign the server actually deducts a view from.
         const MAX_CONCURRENT_ADS = 5;
-        const AD_CLAIM_BASE_A = 2;  // campaign 0 on claims 2 & 7
-        const AD_CLAIM_BASE_B = 7;  // campaign 1 on claims 3 & 8, etc.
+        const AD_CLAIM_BASE_A = 2;
+        const AD_CLAIM_BASE_B = 7;
 
         let currentUser = null;
         let userData = {};
+        let uiRendered = false;
 
-        // Matches the UTC date key used server-side in api/claim.js
-        // (must stay identical on both sides, or the daily counter desyncs).
+        // If auth/Firestore hasn't resolved within 5s, tell the visitor
+        // we're still connecting instead of leaving a disabled button with
+        // no explanation — avoids the page looking permanently broken on a
+        // slow connection or first cold load.
+        setTimeout(() => {
+            if (!uiRendered) {
+                document.getElementById('collect-btn').innerText = 'CONNECTING...';
+                document.getElementById('claims-left').innerText = 'Still connecting, please wait…';
+            }
+        }, 5000);
+
         function todayKey() {
             return new Date().toISOString().slice(0, 10);
         }
@@ -142,9 +151,6 @@
             return null;
         }
 
-        // Looks up the purchased banner (if any) that should show for this
-        // claim number. Returns null on any error/no match — caller falls
-        // back to zerads.
         async function fetchAdForClaim(claimNum) {
             const position = adPositionForClaim(claimNum);
             if (position === null) return null;
@@ -171,10 +177,8 @@
                 localStorage.setItem('firebase_uid', user.uid);
                 onSnapshot(doc(db, 'users', user.uid), (snap) => {
                     userData = snap.exists() ? snap.data() : {};
-                    // Save lastClaimTime to localStorage so home.html can use it
                     const lastClaimMs = userData.lastClaimTime?.toMillis ? userData.lastClaimTime.toMillis() : 0;
                     if (lastClaimMs) localStorage.setItem('lastClaimTime', lastClaimMs);
-                    // Save claimBoosts to localStorage for home.html mining display
                     const boosts = (userData.claimBoosts || []).map(b => ({
                         time: b.time?.toMillis ? b.time.toMillis() : b.time,
                         amount: b.amount
@@ -190,6 +194,7 @@
         });
 
         function renderUI() {
+            uiRendered = true;
             document.getElementById('balance').innerText = parseFloat(userData.coins || 0).toFixed(4);
             document.getElementById('game-coins').innerText = userData.game_coins || 0;
             document.getElementById('ltc-balance').innerText = parseFloat(userData.ltc || 0).toFixed(4);
@@ -258,7 +263,6 @@
             let ok = true;
 
             if (purchasedAd) {
-                // Show the purchased banner instead of zerads.
                 adContent.innerHTML = `<a href="${purchasedAd.click_url}" target="_blank" rel="noopener"><img src="${purchasedAd.banner_url}" alt="ad"></a>`;
                 status.innerText = 'SPONSORED';
                 status.style.color = '#facc15';
@@ -311,4 +315,5 @@
     </script>
 </body>
 </html>
+
 
