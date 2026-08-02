@@ -70,11 +70,11 @@
     <div class="balance-bar">
         <div class="bal-item">
             <div class="bal-label">USDT Coins</div>
-            <div class="bal-value" id="bal-usdt" style="color:#facc15;">—</div>
+            <div class="bal-value" id="bal-usdt" style="color:#facc15;">0.0000</div>
         </div>
         <div class="bal-item">
             <div class="bal-label">Game Coins</div>
-            <div class="bal-value" id="bal-game" style="color:#22c55e;">—</div>
+            <div class="bal-value" id="bal-game" style="color:#22c55e;">0</div>
         </div>
     </div>
 
@@ -144,7 +144,7 @@
 
 <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
-    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+    import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
     import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
     const firebaseConfig = {
@@ -184,6 +184,15 @@
                 document.getElementById('bal-usdt').innerText = userCoins.toFixed(4);
             }
         } else {
+            // Mirrors index.html/home.html: bootstrap an anonymous session
+            // instead of leaving the visitor logged out. Without this, a
+            // cold visit straight to this page (no prior session in this
+            // browser) showed a permanent "Sign in to purchase" wall even
+            // though the rest of the app treats anonymous users as signed in.
+            try {
+                await signInAnonymously(auth);
+                return; // onAuthStateChanged will fire again with the new user
+            } catch(e) {}
             currentUser = null;
             document.getElementById('not-logged').style.display = 'block';
             document.getElementById('bal-usdt').innerText = parseFloat(localStorage.getItem('miner_balance') || 0).toFixed(4);
@@ -292,6 +301,7 @@
 
 </body>
 </html>
+
 
 
 
