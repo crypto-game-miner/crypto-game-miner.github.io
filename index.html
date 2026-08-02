@@ -331,20 +331,26 @@
                     }
 
                     overlay.style.display = 'none';
-                    if (ok) {
-                        try {
-                            const resp = await fetch('/api/claim', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ uid: currentUser.uid }),
-                            });
-                            const result = await resp.json();
-                            if (!result.success) alert(result.error || 'Claim failed');
-                            else syncMining(currentUser.uid);
-                        } catch(e) { alert('Network error: ' + e.message); }
-                    } else {
-                        alert('⚠️ Ad did not load in time — claim was not credited. Please try again.');
-                    }
+                    // Claim always goes through now — adblock no longer blocks
+                    // the claim itself (game coins / EXP / boost still count).
+                    // The server decides whether to grant USDT Coins based on
+                    // adVerified: without a real ad view, USDT is withheld.
+                    try {
+                        const resp = await fetch('/api/claim', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ uid: currentUser.uid, adVerified: ok }),
+                        });
+                        const result = await resp.json();
+                        if (!result.success) {
+                            alert(result.error || 'Claim failed');
+                        } else {
+                            syncMining(currentUser.uid);
+                            if (!ok) {
+                                alert('⚠️ Adblock detected — claim counted, but no USDT Coins this time. Disable adblock for full rewards!');
+                            }
+                        }
+                    } catch(e) { alert('Network error: ' + e.message); }
                     btn.disabled = false;
                 }
             }, 1000);
