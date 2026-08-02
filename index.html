@@ -22,6 +22,8 @@
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
         #ad-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 100001; flex-direction: column; align-items: center; justify-content: center; }
         #ad-content img { width: 300px; max-width: 90vw; height: auto; background: #0d0d0d; border-radius: 8px; border: 1px solid #3d2b1f; }
+        #ad-cancel-btn { margin-top: 18px; background: transparent; color: #8b949e; border: 1px solid #3d2b1f; padding: 8px 22px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 11px; cursor: pointer; text-transform: uppercase; }
+        #ad-cancel-btn:active { border-color: #ef4444; color: #ef4444; }
         body { text-transform: uppercase; }
         .header { display: flex; justify-content: space-between; align-items: center; }
         .burger-btn { background: none; border: none; cursor: pointer; padding: 4px; display: flex; flex-direction: column; gap: 5px; }
@@ -62,6 +64,7 @@
                 <iframe id="zerads-frame" src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>
             </div>
             <p>Wait <span id="ad-timer" style="font-size:20px;color:#facc15;">10</span>s</p>
+            <button id="ad-cancel-btn" onclick="cancelClaim()">← Back (claim won't count)</button>
         </div>
         <div class="header">
             <span>Faucet</span>
@@ -123,6 +126,7 @@
 
         let currentUser = null;
         let userData = {};
+        let activeClaimTimer = null;
         let uiRendered = false;
         let pendingClaim = false; // set when the visitor taps Claim before Firebase is ready
 
@@ -297,11 +301,12 @@
 
             let timeLeft = 10;
             document.getElementById('ad-timer').innerText = timeLeft;
-            const timer = setInterval(async () => {
+            activeClaimTimer = setInterval(async () => {
                 timeLeft--;
                 document.getElementById('ad-timer').innerText = timeLeft;
                 if (timeLeft <= 0) {
-                    clearInterval(timer);
+                    clearInterval(activeClaimTimer);
+                    activeClaimTimer = null;
 
                     const ok = await adPromise;
                     if (!purchasedAd) {
@@ -329,6 +334,17 @@
             }, 1000);
         };
 
+        window.cancelClaim = function() {
+            if (activeClaimTimer) {
+                clearInterval(activeClaimTimer);
+                activeClaimTimer = null;
+            }
+            document.getElementById('ad-overlay').style.display = 'none';
+            const btn = document.getElementById('collect-btn');
+            btn.disabled = false;
+            btn.innerText = 'CLAIM';
+        };
+
         window.openMenu = function() {
             document.getElementById('side-menu').classList.add('open');
             document.getElementById('overlay').classList.add('open');
@@ -340,6 +356,7 @@
     </script>
 </body>
 </html>
+
 
 
 
