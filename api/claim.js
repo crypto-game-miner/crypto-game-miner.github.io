@@ -1,8 +1,10 @@
 // api/claim.js
 // The ONLY place that's allowed to credit USDT/Game coins for a faucet claim.
 // Also the only place allowed to consume a view from an active purchased
-// ad_slots document. Client sends { uid } for a faucet claim, or
-// { uid, action: 'daily_link' } for the daily bonus-link claim.
+// ad_slots document. Client sends { uid, adVerified } for a faucet claim
+// (adVerified: whether a real ad view was confirmed — false means adblock
+// was detected, so the claim still counts but no USDT Coins are granted),
+// or { uid, action: 'daily_link' } for the daily bonus-link claim.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -49,8 +51,13 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { uid, action } = req.body || {};
+  const { uid, action, adVerified } = req.body || {};
   if (!uid) return res.status(400).json({ error: 'Missing uid' });
+
+  // Whether this claim is backed by a confirmed ad view. Defaults to true
+  // so any older client that doesn't send this field (or the daily-link
+  // flow, which doesn't use it at all) keeps the previous behavior.
+  const adWasVerified = adVerified !== false;
 
   const db = initFirebase();
   const userRef = db.collection('users').doc(uid);
@@ -99,6 +106,7 @@ export default async function handler(req, res) {
 
   // ─────────────────────────────────────────────────────────────────
   // FAUCET CLAIM — original flow, now with an optional declining pool
+  // and an adblock-aware USDT reward.
   // ─────────────────────────────────────────────────────────────────
 
   // Up to 5 concurrent active campaigns can run at once. They're ordered
@@ -158,8 +166,14 @@ export default async function handler(req, res) {
         throw { code: 'COOLDOWN', message: `Please wait ${wait}s before next claim.` };
       }
 
-      // ─── Determine reward ───────────────────────────────────────────
-      // Two modes:
+      // ─── Determine USDT reward ───────────────────────────────────────
+      // If adVerified is false (adblock detected client-side), the claim
+      // still goes through — game coins / EXP / hashrate boost are still
+      // granted below — but USDT Coins are withheld entirely, and the
+      // claim pool (if enabled) is left untouched since no budget was
+      // actually spent.
+      //
+      // When adVerified is true, two modes apply:
       // 1. Flat (default): guest/logged fixed reward, unlimited.
       // 2. Declining pool (opt-in via claim_pool_usdt): a shared, site-wide
       //    daily budget. Tracks the CURRENT per-claim reward directly (not
@@ -173,33 +187,36 @@ export default async function handler(req, res) {
       //    once it hits 0, further claims (that day) get nothing from the pool.
       const isRealLogin = !!data.email; // email only set once user links Google
       const claimPoolUsdt = g.claim_pool_usdt != null ? g.claim_pool_usdt : null;
-      let usdtReward;
+      let usdtReward = 0;
       let poolUpdate = null;
 
-      if (claimPoolUsdt != null) {
-        const decayPct = g.claim_pool_decay_pct != null ? g.claim_pool_decay_pct : DEFAULT_CLAIM_POOL_DECAY_PCT;
-        const startReward = g.claim_pool_start_reward != null ? g.claim_pool_start_reward : DEFAULT_CLAIM_POOL_START_REWARD;
-        const poolDay = g.claim_pool_day;
-        const isFreshDay = poolDay !== today || g.claim_pool_remaining == null || g.claim_pool_current_reward == null;
+      if (adWasVerified) {
+        if (claimPoolUsdt != null) {
+          const decayPct = g.claim_pool_decay_pct != null ? g.claim_pool_decay_pct : DEFAULT_CLAIM_POOL_DECAY_PCT;
+          const startReward = g.claim_pool_start_reward != null ? g.claim_pool_start_reward : DEFAULT_CLAIM_POOL_START_REWARD;
+          const poolDay = g.claim_pool_day;
+          const isFreshDay = poolDay !== today || g.claim_pool_remaining == null || g.claim_pool_current_reward == null;
 
-        const remaining = isFreshDay ? claimPoolUsdt : g.claim_pool_remaining;
-        const currentReward = isFreshDay
-          ? Math.min(claimPoolUsdt, startReward, MAX_POOL_REWARD_CEILING)
-          : g.claim_pool_current_reward;
+          const remaining = isFreshDay ? claimPoolUsdt : g.claim_pool_remaining;
+          const currentReward = isFreshDay
+            ? Math.min(claimPoolUsdt, startReward, MAX_POOL_REWARD_CEILING)
+            : g.claim_pool_current_reward;
 
-        usdtReward = Math.max(Math.min(remaining, currentReward), remaining > 0 ? MIN_POOL_REWARD : 0);
-        const newRemaining = Math.max(0, Math.round((remaining - usdtReward) * 1e6) / 1e6);
-        const newCurrentReward = Math.max(currentReward * (1 - decayPct / 100), MIN_POOL_REWARD);
-        poolUpdate = {
-          claim_pool_remaining: newRemaining,
-          claim_pool_current_reward: newCurrentReward,
-          claim_pool_day: today,
-        };
-      } else {
-        usdtReward = isRealLogin ? rewardLogged : rewardGuest;
+          usdtReward = Math.max(Math.min(remaining, currentReward), remaining > 0 ? MIN_POOL_REWARD : 0);
+          const newRemaining = Math.max(0, Math.round((remaining - usdtReward) * 1e6) / 1e6);
+          const newCurrentReward = Math.max(currentReward * (1 - decayPct / 100), MIN_POOL_REWARD);
+          poolUpdate = {
+            claim_pool_remaining: newRemaining,
+            claim_pool_current_reward: newCurrentReward,
+            claim_pool_day: today,
+          };
+        } else {
+          usdtReward = isRealLogin ? rewardLogged : rewardGuest;
+        }
       }
 
       // ─── Update claim boosts array (each claim = +claimBoostAmount GH/s for 24h) ─
+      // Granted regardless of adVerified — only the USDT reward is gated.
       let boosts = data.claimBoosts || [];
       boosts = boosts.filter(b => now - (b.time?.toMillis ? b.time.toMillis() : b.time) < 86400000);
       boosts.push({ time: now, amount: claimBoostAmount });
@@ -222,17 +239,20 @@ export default async function handler(req, res) {
       }, { merge: true });
 
       // Write back the pool's remaining budget + next per-claim reward,
-      // if pool mode is active.
+      // if pool mode is active and a reward was actually granted.
       if (poolUpdate) {
         tx.set(statsGlobalRef, poolUpdate, { merge: true });
       }
 
       // Daily site-wide stats — how much USDT is being handed out via claims today.
-      const dailyStatsRef = db.collection('stats').doc('daily_' + today);
-      tx.set(dailyStatsRef, {
-        usdt_from_claims: FieldValue.increment(usdtReward),
-        updatedAt: Timestamp.fromMillis(now),
-      }, { merge: true });
+      // Skipped entirely when no USDT was granted (adblock claim).
+      if (usdtReward > 0) {
+        const dailyStatsRef = db.collection('stats').doc('daily_' + today);
+        tx.set(dailyStatsRef, {
+          usdt_from_claims: FieldValue.increment(usdtReward),
+          updatedAt: Timestamp.fromMillis(now),
+        }, { merge: true });
+      }
 
       // ─── Consume a view from a purchased ad slot, if this claim number
       // falls on one of the ad windows ─────────────────────────────────
@@ -241,7 +261,10 @@ export default async function handler(req, res) {
       // the next campaign in line, shown on claims 3 & 8. And so on, up
       // to MAX_CONCURRENT_ADS. All other claim numbers show zerads.
       // Uses slotSnap read earlier (before any writes). Wrapped so that
-      // any failure here never blocks the coin reward above.
+      // any failure here never blocks the coin reward above. Sponsored
+      // slots are always shown via a direct <img>, so adWasVerified is
+      // always true whenever a sponsored ad was actually displayed —
+      // this consumption isn't gated separately.
       let ad = null;
       try {
         let adPosition = null;
@@ -278,6 +301,7 @@ export default async function handler(req, res) {
         claimsToday: newClaims,
         claimsRemaining: MAX_CLAIMS_PER_DAY - newClaims,
         usdtReward,
+        adVerified: adWasVerified,
         gameCoinsReward,
         ad,
       };
@@ -293,6 +317,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 
 
 
