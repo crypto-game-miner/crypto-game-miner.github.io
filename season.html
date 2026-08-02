@@ -142,9 +142,20 @@
             return level;
         }
 
+        async function syncMining(uid) {
+            try {
+                await fetch('/api/sync-mining', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid, miningCoin: localStorage.getItem('miningCoin') || 'ltc' }),
+                });
+            } catch(e) {}
+        }
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
+                await syncMining(user.uid); // ensures the Firestore user doc exists before any claim
                 onSnapshot(doc(db, 'users', user.uid), (snap) => {
                     userData = snap.exists() ? snap.data() : {};
                     render();
@@ -236,10 +247,8 @@
             }
         }
 
-        window.claimAction = async function(action, btnEl) {
+        window.claimAction = async function(action, btnEl, isRetry) {
             if (!currentUser || !accountReady) {
-                // Not ready yet — queue it, render() fires it automatically
-                // once the account/user doc is confirmed loaded.
                 pendingAction = { action, btnEl };
                 if (btnEl) {
                     btnEl.disabled = true;
@@ -255,6 +264,14 @@
                 });
                 const result = await resp.json();
                 if (!result.success) {
+                    const msg = (result.error || '').toLowerCase();
+                    const looksLikeMissingAccount = msg.includes('not found') || msg.includes('not registered') || msg.includes('no user');
+                    if (looksLikeMissingAccount && !isRetry) {
+                        // Account doc likely missing/out of sync — recreate it and
+                        // retry once automatically before bothering the visitor.
+                        await syncMining(currentUser.uid);
+                        return claimAction(action, btnEl, true);
+                    }
                     alert(result.error || 'Claim failed');
                     return;
                 }
@@ -265,10 +282,16 @@
                 }
             } catch(e) {
                 alert('Network error: ' + e.message);
+            } finally {
+                // Whatever happened above, make sure the button never stays
+                // stuck on "CONNECTING..." — re-render restores the correct
+                // label (Claim / Locked / Claimed) from current state.
+                render();
             }
         };
     </script>
 </body>
 </html>
+
 
 
