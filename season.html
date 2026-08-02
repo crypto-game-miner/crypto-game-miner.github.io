@@ -8,7 +8,7 @@
         html, body { height: 100%; margin: 0; padding: 0; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .main-area { flex: 1; padding: 15px 20px; overflow-y: auto; padding-bottom: 40px; }
+        .main-area { flex: 1; padding: 15px 20px; overflow-y: auto; padding-bottom: 90px; }
         .section-title { color: #facc15; font-size: 14px; font-weight: bold; margin-bottom: 12px; text-align: left; text-transform: uppercase; }
         .xp-card { background: rgba(0,0,0,0.4); border: 2px solid #3d2b1f; border-radius: 12px; padding: 15px; margin-bottom: 18px; text-align: left; }
         .xp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -38,6 +38,11 @@
         .quest-btn.claim { background: #22c55e; color: #1a1613; }
         .quest-btn.locked { background: #3d2b1f; color: #8b949e; cursor: default; }
         .quest-btn.claimed { background: #a78bfa; color: #1a1613; cursor: default; }
+        .quests-loading { color: #8b949e; font-size: 12px; text-align: left; padding: 10px 0; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
+        .nav-item.active { color: #facc15; }
+        .nav-icon { font-size: 24px; margin-bottom: 3px; }
         body { text-transform: uppercase; }
     </style>
 </head>
@@ -66,16 +71,23 @@
                     <div class="level-reward">+20 Game Coins</div>
                     <button class="level-btn" id="lvl1-btn" onclick="claimAction('lvl1')">Claim</button>
                 </div>
-                <div class="level-card" id="lvl2-card">
+                <div class="level-card locked" id="lvl2-card">
                     <div class="level-num">LEVEL 2 · 100 XP</div>
                     <div class="level-icon">⚙️</div>
                     <div class="level-reward">QuantumMiner S3<br>+0.23 GH/S</div>
-                    <button class="level-btn" id="lvl2-btn" onclick="claimAction('lvl2')">Locked</button>
+                    <button class="level-btn locked" id="lvl2-btn" onclick="claimAction('lvl2')" disabled>Locked</button>
                 </div>
             </div>
 
             <div class="section-title">📋 Quests</div>
-            <div id="quests-container"></div>
+            <div id="quests-container"><p class="quests-loading">⏳ Loading quests...</p></div>
+        </div>
+
+        <div class="nav-bar">
+            <a href="home.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+            <a href="index.html" class="nav-item"><span class="nav-icon">🚰</span>Faucet</a>
+            <a href="tasks.html" class="nav-item"><span class="nav-icon">📋</span>Tasks</a>
+            <a href="wallet.html" class="nav-item"><span class="nav-icon">👛</span>Wallet</a>
         </div>
     </div>
 
@@ -100,8 +112,6 @@
         const LVL2_XP_REQUIRED = 100;
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 
-        // Must mirror api/season-claim.js — used only for showing progress,
-        // the server re-validates everything before actually granting XP.
         const QUESTS = [
             { id: 'quest_level2', xp: 30, daily: false, label: 'Reach Account Level 2',
               progress: (d, ctx) => `${ctx.level} / 2` , done: (d, ctx) => ctx.level >= 2 },
@@ -111,9 +121,6 @@
               progress: (d) => `${d.game_coins||0} / 100`, done: (d) => (d.game_coins||0) >= 100 },
             { id: 'quest_claims', xp: 15, daily: true, label: 'Claim from Faucet 5 times today',
               progress: (d, ctx) => `${ctx.claimsToday} / 5`, done: (d, ctx) => ctx.claimsToday >= 5 },
-            // Reads the same dailyLinkTs field api/claim.js writes on a
-            // successful daily bonus link claim (Tasks page). Progress is
-            // just done/not-done for one day, no fractional count needed.
             { id: 'quest_daily_link', xp: 10, daily: true, label: 'Claim the Daily Bonus Link',
               progress: (d, ctx) => ctx.dailyLinkClaimedToday ? 'Done' : 'Not yet today',
               done: (d, ctx) => ctx.dailyLinkClaimedToday },
@@ -171,6 +178,7 @@
                 lvl1Btn.innerText = 'Claim'; lvl1Btn.className = 'level-btn claim';
                 lvl1Card.className = 'level-card unlocked';
             }
+            lvl1Btn.disabled = false;
 
             // Level 2
             const lvl2Card = document.getElementById('lvl2-card');
@@ -178,12 +186,15 @@
             if (userData.season_lvl2_claimed) {
                 lvl2Btn.innerText = '✅ Claimed'; lvl2Btn.className = 'level-btn claimed';
                 lvl2Card.className = 'level-card unlocked';
+                lvl2Btn.disabled = true;
             } else if (xp >= LVL2_XP_REQUIRED) {
                 lvl2Btn.innerText = 'Claim'; lvl2Btn.className = 'level-btn claim';
                 lvl2Card.className = 'level-card unlocked';
+                lvl2Btn.disabled = false;
             } else {
                 lvl2Btn.innerText = 'Locked'; lvl2Btn.className = 'level-btn locked';
                 lvl2Card.className = 'level-card locked';
+                lvl2Btn.disabled = true;
             }
 
             // Quests
@@ -239,3 +250,4 @@
     </script>
 </body>
 </html>
+
