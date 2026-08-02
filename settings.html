@@ -9,7 +9,7 @@
         #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
         .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; text-transform: uppercase; }
         .back-btn { color: #facc15; text-decoration: none; font-size: 20px; text-transform: none; }
-        .settings-area { flex: 1; padding: 15px 20px; overflow-y: auto; }
+        .settings-area { flex: 1; padding: 15px 20px; padding-bottom: 90px; overflow-y: auto; }
         .settings-section { margin-bottom: 20px; }
         .section-title { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
         .settings-card { background: #261e19; border: 1px solid #3d2b1f; border-radius: 12px; overflow: hidden; }
@@ -20,6 +20,10 @@
         .settings-btn { background: #facc15; color: #1a1613; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; text-transform: uppercase; }
         .google-btn { background: white; color: #333; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; text-transform: uppercase; }
         .bonus-banner { background: rgba(250,204,21,0.1); border: 1px solid #facc1566; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 12px; color: #facc15; text-transform: uppercase; text-align: center; line-height: 1.6; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; text-transform: uppercase; }
+        .nav-item.active { color: #facc15; }
+        .nav-icon { font-size: 24px; margin-bottom: 3px; }
     </style>
 </head>
 <body>
@@ -94,6 +98,13 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="nav-bar">
+            <a href="home.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+            <a href="index.html" class="nav-item"><span class="nav-icon">🚰</span>Faucet</a>
+            <a href="tasks.html" class="nav-item"><span class="nav-icon">📋</span>Tasks</a>
+            <a href="wallet.html" class="nav-item"><span class="nav-icon">👛</span>Wallet</a>
         </div>
     </div>
 
@@ -221,15 +232,11 @@
                     let user;
 
                     if (auth.currentUser) {
-                        // Есть активная (анонимная) сессия — привязываем Google к ней,
-                        // чтобы сохранить тот же uid и не потерять прогресс
                         try {
                             const linkResult = await linkWithPopup(auth.currentUser, provider);
                             user = linkResult.user;
                         } catch (linkErr) {
                             if (linkErr.code === 'auth/credential-already-in-use' || linkErr.code === 'auth/email-already-in-use') {
-                                // Этот Google-аккаунт уже зарегистрирован под другим uid —
-                                // логинимся в существующий аккаунт вместо привязки
                                 const cred = GoogleAuthProvider.credentialFromError(linkErr);
                                 const signInResult = await signInWithCredential(auth, cred);
                                 user = signInResult.user;
@@ -238,7 +245,6 @@
                             }
                         }
                     } else {
-                        // Анонимной сессии нет — обычный вход
                         const signInResult = await signInWithPopup(auth, provider);
                         user = signInResult.user;
                     }
@@ -285,6 +291,7 @@
     </script>
 </body>
 </html>
+
 
 
 
