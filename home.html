@@ -118,12 +118,34 @@
                 <div class="exp-bar-bg"><div class="exp-bar-fill" id="exp-bar" style="width:0%"></div></div>
                 <div class="exp-text"><span id="exp-current">0</span> / <span id="exp-needed">50</span> EXP</div>
             </div>
-            <!-- BEGIN AADS AD UNIT 2450321 -->
-            <div id="frame" style="width: 320px; margin: 0 auto 15px; z-index: 99998; height: auto;">
+
+            <!-- BEGIN AADS AD UNIT 2450321 (crypto-game-miner.vercel.app) -->
+            <div id="frame-2450321" style="width: 320px; margin: 0 auto 15px; z-index: 99998; height: auto; display:none;">
                       <iframe data-aa='2450321' src='//ad.a-ads.com/2450321/?size=320x100'
                                         style='border:0; padding:0; width:320px; height:100px; overflow:hidden;display: block;margin: auto'></iframe>
                     </div>
             <!-- END AADS AD UNIT 2450321 -->
+
+            <!-- BEGIN AADS AD UNIT 2450472 (crypto-miner-game.vercel.app) -->
+            <div id="frame-2450472" style="width: 320px; margin: auto; z-index: 99998; height: auto; display:none;">
+                      <iframe data-aa='2450472' src='//ad.a-ads.com/2450472/?size=320x100'
+                                        style='border:0; padding:0; width:320px; height:100px; overflow:hidden;display: block;margin: auto'></iframe>
+                    </div>
+            <!-- END AADS AD UNIT 2450472 -->
+
+            <script>
+                (function() {
+                    var host = window.location.hostname;
+                    var el;
+                    if (host === 'crypto-miner-game.vercel.app') {
+                        el = document.getElementById('frame-2450472');
+                    } else {
+                        el = document.getElementById('frame-2450321');
+                    }
+                    if (el) el.style.display = 'block';
+                })();
+            </script>
+
             <div class="mining-card">
                 <div class="mining-title">⛏️ Mining Power</div>
                 <div class="coin-switch">
@@ -415,6 +437,7 @@
     </script>
 </body>
 </html>
+
 
 
 
