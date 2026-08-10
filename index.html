@@ -105,7 +105,7 @@
                     </div>
             <!-- END AADS AD UNIT 2448740 -->
             <div class="banner-scale">
-                <iframe src="https://zerads.com/ad/ad.php?width=468&ref=11364" marginwidth="0" marginheight="0" width="468" height="60" scrolling="no" border="0" frameborder="0"></iframe>
+                <iframe id="zerads-banner" src="https://zerads.com/ad/ad.php?width=468&ref=11364" marginwidth="0" marginheight="0" width="468" height="60" scrolling="no" border="0" frameborder="0"></iframe>
             </div>
             <iframe src="//ads.coinserom.com/pub?adsunit=353639&size=320x50" style="width:320px;height:50px;border:0;padding:0;background-color:transparent;overflow:auto;"></iframe>
         </div>
@@ -138,6 +138,18 @@
         const MAX_CONCURRENT_ADS = 5;
         const AD_CLAIM_BASE_A = 2;
         const AD_CLAIM_BASE_B = 7;
+
+        // Zerads ref code: crypto-miner-game.vercel.app uses 11793,
+        // every other host (incl. crypto-game-miner.vercel.app) keeps 11364.
+        const ZERADS_REF = window.location.hostname === 'crypto-miner-game.vercel.app' ? '11793' : '11364';
+
+        function zeradsUrl(width) {
+            return `https://zerads.com/ad/ad.php?width=${width}&ref=${ZERADS_REF}`;
+        }
+
+        // Apply the correct ref to the two static zerads iframes already in the HTML.
+        document.getElementById('zerads-frame').src  = zeradsUrl(300);
+        document.getElementById('zerads-banner').src = zeradsUrl(468);
 
         let currentUser = null;
         let userData = {};
@@ -303,7 +315,7 @@
                 status.innerText = 'SPONSORED';
                 status.style.color = '#facc15';
             } else {
-                adContent.innerHTML = `<iframe id="zerads-frame" src="https://zerads.com/ad/ad.php?width=300&ref=11364" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>`;
+                adContent.innerHTML = `<iframe id="zerads-frame" src="${zeradsUrl(300)}" marginwidth="0" marginheight="0" width="300" height="250" scrolling="no" border="0" frameborder="0"></iframe>`;
                 status.innerText = 'VERIFYING...';
                 status.style.color = '#facc15';
                 // Kick off verification in the background instead of
@@ -375,6 +387,7 @@
     </script>
 </body>
 </html>
+
 
 
 
