@@ -5,6 +5,13 @@
 // (adVerified: whether a real ad view was confirmed — false means adblock
 // was detected, so the claim still counts but no USDT Coins are granted),
 // or { uid, action: 'daily_link' } for the daily bonus-link claim.
+//
+// Also tracks a daily claim streak: the first faucet claim of a calendar
+// day (UTC) bumps claimStreak by 1 (capped at CLAIM_STREAK_CAP_DAYS), as
+// long as the previous streak day was exactly yesterday. Any gap of a
+// full missed day resets claimStreak back to 1. Further claims on the
+// same day don't increment it again. claimStreak feeds a +1%/day mining
+// power bonus on the client (home.html), capped at +30%.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -31,6 +38,9 @@ const DEFAULT_CLAIM_POOL_START_REWARD = 7; // what the very first claim of the d
 const MIN_POOL_REWARD = 0.01; // never let the per-claim reward round down to literally zero
 const MAX_POOL_REWARD_CEILING = 7; // absolute hard ceiling regardless of admin's starting-reward setting
 
+// Daily claim streak (mining power bonus, applied client-side).
+const CLAIM_STREAK_CAP_DAYS = 30; // +1%/day, capped at +30%
+
 function initFirebase() {
   if (!getApps().length) {
     initializeApp({
@@ -42,6 +52,13 @@ function initFirebase() {
     });
   }
   return getFirestore();
+}
+
+// Returns the UTC date key (YYYY-MM-DD) that is `days` days after dateKey.
+function addDaysKey(dateKey, days) {
+  const d = new Date(dateKey + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 export default async function handler(req, res) {
@@ -166,6 +183,21 @@ export default async function handler(req, res) {
         throw { code: 'COOLDOWN', message: `Please wait ${wait}s before next claim.` };
       }
 
+      // ─── Daily claim streak ──────────────────────────────────────────
+      // Only the FIRST claim of a calendar day (UTC) affects the streak.
+      // If the last streak day was exactly yesterday, bump it (capped).
+      // If it was today already, leave it unchanged. Any bigger gap (a
+      // full day with zero claims) resets the streak back to 1.
+      const prevStreakDay = data.claimStreakDay || null;
+      let claimStreak = data.claimStreak || 0;
+      if (prevStreakDay === today) {
+        // already counted today — no change
+      } else if (prevStreakDay && addDaysKey(prevStreakDay, 1) === today) {
+        claimStreak = Math.min(claimStreak + 1, CLAIM_STREAK_CAP_DAYS);
+      } else {
+        claimStreak = 1;
+      }
+
       // ─── Determine USDT reward ───────────────────────────────────────
       // If adVerified is false (adblock detected client-side), the claim
       // still goes through — game coins / EXP / hashrate boost are still
@@ -235,6 +267,8 @@ export default async function handler(req, res) {
         lastClaimTs: Timestamp.fromMillis(now),
         lastClaimTime: Timestamp.fromMillis(now),
         claimBoosts: boosts,
+        claimStreak: claimStreak,
+        claimStreakDay: today,
         updatedAt: Timestamp.fromMillis(now),
       }, { merge: true });
 
@@ -303,6 +337,8 @@ export default async function handler(req, res) {
         usdtReward,
         adVerified: adWasVerified,
         gameCoinsReward,
+        claimStreak,
+        streakBonusPct: claimStreak, // 1 day = 1%, capped at CLAIM_STREAK_CAP_DAYS
         ad,
       };
     });
@@ -317,6 +353,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 
 
 
