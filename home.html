@@ -156,6 +156,7 @@
                 <div class="mining-stat"><span class="mining-label">Base Hashrate</span><span class="mining-value" id="hashrate">0.00 GH/s</span></div>
                 <div class="mining-stat"><span class="mining-label">Claim Boost (24h)</span><span class="mining-value" id="boost-rate" style="color:#22c55e;">+0.00 GH/s</span></div>
                 <div class="mining-stat"><span class="mining-label">Total Hashrate</span><span class="mining-value" id="total-hashrate">0.00 GH/s</span></div>
+                <div class="mining-stat"><span class="mining-label">Streak Bonus</span><span class="mining-value" id="streak-bonus" style="color:#facc15;">—</span></div>
                 <div class="mining-stat"><span class="mining-label" id="rate-label">LTC Coins / Hour</span><span class="mining-value" id="ltc-per-hour">0</span></div>
                 <div class="mining-stat"><span class="mining-label">Mined This Session</span><span class="mining-value" id="mined-session" style="color:#22c55e;">+0.0000</span></div>
                 <div class="mining-stat"><span class="mining-label">Status</span><span class="mining-value" id="mining-status" style="color:#ef4444;">Inactive</span></div>
@@ -189,6 +190,7 @@
         const db   = getFirestore(app);
 
         const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
+        const MAX_STREAK_DAYS = 30; // +1%/day power bonus, capped at +30%
         const LTC_RATE  = 2.5;
         const USDT_RATE = 1.1;
         const SOL_RATE  = 1.5;
@@ -251,6 +253,7 @@
                     }
                     if (userData.miner_nano != null) localStorage.setItem('miner_nano', userData.miner_nano);
                     if (userData.miner_mega != null) localStorage.setItem('miner_mega', userData.miner_mega);
+                    if (userData.claimStreak != null) localStorage.setItem('claimStreak', userData.claimStreak);
                     if (!initialized) {
                         visualCoins = parseFloat(userData.coins || 0);
                         visualLtc   = parseFloat(userData.ltc   || 0);
@@ -366,11 +369,16 @@
             const minerPower    = getMinerPower();
             const permHashrate  = Math.round((baseHashrate + taskBonus + seasonBonus + minerPower) * 100) / 100;
             const boostTotal    = getBoostTotal();
-            const totalHashrate = Math.round((permHashrate + boostTotal) * 100) / 100;
+            const streakDays     = Math.min(parseInt(localStorage.getItem('claimStreak')) || 0, MAX_STREAK_DAYS);
+            const streakBonusPct = streakDays * 0.01;
+            const totalHashrate  = Math.round((permHashrate + boostTotal) * (1 + streakBonusPct) * 100) / 100;
 
             document.getElementById('hashrate').innerText       = permHashrate.toFixed(2) + ' GH/s';
             document.getElementById('boost-rate').innerText     = '+' + boostTotal.toFixed(2) + ' GH/s';
             document.getElementById('total-hashrate').innerText = totalHashrate.toFixed(2) + ' GH/s';
+            document.getElementById('streak-bonus').innerText   = streakDays > 0
+                ? '+' + (streakBonusPct * 100).toFixed(0) + '% (day ' + streakDays + '/' + MAX_STREAK_DAYS + ')'
+                : '—';
 
             const miningPaused = getHealthPct() <= 0;
 
@@ -386,7 +394,7 @@
             if (active) {
                 tickInterval = setInterval(() => {
                     const boost   = getBoostTotal();
-                    const total   = permHashrate + boost;
+                    const total   = Math.round((permHashrate + boost) * (1 + streakBonusPct) * 100) / 100;
                     const earned  = total * rate / 3600;
                     sessionMined += earned;
 
@@ -437,6 +445,7 @@
     </script>
 </body>
 </html>
+
 
 
 
