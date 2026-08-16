@@ -8,6 +8,7 @@ const DEFAULT_USDT_RATE = 1.1;
 const DEFAULT_SOL_RATE  = 1.5;
 const MAX_SECONDS = 86400;
 const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
+const CLAIM_STREAK_CAP_DAYS = 30; // +1%/day mining power bonus, capped at +30% — mirrors claim.js / home.html
 
 // Minimum time between full leaderboard_public scans (refreshGlobalStats).
 // Was running on every single sync call (every ~60s per open tab), reading
@@ -122,7 +123,12 @@ export default async function handler(req, res) {
         return now - t < 86400000;
       });
       const boostTotal = Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 100) / 100;
-      const totalHashrate = Math.round((permHashrate + boostTotal) * 100) / 100;
+
+      // Daily claim streak bonus — +1% mining power per consecutive claim
+      // day, capped at +30%. claimStreak is written by api/claim.js.
+      const claimStreak = Math.min(data.claimStreak || 0, CLAIM_STREAK_CAP_DAYS);
+      const streakBonusPct = claimStreak * 0.01;
+      const totalHashrate = Math.round((permHashrate + boostTotal) * (1 + streakBonusPct) * 100) / 100;
 
       const lastSyncMs = data.lastMiningSync?.toMillis ? data.lastMiningSync.toMillis() : now;
       const secondsElapsed = Math.min(Math.max((now - lastSyncMs) / 1000, 0), MAX_SECONDS);
