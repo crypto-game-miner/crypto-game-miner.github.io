@@ -12,10 +12,10 @@
 // decimal count): 1 LTC Coin = 0.00000001 LTC (litoshi, matches LTC's real
 // 8 decimals), 1 SOL Coin = 0.00000001 SOL (does NOT match SOL's real
 // 9-decimal lamport — this is intentional per product decision, not a bug).
-// Since FaucetPay's "amount" field is assumed to expect real lamports
-// (SOL's actual on-chain smallest unit, 1e-9 SOL), 1 SOL Coin = 10 real
-// lamports, so amount sent to FaucetPay = points * 10. UNVERIFIED — test
-// with a small real withdrawal to your own FaucetPay account first.
+// CONFIRMED via real withdrawal: FaucetPay's "amount" field for SOL expects
+// the same 8-decimal satoshi-style unit as every other currency (1 unit =
+// 0.00000001 SOL), NOT raw 9-decimal lamports. So amount sent to FaucetPay
+// = points, same as LTC — no extra scaling needed.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -171,11 +171,10 @@ async function handleWithdraw(req, res, body) {
     amount = Math.round(points);
     fpCurrency = 'LTC';
   } else {
-    // SOL: 1 SOL Coin = 0.00000001 SOL = 10 real lamports (SOL's actual
-    // on-chain unit is 1e-9 SOL). UNVERIFIED against FaucetPay's actual
-    // expected amount granularity — test with a small real withdrawal
-    // before relying on this.
-    amount = Math.round(points * 10);
+    // SOL: 1 SOL Coin = 0.00000001 SOL. FaucetPay's "amount" field for SOL
+    // uses the same 8-decimal satoshi-style unit as LTC (confirmed via real
+    // withdrawal), not raw 9-decimal lamports — so no extra scaling here.
+    amount = Math.round(points);
     fpCurrency = 'SOL';
   }
 
@@ -305,5 +304,6 @@ async function handleSwap(req, res, body) {
     return res.status(status).json({ success: false, error: msg, code });
   }
 }
+
 
 
