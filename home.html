@@ -288,4 +288,160 @@
                     } else {
                         visualCoins = parseFloat(data.coins || visualCoins);
                     }
-                    document.getElementById('balance').innerText     = visualCo
+                    document.getElementById('balance').innerText     = visualCoins.toFixed(4);
+                    document.getElementById('ltc-balance').innerText = visualLtc.toFixed(4);
+                    document.getElementById('sol-balance').innerText = visualSol.toFixed(4);
+                }
+            } catch(e) {}
+        }
+
+        function getLevel(exp) {
+            let level = 1, total = 0;
+            for (let i = 0; i < EXP_PER_LEVEL.length; i++) {
+                if (exp >= total + EXP_PER_LEVEL[i]) { total += EXP_PER_LEVEL[i]; level++; }
+                else return { level, currentExp: exp - total, needed: EXP_PER_LEVEL[i] };
+            }
+            return { level, currentExp: exp, needed: 'MAX' };
+        }
+
+        function getBoostTotal() {
+            const now = Date.now();
+            const boosts = (userData.claimBoosts || []).filter(b => {
+                const t = b.time?.toMillis ? b.time.toMillis() : b.time;
+                return now - t < 86400000;
+            });
+            return Math.round(boosts.reduce((s, b) => s + b.amount, 0) * 100) / 100;
+        }
+
+        function getMinerPower() {
+            const ownedNano = userData.miner_nano || 0;
+            const ownedMega = userData.miner_mega || 0;
+            return Math.round((ownedNano * currentPower.nano + ownedMega * currentPower.mega) * 100) / 100;
+        }
+
+        function getHealthPct() {
+            const lastClaimMs = userData.lastClaimTime?.toMillis ? userData.lastClaimTime.toMillis() : 0;
+            if (!lastClaimMs) return 0;
+            const hoursSinceClaim = (Date.now() - lastClaimMs) / 3600000;
+            const pct = 100 - (hoursSinceClaim / 24 * 100);
+            return Math.max(0, Math.min(100, pct));
+        }
+
+        function renderHealthBar() {
+            const pct = getHealthPct();
+            const bar    = document.getElementById('health-bar');
+            const pctEl  = document.getElementById('health-pct');
+            const subEl  = document.getElementById('health-sub');
+
+            let color;
+            if (pct >= 50)      color = '#22c55e';
+            else if (pct >= 20) color = '#facc15';
+            else                color = '#ef4444';
+
+            bar.style.width = pct + '%';
+            bar.style.background = color;
+            pctEl.innerText = pct.toFixed(1) + '%';
+            pctEl.style.color = color;
+            subEl.style.display = pct <= 0 ? 'block' : 'none';
+        }
+
+        function coinLabel(coin) { return coin === 'usdt' ? 'USDT' : coin === 'sol' ? 'SOL' : 'LTC'; }
+
+        function renderHome() {
+            document.getElementById('balance').innerText     = visualCoins.toFixed(4);
+            document.getElementById('game-coins').innerText  = userData.game_coins || 0;
+            document.getElementById('ltc-balance').innerText = visualLtc.toFixed(4);
+            document.getElementById('sol-balance').innerText = visualSol.toFixed(4);
+
+            renderHealthBar();
+
+            const exp = userData.exp || 0;
+            const { level, currentExp, needed } = getLevel(exp);
+            document.getElementById('level-num').innerText   = level;
+            document.getElementById('exp-current').innerText = currentExp;
+            document.getElementById('exp-needed').innerText  = needed;
+            const pct = needed === 'MAX' ? 100 : (currentExp / needed * 100);
+            document.getElementById('exp-bar').style.width = pct + '%';
+
+            const baseHashrate  = level >= 2 ? 0.5 : 0;
+            const taskBonus     = parseFloat(localStorage.getItem('task_bonus_hashrate')) || 0;
+            const seasonBonus   = parseFloat(localStorage.getItem('season_bonus_hashrate')) || 0;
+            const minerPower    = getMinerPower();
+            const permHashrate  = Math.round((baseHashrate + taskBonus + seasonBonus + minerPower) * 100) / 100;
+            const boostTotal    = getBoostTotal();
+            const streakDays     = Math.min(parseInt(localStorage.getItem('claimStreak')) || 0, MAX_STREAK_DAYS);
+            const streakBonusPct = streakDays * 0.01;
+            const totalHashrate  = Math.round((permHashrate + boostTotal) * (1 + streakBonusPct) * 100) / 100;
+
+            document.getElementById('hashrate').innerText       = permHashrate.toFixed(2) + ' GH/s';
+            document.getElementById('boost-rate').innerText     = '+' + boostTotal.toFixed(2) + ' GH/s';
+            document.getElementById('total-hashrate').innerText = totalHashrate.toFixed(2) + ' GH/s';
+            document.getElementById('streak-bonus').innerText   = streakDays > 0
+                ? '+' + (streakBonusPct * 100).toFixed(0) + '% (day ' + streakDays + '/' + MAX_STREAK_DAYS + ')'
+                : '—';
+
+            const miningPaused = getHealthPct() <= 0;
+
+            const rate = currentRate[miningCoin];
+            document.getElementById('ltc-per-hour').innerText = totalHashrate > 0 ? (totalHashrate * rate).toFixed(3) : 0;
+            document.getElementById('rate-label').innerText   = coinLabel(miningCoin) + ' Coins / Hour';
+
+            const active = totalHashrate > 0 && !miningPaused;
+            document.getElementById('mining-status').innerText   = active ? 'Active ✅' : (totalHashrate === 0 ? 'Inactive' : 'Paused ⚠️');
+            document.getElementById('mining-status').style.color = active ? '#22c55e' : '#ef4444';
+
+            if (tickInterval) clearInterval(tickInterval);
+            if (active) {
+                tickInterval = setInterval(() => {
+                    const boost   = getBoostTotal();
+                    const total   = Math.round((permHashrate + boost) * (1 + streakBonusPct) * 100) / 100;
+                    const earned  = total * rate / 3600;
+                    sessionMined += earned;
+
+                    if (miningCoin === 'ltc') {
+                        visualLtc += earned;
+                        document.getElementById('ltc-balance').innerText = visualLtc.toFixed(4);
+                    } else if (miningCoin === 'sol') {
+                        visualSol += earned;
+                        document.getElementById('sol-balance').innerText = visualSol.toFixed(4);
+                    } else {
+                        visualCoins += earned;
+                        document.getElementById('balance').innerText = visualCoins.toFixed(4);
+                    }
+
+                    document.getElementById('mined-session').innerText  = '+' + sessionMined.toFixed(4);
+                    document.getElementById('boost-rate').innerText     = '+' + boost.toFixed(2) + ' GH/s';
+                    document.getElementById('total-hashrate').innerText = (Math.round(total * 100) / 100).toFixed(2) + ' GH/s';
+                    renderHealthBar();
+                }, 1000);
+            }
+        }
+
+        window.switchCoin = function(coin) {
+            const uid = localStorage.getItem('firebase_uid');
+            if (uid) fetch('https://crypto-game-miner.vercel.app/api/sync-mining', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ uid, miningCoin }) }).catch(()=>{});
+            miningCoin = coin;
+            localStorage.setItem('miningCoin', coin);
+            sessionMined = 0;
+            document.getElementById('mined-session').innerText = '+0.0000';
+            document.getElementById('btn-ltc').className  = 'switch-btn' + (coin === 'ltc'  ? ' active-ltc'  : '');
+            document.getElementById('btn-usdt').className = 'switch-btn' + (coin === 'usdt' ? ' active-usdt' : '');
+            document.getElementById('btn-sol').className  = 'switch-btn' + (coin === 'sol'  ? ' active-sol'  : '');
+            renderHome();
+        };
+
+        document.getElementById('btn-ltc').className  = 'switch-btn' + (miningCoin === 'ltc'  ? ' active-ltc'  : '');
+        document.getElementById('btn-usdt').className = 'switch-btn' + (miningCoin === 'usdt' ? ' active-usdt' : '');
+        document.getElementById('btn-sol').className  = 'switch-btn' + (miningCoin === 'sol'  ? ' active-sol'  : '');
+
+        window.openMenu = function() {
+            document.getElementById('side-menu').classList.add('open');
+            document.getElementById('overlay').classList.add('open');
+        };
+        window.closeMenu = function() {
+            document.getElementById('side-menu').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        };
+    </script>
+</body>
+</html>
