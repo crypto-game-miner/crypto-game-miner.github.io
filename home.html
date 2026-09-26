@@ -74,10 +74,11 @@
         <a href="store.html" class="side-menu-item"><span class="menu-icon">🛒</span>Store<span class="menu-badge">New</span></a>
         <a href="miners.html" class="side-menu-item"><span class="menu-icon">⛏️</span>My Miners<span class="menu-badge purple" id="miners-badge" style="display:none;">0</span></a>
         <a href="advertise.html" class="side-menu-item"><span class="menu-icon">📢</span>Advertise<span class="menu-badge green">$</span></a>
+        <div class="side-menu-item disabled"><span class="menu-icon">👥</span>Referrals<span class="menu-badge soon">Soon</span></div>
+        <a href="season.html" class="side-menu-item"><span class="menu-icon">🎫</span>Season Pass<span class="menu-badge purple">New</span></a>
+        <a href="settings.html" class="side-menu-item"><span class="menu-icon">⚙️</span>Settings</a>
         <a href="about.html" class="side-menu-item"><span class="menu-icon">ℹ️</span>About</a>
         <a href="faq.html" class="side-menu-item"><span class="menu-icon">❓</span>FAQ</a>
-        <a href="settings.html" class="side-menu-item"><span class="menu-icon">⚙️</span>Settings</a>
-        <a href="season.html" class="side-menu-item"><span class="menu-icon">🎫</span>Season Pass<span class="menu-badge purple">New</span></a>
     </div>
 
     <div id="main-content">
@@ -208,11 +209,7 @@
                 const activeUsdt = g.activeHashrateUsdt || 0;
                 const activeLtc  = g.activeHashrateLtc  || 0;
                 const activeSol  = g.activeHashrateSol  || 0;
-                const baseUsdtRate = g.base_usdt_rate != null ? g.base_usdt_rate : USDT_RATE;
-                const baseLtcRate  = g.base_ltc_rate  != null ? g.base_ltc_rate  : LTC_RATE;
-                const baseSolRate  = g.base_sol_rate  != null ? g.base_sol_rate  : SOL_RATE;
-                currentRate = {
-                    usdt: (usdtPool != null && activeUsdt > 0) ? Math.min(usdtPool / (24 * activeUsdt), baseUsdtRate) : baseUsdtRate,
+                usdt: (usdtPool != null && activeUsdt > 0) ? Math.min(usdtPool / (24 * activeUsdt), baseUsdtRate) : baseUsdtRate,
                     ltc:  (ltcPool  != null && activeLtc  > 0) ? Math.min(ltcPool  / (24 * activeLtc),  baseLtcRate)  : baseLtcRate,
                     sol:  (solPool  != null && activeSol  > 0) ? Math.min(solPool  / (24 * activeSol),  baseSolRate)  : baseSolRate,
                 };
@@ -445,8 +442,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
