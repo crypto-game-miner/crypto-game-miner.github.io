@@ -4,7 +4,12 @@
 // ad_slots document. Client sends { uid, adVerified } for a faucet claim
 // (adVerified: whether a real ad view was confirmed — false means adblock
 // was detected, so the claim still counts but no USDT Coins are granted),
-// or { uid, action: 'daily_link' } for the daily bonus-link claim.
+// or { uid, action: 'daily_link' } for the daily bonus-link claim, or
+// { action: 'make_shortlink', url } to mint a 1ink.cc shortlink (used by
+// the faucet's claim #2/#7 flow, which redirects through 1ink.cc instead
+// of showing the usual zerads ad overlay). make_shortlink is merged into
+// this file rather than its own route to stay within Vercel's 12-function
+// Hobby plan limit.
 //
 // Also tracks a daily claim streak: the first faucet claim of a calendar
 // day (UTC) bumps claimStreak by 1 (capped at CLAIM_STREAK_CAP_DAYS), as
@@ -41,6 +46,10 @@ const MAX_POOL_REWARD_CEILING = 7; // absolute hard ceiling regardless of admin'
 // Daily claim streak (mining power bonus, applied client-side).
 const CLAIM_STREAK_CAP_DAYS = 30; // +1%/day, capped at +30%
 
+// 1ink.cc shortlink creation (claim #2/#7 flow — see make_shortlink below).
+const ONEINK_UID = '37994';
+const ONEINK_ALLOWED_HOSTS = ['crypto-miner-game.vercel.app', 'crypto-game-miner.vercel.app'];
+
 function initFirebase() {
   if (!getApps().length) {
     initializeApp({
@@ -68,12 +77,61 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { uid, action, adVerified } = req.body || {};
+  const { uid, action, adVerified, url } = req.body || {};
+
+  // ─────────────────────────────────────────────────────────────────
+  // SHORTLINK CREATION — standalone, no uid/Firestore involved. Mints a
+  // 1ink.cc link pointing back to one of our own pages. Only ever shrinks
+  // our own domains, never an arbitrary URL a client could pass in.
+  // ─────────────────────────────────────────────────────────────────
+  if (action === 'make_shortlink') {
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ success: false, error: 'Missing url' });
+    }
+
+    let targetHost;
+    try {
+      targetHost = new URL(url).hostname;
+    } catch (e) {
+      return res.status(400).json({ success: false, error: 'Invalid url' });
+    }
+    if (!ONEINK_ALLOWED_HOSTS.includes(targetHost)) {
+      return res.status(400).json({ success: false, error: 'URL not allowed' });
+    }
+
+    // 1ink.cc's PHP API quirk: any '&' in the target URL must be replaced
+    // with the literal sequence '@--@' before being appended to their
+    // create.php call — otherwise it gets parsed as a second query param.
+    // Plain string concatenation (not encodeURIComponent), matching their
+    // documented example exactly rather than guessing at their parser.
+    const safeUrl = url.replace(/&/g, '@--@');
+
+    try {
+      const apiUrl = `http://1ink.cc/api/create.php?uid=${ONEINK_UID}&url=${safeUrl}`;
+      const resp = await fetch(apiUrl);
+      const shortCode = (await resp.text()).trim();
+
+      if (!shortCode || shortCode.includes('<') || shortCode.length > 50) {
+        console.error('1ink.cc returned unexpected response:', shortCode);
+        return res.status(502).json({ success: false, error: 'Shortlink service error' });
+      }
+
+      return res.status(200).json({ success: true, shortUrl: `https://1ink.cc/${shortCode}` });
+
+    } catch (e) {
+      console.error('Shortlink creation error:', e.message || e);
+      return res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
   if (!uid) return res.status(400).json({ error: 'Missing uid' });
 
   // Whether this claim is backed by a confirmed ad view. Defaults to true
   // so any older client that doesn't send this field (or the daily-link
-  // flow, which doesn't use it at all) keeps the previous behavior.
+  // flow, which doesn't use it at all) keeps the previous behavior. Also
+  // true for claim #2/#7, which route through 1ink.cc instead of zerads —
+  // that redirect IS this claim's ad view, so the reward is granted the
+  // same as any other verified claim.
   const adWasVerified = adVerified !== false;
 
   const db = initFirebase();
@@ -353,6 +411,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 
 
 
