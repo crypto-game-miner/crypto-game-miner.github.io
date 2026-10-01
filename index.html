@@ -307,6 +307,48 @@
             btn.disabled = true;
 
             const nextClaim = claimsToday + 1;
+
+            // ─── Claim #2: skip the usual zerads/sponsored ad overlay
+            // entirely. Grant the claim right away (the click-through on
+            // the 1ink.cc shortlink IS this claim's ad view, so it's
+            // always sent as adVerified: true), then redirect through the
+            // shortlink. 1ink.cc shows its own "skip ad" page and bounces
+            // the visitor back here afterward.
+            if (nextClaim === 2) {
+                try {
+                    const claimResp = await fetch('/api/claim', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ uid: currentUser.uid, adVerified: true }),
+                    });
+                    const claimResult = await claimResp.json();
+                    if (!claimResult.success) {
+                        alert(claimResult.error || 'Claim failed');
+                        btn.disabled = false;
+                        return;
+                    }
+                    syncMining(currentUser.uid);
+
+                    const linkResp = await fetch('/api/claim', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'make_shortlink', url: window.location.href }),
+                    });
+                    const linkResult = await linkResp.json();
+                    if (linkResult.success && linkResult.shortUrl) {
+                        window.location.href = linkResult.shortUrl;
+                    } else {
+                        // Claim already went through — just leave the button
+                        // usable again if the shortlink step itself failed.
+                        btn.disabled = false;
+                    }
+                } catch(e) {
+                    alert('Network error: ' + e.message);
+                    btn.disabled = false;
+                }
+                return;
+            }
+
             const purchasedAd = await fetchAdForClaim(nextClaim);
 
             const overlay   = document.getElementById('ad-overlay');
@@ -392,6 +434,7 @@
     </script>
 </body>
 </html>
+
 
 
 
