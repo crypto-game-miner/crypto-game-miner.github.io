@@ -152,12 +152,16 @@
                         <img src="https://cryptologos.cc/logos/litecoin-ltc-logo.svg">
                         <span>LTC</span>
                     </div>
+                    <div class="coin-pill" id="dep-pill-sol" onclick="selectDepositCoin('SOL')">
+                        <img src="https://cryptologos.cc/logos/solana-sol-logo.svg">
+                        <span>SOL</span>
+                    </div>
                 </div>
                 <div class="deposit-box" id="dep-box"><div id="dep-inner"><p class="deposit-loading">⏳ Loading deposit address...</p></div></div>
-                <p style="font-size:10px; color:#8b949e; text-align:center; margin:12px 0;">🔜 Solana deposit coming in the next step.</p>
                 <div style="background:rgba(0,0,0,0.3); border:1px solid #3d2b1f; border-radius:10px; padding:10px; margin-top:12px;">
                     <div class="info-row"><span>USDT rate</span><span>1 USDT → 1,000,000 USDT Coins</span></div>
                     <div class="info-row"><span>LTC rate</span><span>1 LTC → 100,000,000 LTC Coins</span></div>
+                    <div class="info-row"><span>SOL rate</span><span>1 SOL → 100,000,000 SOL Coins</span></div>
                     <div class="info-row"><span>Confirmation</span><span>~1-3 minutes</span></div>
                     <div class="info-row"><span>Min deposit</span><span>Any amount</span></div>
                     <div class="info-row"><span>Fee</span><span>0.2% (CCPayment)</span></div>
@@ -391,12 +395,12 @@
                 if (data.address) {
                     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(data.address)}`;
                     const html = `
-                        <label>${currency === 'USDT' ? 'USDT TRC20' : 'LTC'} Deposit Address</label>
+                        <label>${currency === 'USDT' ? 'USDT TRC20' : currency === 'LTC' ? 'LTC' : 'SOL'} Deposit Address</label>
                         <div class="qr-wrap"><img src="${qrUrl}" alt="QR"></div>
                         <div class="addr-box" id="addr-${currency}">${data.address}</div>
                         ${data.memo ? `<div class="addr-box" style="margin-top:6px;"><span style="color:#8b949e;font-size:10px;">MEMO: </span>${data.memo}</div>` : ''}
                         <button class="copy-btn" onclick="copyAddr('${currency}')">📋 Copy Address</button>
-                        <p class="rate-note" style="color:#f59e0b;margin-top:6px;">⚠️ Send only ${currency === 'USDT' ? 'USDT on TRC20 (Tron)' : 'LTC on Litecoin network'}</p>
+                        <p class="rate-note" style="color:#f59e0b;margin-top:6px;">⚠️ Send only ${currency === 'USDT' ? 'USDT on TRC20 (Tron)' : currency === 'LTC' ? 'LTC on Litecoin network' : 'SOL on Solana network'}</p>
                     `;
                     loadedAddresses[currency] = html;
                     inner.innerHTML = html;
