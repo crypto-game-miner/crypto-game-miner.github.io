@@ -110,7 +110,6 @@
         <div class="wallet-area">
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('withdraw')">⬆ Withdraw</button>
-                <button class="tab-btn" onclick="switchTab('deposit')">⬇ Deposit</button>
                 <button class="tab-btn" onclick="switchTab('swap')">🔄 Swap</button>
             </div>
 
@@ -137,34 +136,6 @@
                     <label>FaucetPay Email</label>
                     <input type="email" id="wd-email" placeholder="example@mail.com">
                     <button class="collect-btn" id="wd-submit-btn" onclick="handleWithdraw()">Withdraw USDT</button>
-                </div>
-            </div>
-
-            <div id="tab-deposit" class="tab-content">
-                <h3 style="color:#facc15; margin-bottom:4px; font-size:14px;">Deposit Crypto</h3>
-                <p style="font-size:10px; color:#8b949e; margin:0 0 12px;">Coins are credited instantly after confirmation</p>
-                <div class="coin-pill-row">
-                    <div class="coin-pill active" id="dep-pill-usdt" onclick="selectDepositCoin('USDT')">
-                        <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg">
-                        <span>USDT</span>
-                    </div>
-                    <div class="coin-pill" id="dep-pill-ltc" onclick="selectDepositCoin('LTC')">
-                        <img src="https://cryptologos.cc/logos/litecoin-ltc-logo.svg">
-                        <span>LTC</span>
-                    </div>
-                    <div class="coin-pill" id="dep-pill-sol" onclick="selectDepositCoin('SOL')">
-                        <img src="https://cryptologos.cc/logos/solana-sol-logo.svg">
-                        <span>SOL</span>
-                    </div>
-                </div>
-                <div class="deposit-box" id="dep-box"><div id="dep-inner"><p class="deposit-loading">⏳ Loading deposit address...</p></div></div>
-                <div style="background:rgba(0,0,0,0.3); border:1px solid #3d2b1f; border-radius:10px; padding:10px; margin-top:12px;">
-                    <div class="info-row"><span>USDT rate</span><span>1 USDT → 1,000,000 USDT Coins</span></div>
-                    <div class="info-row"><span>LTC rate</span><span>1 LTC → 100,000,000 LTC Coins</span></div>
-                    <div class="info-row"><span>SOL rate</span><span>1 SOL → 100,000,000 SOL Coins</span></div>
-                    <div class="info-row"><span>Confirmation</span><span>~1-3 minutes</span></div>
-                    <div class="info-row"><span>Min deposit</span><span>Any amount</span></div>
-                    <div class="info-row"><span>Fee</span><span>0.2% (CCPayment)</span></div>
                 </div>
             </div>
 
