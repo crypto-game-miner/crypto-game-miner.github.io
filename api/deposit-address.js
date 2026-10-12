@@ -9,11 +9,11 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { userId, currency } = req.body;
-  if (!userId || !['USDT', 'LTC'].includes(currency)) {
+  if (!userId || !['USDT', 'LTC', 'SOL'].includes(currency)) {
     return res.status(400).json({ error: 'Missing userId or invalid currency' });
   }
 
-  const chain     = currency === 'USDT' ? 'TRX' : 'LTC';
+  const chain     = currency === 'USDT' ? 'TRX' : currency === 'LTC' ? 'LTC' : 'SOL';
   const timestamp = Math.floor(Date.now() / 1000);
 
   const bodyObj = {
