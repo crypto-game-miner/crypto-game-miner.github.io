@@ -84,6 +84,14 @@ export default async function handler(req, res) {
         [`deposits.${depKey}`]: { type: 'LTC', amount, ltc_coins_added: ltcCoins, at: new Date() },
       });
       console.log(`+${ltcCoins} LTC Coins → ${userEmail}`);
+
+    } else if (coinSymbol === 'SOL') {
+      const solCoins = Math.floor(amount * 100_000_000);
+      await userRef.update({
+        sol: FieldValue.increment(solCoins),
+        [`deposits.${depKey}`]: { type: 'SOL', amount, sol_coins_added: solCoins, at: new Date() },
+      });
+      console.log(`+${solCoins} SOL Coins → ${userEmail}`);
     }
 
   } catch (e) {
