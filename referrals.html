@@ -1,125 +1,177 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Referrals - Crypto Miner</title>
-<style>
-:root{--bg:#0f1117;--card:#181b24;--line:#272b38;--text:#e8eaf0;--muted:#8b91a3;--accent:#f5b942;--usdt:#26a17b;--ltc:#5b8fd9;--sol:#9945ff}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;padding-bottom:76px}
-.wrap{max-width:480px;margin:0 auto;padding:16px}
-.top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.back{width:36px;height:36px;border-radius:10px;background:var(--card);border:1px solid var(--line);color:var(--text);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:18px}
-h1{font-size:20px;font-weight:700}
-h2{font-size:15px;font-weight:600;margin-bottom:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
-.muted{color:var(--muted);font-size:13px;line-height:1.5}
-.banner{border-color:var(--accent);display:flex;gap:14px;align-items:flex-start}
-.banner .ico{font-size:28px;line-height:1}
-.banner b{display:block;font-size:16px;margin-bottom:4px}
-.rate{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
-.rate:last-child{border-bottom:none;padding-bottom:0}
-.rate:first-of-type{padding-top:0}
-.rate span{display:flex;align-items:center;gap:10px}
-.dot{width:10px;height:10px;border-radius:50%}
-.rate em{font-style:normal;font-weight:700;color:var(--accent)}
-.split{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
-.split div{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px}
-.split div b{display:block;font-size:16px;margin-top:4px}
-.split .you b{color:var(--accent)}
-.steps{list-style:none;counter-reset:s}
-.steps li{counter-increment:s;display:flex;gap:12px;align-items:flex-start;padding:8px 0;font-size:14px;line-height:1.4}
-.steps li::before{content:counter(s);flex:none;width:24px;height:24px;border-radius:50%;background:var(--bg);border:1px solid var(--line);color:var(--accent);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.link-row{display:flex;gap:8px}
-.link-row input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:12px;font-size:13px}
-.link-row button{background:var(--accent);color:#1a1a1a;border:none;border-radius:10px;padding:0 16px;font-weight:700;font-size:14px}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.stat{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px}
-.stat small{display:block;color:var(--muted);font-size:12px;margin-bottom:4px}
-.stat b{font-size:16px}
-body.locked .link-row,body.locked .stats{opacity:.45;pointer-events:none}
-.nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 10px}
-.nav a{color:var(--muted);text-decoration:none;font-size:11px;text-align:center;flex:1}
-.nav a span{display:block;font-size:20px;margin-bottom:2px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Referrals - Crypto Miner</title>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #1a1613; -webkit-user-select: none; color: white; font-family: 'Courier New', Courier, monospace; }
+        #main-content { display: flex; flex-direction: column; height: 100vh; height: 100dvh; text-align: center; }
+        .header { padding: 15px 20px; font-weight: bold; color: #facc15; font-size: 18px; text-align: left; flex-shrink: 0; }
+        .content { flex: 1; overflow-y: auto; padding: 5px 20px 90px; text-align: left; }
+        .card { background: rgba(0,0,0,0.4); margin: 0 0 10px; padding: 12px; border-radius: 10px; border: 2px solid #3d2b1f; }
+        .card-title { font-size: 13px; font-weight: bold; color: #facc15; margin-bottom: 10px; }
+        .card-text { font-size: 11px; color: #8b949e; line-height: 1.5; }
+        .lock-card { border-color: #facc15; display: flex; gap: 12px; align-items: flex-start; }
+        .lock-icon { font-size: 30px; line-height: 1; }
+        .lock-title { font-size: 14px; font-weight: bold; color: #facc15; margin-bottom: 4px; }
+        .rate-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #1a1613; font-size: 13px; font-weight: bold; }
+        .rate-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .rate-row:first-of-type { padding-top: 0; }
+        .rate-pct { color: #facc15; }
+        .step-row { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; font-size: 12px; line-height: 1.4; }
+        .step-num { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,0.25); border: 1px solid #3d2b1f; color: #facc15; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .cell { background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 10px; text-align: left; }
+        .cell .c-label { font-size: 9px; color: #8b949e; margin-bottom: 2px; }
+        .cell .c-value { font-size: 15px; font-weight: bold; }
+        .example { margin-top: 8px; }
+        .link-row { display: flex; gap: 8px; }
+        .link-input { flex: 1; min-width: 0; background: rgba(0,0,0,0.25); border: 1px solid #3d2b1f; border-radius: 8px; color: white; padding: 10px; font-family: 'Courier New', Courier, monospace; font-size: 11px; text-transform: none; }
+        .copy-btn { background: #facc15; color: #1a1613; border: none; padding: 0 16px; border-radius: 8px; font-weight: bold; font-size: 13px; font-family: 'Courier New', Courier, monospace; cursor: pointer; box-shadow: 0 3px 0 #a16207; text-transform: uppercase; }
+        body.locked .link-card, body.locked .stats-card { opacity: 0.45; pointer-events: none; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; z-index: 999; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { color: #8b949e; text-decoration: none; font-size: 11px; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
+        .nav-item.active { color: #facc15; }
+        .nav-icon { font-size: 24px; margin-bottom: 3px; }
+        body { text-transform: uppercase; }
+        .header { display: flex; justify-content: space-between; align-items: center; }
+        .burger-btn { background: none; border: none; cursor: pointer; padding: 4px; display: flex; flex-direction: column; gap: 5px; }
+        .burger-btn span { display: block; width: 22px; height: 2px; background: #facc15; border-radius: 2px; }
+        .side-menu { position: fixed; top: 0; right: -260px; width: 240px; height: 100%; background: #0d0b09; border-left: 2px solid #3d2b1f; z-index: 100000; transition: right 0.3s ease; display: flex; flex-direction: column; padding-top: 20px; }
+        .side-menu.open { right: 0; }
+        .side-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; }
+        .side-overlay.open { display: block; }
+        .side-menu-header { color: #facc15; font-size: 16px; font-weight: bold; padding: 0 20px 20px; border-bottom: 1px solid #3d2b1f; display: flex; justify-content: space-between; align-items: center; }
+        .close-btn { background: none; border: none; color: #8b949e; font-size: 22px; cursor: pointer; }
+        .side-menu-item { display: flex; align-items: center; padding: 16px 20px; color: white; text-decoration: none; font-size: 14px; font-weight: bold; border-bottom: 1px solid #1a1613; gap: 14px; }
+        .side-menu-item .menu-icon { font-size: 22px; }
+        .side-menu-item .menu-badge { background: #facc15; color: #1a1613; font-size: 9px; padding: 2px 6px; border-radius: 10px; margin-left: auto; }
+        .side-menu-item .menu-badge.green { background: #22c55e; }
+        .side-menu-item .menu-badge.purple { background: #a78bfa; }
+        .side-menu-item.disabled { color: #555; cursor: default; }
+        .side-menu-item.disabled .menu-icon { opacity: 0.4; }
+        .side-menu-item .menu-badge.soon { background: #3d2b1f; color: #8b949e; }
+    </style>
 </head>
 <body class="locked">
-<div class="wrap">
-  <div class="top">
-    <a class="back" href="index.html">←</a>
-    <h1>Referrals</h1>
-  </div>
-
-  <div class="card banner" id="lockBanner">
-    <div class="ico">🔒</div>
-    <div>
-      <b>Referrals open soon</b>
-      <div class="muted">We are finishing the program. Your invite link will appear here on launch.</div>
+    <div class="side-overlay" id="overlay" onclick="closeMenu()"></div>
+    <div class="side-menu" id="side-menu">
+        <div class="side-menu-header"><span>Menu</span><button class="close-btn" onclick="closeMenu()">✕</button></div>
+        <a href="store.html" class="side-menu-item"><span class="menu-icon">🛒</span>Store<span class="menu-badge">New</span></a>
+        <a href="miners.html" class="side-menu-item"><span class="menu-icon">⛏️</span>My Miners<span class="menu-badge purple" id="miners-badge" style="display:none;">0</span></a>
+        <a href="advertise.html" class="side-menu-item"><span class="menu-icon">📢</span>Advertise<span class="menu-badge green">$</span></a>
+        <div class="side-menu-item disabled"><span class="menu-icon">👥</span>Referrals<span class="menu-badge soon">Soon</span></div>
+        <a href="season.html" class="side-menu-item"><span class="menu-icon">🎫</span>Season Pass<span class="menu-badge purple">New</span></a>
+        <a href="settings.html" class="side-menu-item"><span class="menu-icon">⚙️</span>Settings</a>
+        <a href="about.html" class="side-menu-item"><span class="menu-icon">ℹ️</span>About</a>
+        <a href="faq.html" class="side-menu-item"><span class="menu-icon">❓</span>FAQ</a>
     </div>
-  </div>
 
-  <div class="card">
-    <h2>Your bonus from every friend</h2>
-    <div class="rate"><span><i class="dot" style="background:var(--usdt)"></i>USDT Coins</span><em>+10%</em></div>
-    <div class="rate"><span><i class="dot" style="background:var(--ltc)"></i>LTC Coins</span><em>+10%</em></div>
-    <div class="rate"><span><i class="dot" style="background:var(--sol)"></i>SOL Coins</span><em>+10%</em></div>
-  </div>
+    <div id="main-content">
+        <div class="header">
+            <span>Referrals</span>
+            <button class="burger-btn" onclick="openMenu()"><span></span><span></span><span></span></button>
+        </div>
 
-  <div class="card">
-    <h2>How it works</h2>
-    <ol class="steps">
-      <li>Share your invite link with a friend</li>
-      <li>Your friend signs up and starts mining</li>
-      <li>You get 10% of everything they earn</li>
-    </ol>
-    <div class="split">
-      <div>Friend earns<b>50 Game Coins</b></div>
-      <div class="you">You get extra<b>+5 Game Coins</b></div>
+        <div class="content">
+            <div class="card lock-card" id="lock-banner">
+                <div class="lock-icon">🔒</div>
+                <div>
+                    <div class="lock-title">Referrals open soon</div>
+                    <div class="card-text">We are finishing the program. Your invite link will appear here on launch.</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Your bonus from every friend</div>
+                <div class="rate-row"><span style="color:#facc15;">USDT Coins</span><span class="rate-pct">+10%</span></div>
+                <div class="rate-row"><span style="color:#a78bfa;">LTC Coins</span><span class="rate-pct">+10%</span></div>
+                <div class="rate-row"><span style="color:#14f195;">SOL Coins</span><span class="rate-pct">+10%</span></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">How it works</div>
+                <div class="step-row"><span class="step-num">1</span><span>Share your invite link with a friend</span></div>
+                <div class="step-row"><span class="step-num">2</span><span>Your friend signs up and starts mining</span></div>
+                <div class="step-row"><span class="step-num">3</span><span>You get 10% of everything they earn</span></div>
+                <div class="grid2 example">
+                    <div class="cell">
+                        <div class="c-label">Friend earns</div>
+                        <div class="c-value" style="color:#22c55e;">50 Game Coins</div>
+                    </div>
+                    <div class="cell">
+                        <div class="c-label">You get extra</div>
+                        <div class="c-value" style="color:#facc15;">+5 Game Coins</div>
+                    </div>
+                </div>
+                <div class="card-text" style="margin-top:10px;">The bonus is added on top. Your friend's earnings never go down.</div>
+            </div>
+
+            <div class="card link-card">
+                <div class="card-title">Your invite link</div>
+                <div class="link-row">
+                    <input type="text" class="link-input" id="ref-link" value="Available after launch" readonly>
+                    <button class="copy-btn" id="copy-btn" onclick="copyLink()">Copy</button>
+                </div>
+            </div>
+
+            <div class="card stats-card">
+                <div class="card-title">Your stats</div>
+                <div class="grid2">
+                    <div class="cell">
+                        <div class="c-label">Friends invited</div>
+                        <div class="c-value" id="st-invited">—</div>
+                    </div>
+                    <div class="cell">
+                        <div class="c-label" style="color:#facc15;">Earned USDT Coins</div>
+                        <div class="c-value" style="color:#facc15;" id="st-usdt">—</div>
+                    </div>
+                    <div class="cell">
+                        <div class="c-label" style="color:#a78bfa;">Earned LTC Coins</div>
+                        <div class="c-value" style="color:#a78bfa;" id="st-ltc">—</div>
+                    </div>
+                    <div class="cell">
+                        <div class="c-label" style="color:#14f195;">Earned SOL Coins</div>
+                        <div class="c-value" style="color:#14f195;" id="st-sol">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <a href="home.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+            <a href="index.html" class="nav-item"><span class="nav-icon">🚰</span>Faucet</a>
+            <a href="tasks.html" class="nav-item"><span class="nav-icon">📋</span>Tasks</a>
+            <a href="wallet.html" class="nav-item"><span class="nav-icon">👛</span>Wallet</a>
+        </div>
     </div>
-    <p class="muted" style="margin-top:12px">The bonus is added on top. Your friend's earnings never go down.</p>
-  </div>
 
-  <div class="card">
-    <h2>Your invite link</h2>
-    <div class="link-row">
-      <input type="text" id="refLink" value="Available after launch" readonly>
-      <button id="copyBtn">Copy</button>
-    </div>
-  </div>
+    <script>
+        const REFERRALS_OPEN = false;
 
-  <div class="card">
-    <h2>Your stats</h2>
-    <div class="stats">
-      <div class="stat"><small>Friends invited</small><b id="stInvited">—</b></div>
-      <div class="stat"><small>Earned USDT Coins</small><b id="stUsdt">—</b></div>
-      <div class="stat"><small>Earned LTC Coins</small><b id="stLtc">—</b></div>
-      <div class="stat"><small>Earned SOL Coins</small><b id="stSol">—</b></div>
-    </div>
-  </div>
-</div>
+        document.body.classList.toggle('locked', !REFERRALS_OPEN);
+        document.getElementById('lock-banner').style.display = REFERRALS_OPEN ? 'none' : 'flex';
 
-<div class="nav">
-  <a href="home.html"><span>🏠</span>Home</a>
-  <a href="index.html"><span>🚰</span>Faucet</a>
-  <a href="tasks.html"><span>📋</span>Tasks</a>
-  <a href="wallet.html"><span>👛</span>Wallet</a>
-</div>
+        function openMenu() {
+            document.getElementById('side-menu').classList.add('open');
+            document.getElementById('overlay').classList.add('open');
+        }
 
-<script>
-const REFERRALS_OPEN = false;
+        function closeMenu() {
+            document.getElementById('side-menu').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        }
 
-document.body.classList.toggle('locked', !REFERRALS_OPEN);
-document.getElementById('lockBanner').hidden = REFERRALS_OPEN;
-
-document.getElementById('copyBtn').addEventListener('click', function () {
-  if (!REFERRALS_OPEN) return;
-  const input = document.getElementById('refLink');
-  navigator.clipboard.writeText(input.value);
-  this.textContent = 'Copied';
-  setTimeout(() => { this.textContent = 'Copy'; }, 1500);
-});
-</script>
+        function copyLink() {
+            if (!REFERRALS_OPEN) return;
+            const btn = document.getElementById('copy-btn');
+            navigator.clipboard.writeText(document.getElementById('ref-link').value);
+            btn.innerText = 'Copied';
+            setTimeout(() => { btn.innerText = 'Copy'; }, 1500);
+        }
+    </script>
 </body>
 </html>
+
 
