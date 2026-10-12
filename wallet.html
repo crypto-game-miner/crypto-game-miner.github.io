@@ -30,7 +30,7 @@
         .withdraw-min-note { font-size: 10px; color: #8b949e; margin-bottom: 10px; }
         .collect-btn { background: #facc15; color: #1a1613; border: none; padding: 10px; border-radius: 10px; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; font-family: 'Courier New', monospace; text-transform: uppercase; }
         .collect-btn:disabled { background: #555; color: #999; cursor: not-allowed; }
-        .addr-box { background: #0d0d0d; border: 1px solid #facc15; border-radius: 8px; padding: 10px; margin: 10px 0; word-break: break-all; font-size: 11px; color: #facc15; }
+        .addr-box { background: #0d0d0d; border: 1px solid #facc15; border-radius: 8px; padding: 10px; margin: 10px 0; word-break: break-all; font-size: 11px; color: #facc15; text-transform: none; }
         .copy-btn { background: #facc15; color: #1a1613; border: none; border-radius: 6px; padding: 6px 14px; font-size: 11px; font-weight: bold; cursor: pointer; font-family: 'Courier New', monospace; margin-top: 8px; width: 100%; text-transform: uppercase; }
         .rate-note { font-size: 10px; color: #8b949e; margin: 8px 0 0; text-align: center; }
         .deposit-loading { color: #facc15; font-size: 12px; text-align: center; padding: 10px; }
@@ -413,7 +413,7 @@
         }
 
         window.copyAddr = function(currency) {
-            const addr = document.getElementById('addr-' + currency)?.innerText;
+            const addr = document.getElementById('addr-' + currency)?.textContent;
             if (!addr) return;
             navigator.clipboard.writeText(addr).then(() => {
                 event.target.innerText = '✅ Copied!';
@@ -561,5 +561,3 @@
     </script>
 </body>
 </html>
-
-
