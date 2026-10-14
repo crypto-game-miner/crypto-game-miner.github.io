@@ -156,6 +156,12 @@
         document.getElementById('zerads-frame').src  = zeradsUrl(300);
         document.getElementById('zerads-banner').src = zeradsUrl(468);
 
+        // Referral link: remember ?ref=CODE from the URL (first visit only).
+        // The code is sent to /api/claim with every claim; the server only
+        // uses it on this user's very first claim.
+        const refFromUrl = new URLSearchParams(window.location.search).get('ref');
+        if (refFromUrl && !localStorage.getItem('refCode')) localStorage.setItem('refCode', refFromUrl.slice(0, 12));
+
         let currentUser = null;
         let userData = {};
         let activeClaimTimer = null;
@@ -321,7 +327,7 @@
                     const claimResp = await fetch('/api/claim', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ uid: currentUser.uid, adVerified: true }),
+                        body: JSON.stringify({ uid: currentUser.uid, adVerified: true, ref: localStorage.getItem('refCode') || undefined }),
                     });
                     const claimResult = await claimResp.json();
                     if (!claimResult.success) {
@@ -387,7 +393,7 @@
                         const resp = await fetch('/api/claim', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ uid: currentUser.uid, adVerified: ok }),
+                            body: JSON.stringify({ uid: currentUser.uid, adVerified: ok, ref: localStorage.getItem('refCode') || undefined }),
                         });
                         const result = await resp.json();
                         if (!result.success) {
@@ -424,27 +430,3 @@
 </body>
 </html>
        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
