@@ -17,9 +17,20 @@
 // full missed day resets claimStreak back to 1. Further claims on the
 // same day don't increment it again. claimStreak feeds a +1%/day mining
 // power bonus on the client (home.html), capped at +30%.
+//
+// Referrals: { uid, action: 'ref_code' } returns (and creates, if missing)
+// the user's public referral code. The code is separate from the uid on
+// purpose — the uid works like a password for these endpoints, so it is
+// never put in an invite link. A faucet claim may also carry { ref: CODE };
+// it is only used on that user's very first claim ever (no lastClaimTs
+// yet, no referredBy yet). If valid, the invited user gets referredBy =
+// CODE (public code, never the referrer's uid) and the referrer gets
+// REFERRAL_GAME_COINS Game Coins + referralCount +1. Codes live in the
+// server-only ref_codes/{CODE} -> { uid } collection.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { randomInt } from 'crypto';
 
 const MAX_CLAIMS_PER_DAY = 20;
 const CLAIM_COOLDOWN_MS  = 5000;
@@ -46,6 +57,11 @@ const MAX_POOL_REWARD_CEILING = 7; // absolute hard ceiling regardless of admin'
 // Daily claim streak (mining power bonus, applied client-side).
 const CLAIM_STREAK_CAP_DAYS = 30; // +1%/day, capped at +30%
 
+// Referrals.
+const REFERRAL_GAME_COINS = 50; // paid to the referrer when the invited user makes their first claim
+const REF_CODE_LENGTH     = 8;
+const REF_CODE_ALPHABET   = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
+
 // 1ink.cc shortlink creation (claim #2/#7 flow — see make_shortlink below).
 const ONEINK_UID = '37994';
 const ONEINK_ALLOWED_HOSTS = ['crypto-miner-game.vercel.app', 'crypto-game-miner.vercel.app'];
@@ -70,6 +86,15 @@ function addDaysKey(dateKey, days) {
   return d.toISOString().slice(0, 10);
 }
 
+// Random public referral code (never derived from the uid).
+function makeRefCode() {
+  let code = '';
+  for (let i = 0; i < REF_CODE_LENGTH; i++) {
+    code += REF_CODE_ALPHABET[randomInt(REF_CODE_ALPHABET.length)];
+  }
+  return code;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -77,7 +102,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { uid, action, adVerified, url } = req.body || {};
+  const { uid, action, adVerified, url, ref } = req.body || {};
 
   // ─────────────────────────────────────────────────────────────────
   // SHORTLINK CREATION — standalone, no uid/Firestore involved. Mints a
@@ -136,6 +161,38 @@ export default async function handler(req, res) {
 
   const db = initFirebase();
   const userRef = db.collection('users').doc(uid);
+
+  // ─────────────────────────────────────────────────────────────────
+  // REFERRAL CODE — returns the user's public invite code, creating it
+  // on first request. Doesn't touch claim counters or rewards.
+  // ─────────────────────────────────────────────────────────────────
+  if (action === 'ref_code') {
+    try {
+      const code = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(userRef);
+        const data = snap.exists ? snap.data() : {};
+        if (data.refCode) return data.refCode;
+
+        for (let i = 0; i < 5; i++) {
+          const candidate = makeRefCode();
+          const codeRef = db.collection('ref_codes').doc(candidate);
+          const codeSnap = await tx.get(codeRef);
+          if (codeSnap.exists) continue;
+
+          tx.set(codeRef, { uid, createdAt: Timestamp.fromMillis(Date.now()) });
+          tx.set(userRef, { refCode: candidate }, { merge: true });
+          return candidate;
+        }
+        throw { code: 'CODE_FAIL' };
+      });
+
+      return res.status(200).json({ success: true, code });
+
+    } catch (e) {
+      console.error('Ref code error:', e.message || e);
+      return res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
 
   // ─────────────────────────────────────────────────────────────────
   // DAILY LINK CLAIM — separate flow, doesn't touch faucet claim
@@ -218,6 +275,17 @@ export default async function handler(req, res) {
         slotSnap = await tx.get(adSlotQuery);
       } catch (adErr) {
         console.error('Ad slot lookup failed (claim still succeeds):', adErr.message || adErr);
+      }
+
+      // ─── Referral code lookup (read now, write later) ────────────────
+      // Only on this user's very first claim ever: no lastClaimTs yet and
+      // no referredBy yet. The code is looked up in ref_codes — the
+      // referrer's uid stays server-side and is never stored on the
+      // invited user's document (which that user can read).
+      const refCodeIn = typeof ref === 'string' ? ref.trim().toUpperCase() : '';
+      let refCodeSnap = null;
+      if (!data.lastClaimTs && !data.referredBy && /^[A-Z0-9]{6,12}$/.test(refCodeIn)) {
+        refCodeSnap = await tx.get(db.collection('ref_codes').doc(refCodeIn));
       }
 
       const now = Date.now();
@@ -316,6 +384,14 @@ export default async function handler(req, res) {
       const newExp       = (data.exp || 0) + EXP_REWARD;
       const newClaims    = claimsToday + 1;
 
+      // ─── Referral binding (first claim only) ─────────────────────────
+      // Valid code, and not the user's own code. The invited user only
+      // gets the public code stored; the referrer gets the Game Coins.
+      let referrerUid = null;
+      if (refCodeSnap && refCodeSnap.exists && refCodeSnap.data().uid !== uid) {
+        referrerUid = refCodeSnap.data().uid;
+      }
+
       tx.set(userRef, {
         coins: newCoins,
         game_coins: newGameCoins,
@@ -328,7 +404,15 @@ export default async function handler(req, res) {
         claimStreak: claimStreak,
         claimStreakDay: today,
         updatedAt: Timestamp.fromMillis(now),
+        ...(referrerUid ? { referredBy: refCodeIn } : {}),
       }, { merge: true });
+
+      if (referrerUid) {
+        tx.set(db.collection('users').doc(referrerUid), {
+          game_coins: FieldValue.increment(REFERRAL_GAME_COINS),
+          referralCount: FieldValue.increment(1),
+        }, { merge: true });
+      }
 
       // Write back the pool's remaining budget + next per-claim reward,
       // if pool mode is active and a reward was actually granted.
@@ -411,6 +495,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 
 
 
