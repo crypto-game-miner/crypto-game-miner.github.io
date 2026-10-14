@@ -115,6 +115,7 @@
                     <input type="text" class="link-input" id="ref-link" value="Available after launch" readonly>
                     <button class="copy-btn" id="copy-btn" onclick="copyLink()">Copy</button>
                 </div>
+                <div class="card-text" id="ref-hint" style="margin-top:8px;"></div>
             </div>
 
             <div class="card stats-card">
@@ -168,16 +169,93 @@
             document.getElementById('overlay').classList.remove('open');
         }
 
+        let currentLink = '';
+
         function copyLink() {
-            if (!REFERRALS_OPEN) return;
+            if (!REFERRALS_OPEN || !currentLink) return;
             const btn = document.getElementById('copy-btn');
-            navigator.clipboard.writeText(document.getElementById('ref-link').value);
+            navigator.clipboard.writeText(currentLink);
             btn.innerText = 'Copied';
             setTimeout(() => { btn.innerText = 'Copy'; }, 1500);
         }
+
+        // Everything below only runs once REFERRALS_OPEN is true — while the
+        // page is closed, Firebase is not even loaded.
+        const REFERRAL_GAME_COINS = 50; // keep in sync with api/claim.js
+        let codeRequested = false;
+
+        async function initReferrals() {
+            const { initializeApp } = await import('https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js');
+            const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js');
+            const { getFirestore, doc, onSnapshot } = await import('https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js');
+
+            const app = initializeApp({
+                apiKey: "AIzaSyBWMTTJo-iBtS7xxM3mjLWaTC0EOfl6MHw",
+                authDomain: "crypto-miner-game-f45dc.firebaseapp.com",
+                projectId: "crypto-miner-game-f45dc",
+                storageBucket: "crypto-miner-game-f45dc.firebasestorage.app",
+                messagingSenderId: "33690622473",
+                appId: "1:33690622473:web:f80f6b836c15034e07f6d8"
+            });
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+
+            onAuthStateChanged(auth, (user) => {
+                if (!user) {
+                    showSignInHint();
+                    return;
+                }
+                onSnapshot(doc(db, 'users', user.uid), (snap) => {
+                    renderReferrals(snap.exists() ? snap.data() : {}, user.uid);
+                });
+            });
+        }
+
+        function showSignInHint() {
+            document.getElementById('ref-link').value = 'Sign in required';
+            document.getElementById('ref-hint').innerHTML = '🔒 <a href="settings.html" style="color:#facc15;">Sign in with Google</a> to get your invite link. Anonymous accounts do not count.';
+        }
+
+        async function renderReferrals(data, uid) {
+            const invited = data.referralCount || 0;
+            document.getElementById('st-invited').innerText = invited;
+            document.getElementById('st-game').innerText = invited * REFERRAL_GAME_COINS;
+            document.getElementById('st-usdt').innerText = parseFloat(data.refEarnedUsdt || 0).toFixed(4);
+            document.getElementById('st-ltc').innerText = parseFloat(data.refEarnedLtc || 0).toFixed(4);
+            document.getElementById('st-sol').innerText = parseFloat(data.refEarnedSol || 0).toFixed(4);
+
+            if (!data.email) {
+                currentLink = '';
+                showSignInHint();
+                return;
+            }
+
+            let code = data.refCode;
+            if (!code && !codeRequested) {
+                // The server creates the code on first request; the
+                // snapshot above fires again once it is saved.
+                codeRequested = true;
+                try {
+                    await fetch('/api/claim', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ uid, action: 'ref_code' }),
+                    });
+                } catch(e) {}
+                return;
+            }
+            if (!code) return;
+
+            currentLink = window.location.origin + '/?ref=' + code;
+            document.getElementById('ref-link').value = currentLink;
+            document.getElementById('ref-hint').innerText = '';
+        }
+
+        if (REFERRALS_OPEN) initReferrals();
     </script>
 </body>
 </html>
+
 
 
 
