@@ -85,6 +85,7 @@
 
             <div class="card">
                 <div class="card-title">Your bonus from every friend</div>
+                <div class="rate-row"><span style="color:#22c55e;">Game Coins</span><span class="rate-pct">+50 per friend</span></div>
                 <div class="rate-row"><span style="color:#facc15;">USDT Coins</span><span class="rate-pct">+10%</span></div>
                 <div class="rate-row"><span style="color:#a78bfa;">LTC Coins</span><span class="rate-pct">+10%</span></div>
                 <div class="rate-row"><span style="color:#14f195;">SOL Coins</span><span class="rate-pct">+10%</span></div>
@@ -93,16 +94,16 @@
             <div class="card">
                 <div class="card-title">How it works</div>
                 <div class="step-row"><span class="step-num">1</span><span>Share your invite link with a friend</span></div>
-                <div class="step-row"><span class="step-num">2</span><span>Your friend signs up and starts mining</span></div>
-                <div class="step-row"><span class="step-num">3</span><span>You get 10% of everything they earn</span></div>
+                <div class="step-row"><span class="step-num">2</span><span>Your friend joins and you get 50 Game Coins</span></div>
+                <div class="step-row"><span class="step-num">3</span><span>You get 10% of their USDT, LTC and SOL Coins earnings</span></div>
                 <div class="grid2 example">
                     <div class="cell">
                         <div class="c-label">Friend earns</div>
-                        <div class="c-value" style="color:#22c55e;">50 Game Coins</div>
+                        <div class="c-value" style="color:#facc15;">1.0000 USDT Coins</div>
                     </div>
                     <div class="cell">
                         <div class="c-label">You get extra</div>
-                        <div class="c-value" style="color:#facc15;">+5 Game Coins</div>
+                        <div class="c-value" style="color:#facc15;">+0.1000 USDT Coins</div>
                     </div>
                 </div>
                 <div class="card-text" style="margin-top:10px;">The bonus is added on top. Your friend's earnings never go down.</div>
@@ -124,6 +125,10 @@
                         <div class="c-value" id="st-invited">—</div>
                     </div>
                     <div class="cell">
+                        <div class="c-label" style="color:#22c55e;">Earned Game Coins</div>
+                        <div class="c-value" style="color:#22c55e;" id="st-game">—</div>
+                    </div>
+                    <div class="cell">
                         <div class="c-label" style="color:#facc15;">Earned USDT Coins</div>
                         <div class="c-value" style="color:#facc15;" id="st-usdt">—</div>
                     </div>
@@ -131,7 +136,7 @@
                         <div class="c-label" style="color:#a78bfa;">Earned LTC Coins</div>
                         <div class="c-value" style="color:#a78bfa;" id="st-ltc">—</div>
                     </div>
-                    <div class="cell">
+                    <div class="cell" style="grid-column: span 2;">
                         <div class="c-label" style="color:#14f195;">Earned SOL Coins</div>
                         <div class="c-value" style="color:#14f195;" id="st-sol">—</div>
                     </div>
@@ -173,5 +178,6 @@
     </script>
 </body>
 </html>
+
 
 
