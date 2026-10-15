@@ -83,6 +83,10 @@
                         <span class="settings-label">NanoMiners Owned</span>
                         <span class="settings-value" id="stat-nano">0 / 10</span>
                     </div>
+                    <div class="settings-item">
+                        <span class="settings-label">Referrals</span>
+                        <span class="settings-value" id="stat-referrals">0</span>
+                    </div>
                 </div>
             </div>
 
@@ -184,6 +188,16 @@
             } catch(e) {}
         })();
 
+        // Number of friends who joined via this user's invite link
+        // (referralCount is written by api/claim.js). Read-only.
+        async function loadReferralCount(uid) {
+            try {
+                const snap = await getDoc(doc(db, 'users', uid));
+                const n = snap.exists() ? (snap.data().referralCount || 0) : 0;
+                document.getElementById('stat-referrals').innerText = n;
+            } catch(e) {}
+        }
+
         // Pulls the canonical server state into localStorage. Read-only —
         // never writes to Firestore from the client (that's what caused
         // the whole-document overwrite bug this replaces).
@@ -252,6 +266,7 @@
                     const result = await linkGoogleAccount(user.uid, user.email);
                     localStorage.setItem('locked_google_email', user.email);
                     loadFromServerData(result);
+                    loadReferralCount(user.uid);
 
                     btn.style.display = 'none';
                     document.getElementById('bonus-banner').style.display = 'none';
@@ -273,6 +288,7 @@
         // repeatedly now since /api/link-google only ever merges and the
         // bonus grant is idempotent server-side.
         onAuthStateChanged(auth, async (user) => {
+            if (user) loadReferralCount(user.uid);
             if (user && lockedEmail) {
                 try {
                     const result = await linkGoogleAccount(user.uid, lockedEmail);
@@ -291,6 +307,7 @@
     </script>
 </body>
 </html>
+
 
 
 
