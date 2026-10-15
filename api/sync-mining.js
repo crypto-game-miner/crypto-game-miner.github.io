@@ -10,6 +10,11 @@ const MAX_SECONDS = 86400;
 const EXP_PER_LEVEL = [50, 120, 250, 500, 1000];
 const CLAIM_STREAK_CAP_DAYS = 30; // +1%/day mining power bonus, capped at +30% — mirrors claim.js / home.html
 
+// Referral bonus: the referrer gets this share of what an invited user mines,
+// in the same coin, on top of the invited user's own earnings (nothing is
+// taken from them). Mining only — faucet claims don't pay it.
+const REFERRAL_MINING_BONUS = 0.1; // 10%
+
 // Minimum time between full leaderboard_public scans (refreshGlobalStats).
 // Was running on every single sync call (every ~60s per open tab), reading
 // the entire leaderboard_public collection each time — this is what blew
@@ -100,6 +105,18 @@ export default async function handler(req, res) {
       const now = Date.now();
       const today = new Date().toISOString().slice(0, 10);
 
+      // Referral: if this user was invited (referredBy = public code set by
+      // api/claim.js), find the referrer's uid in the server-only ref_codes
+      // collection. Read here, before any writes. Users without a referrer
+      // cost no extra read.
+      let referrerUid = null;
+      if (data.referredBy) {
+        const refCodeSnap = await tx.get(db.collection('ref_codes').doc(data.referredBy));
+        if (refCodeSnap.exists && refCodeSnap.data().uid !== uid) {
+          referrerUid = refCodeSnap.data().uid;
+        }
+      }
+
       const lastClaimMs = data.lastClaimTime?.toMillis ? data.lastClaimTime.toMillis() : 0;
       const miningPaused = lastClaimMs === 0 || (now - lastClaimMs) / 1000 / 3600 > 24;
 
@@ -151,6 +168,18 @@ export default async function handler(req, res) {
       }
 
       tx.set(userRef, updates, { merge: true });
+
+      // Referral bonus — +10% of this sync's mining earnings go to the
+      // referrer in the same coin, on top (the invited user keeps 100%).
+      // refEarned* feeds the stats on referrals.html.
+      if (earned > 0 && referrerUid) {
+        const bonus = earned * REFERRAL_MINING_BONUS;
+        const refEarnedField = coin === 'usdt' ? 'refEarnedUsdt' : coin === 'sol' ? 'refEarnedSol' : 'refEarnedLtc';
+        tx.set(db.collection('users').doc(referrerUid), {
+          [balanceField]: FieldValue.increment(bonus),
+          [refEarnedField]: FieldValue.increment(bonus),
+        }, { merge: true });
+      }
 
       // Daily site-wide stats — how much is being mined out today, split
       // by which coin track it came from.
@@ -253,6 +282,7 @@ async function refreshGlobalStats(db) {
     updatedAt: Timestamp.fromMillis(Date.now()),
   }, { merge: true });
 }
+
 
 
 
