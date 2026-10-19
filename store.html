@@ -78,7 +78,7 @@
         </div>
         <div class="balance-container">
             <div class="balance-row">
-                <span style="color:#22c55e;">Game Coins</span>
+                <span style="color:#22c55e;">KRST Coins</span>
                 <span style="font-weight:bold; color:#22c55e;" id="game-coins">0</span>
             </div>
             <div class="balance-row">
@@ -88,6 +88,10 @@
             <div class="balance-row">
                 <span style="color:#a78bfa;">LTC Coins</span>
                 <span style="font-weight:bold; color:#a78bfa;" id="ltc-balance">0.0000</span>
+            </div>
+            <div class="balance-row">
+                <span style="color:#14f195;">SOL Coins</span>
+                <span style="font-weight:bold; color:#14f195;" id="sol-balance">0.0000</span>
             </div>
         </div>
 
@@ -127,7 +131,7 @@
                     <div class="stat-box"><div class="stat-label">Max</div><div class="stat-value" id="nano-max-display">10x</div></div>
                 </div>
                 <div class="owned-count" id="owned-nano">Owned: 0 / 10</div>
-                <button class="buy-btn" id="btn-nano" onclick="buyMiner('nano')">Buy for 50 Game Coins</button>
+                <button class="buy-btn" id="btn-nano" onclick="buyMiner('nano')">Buy for 50 KRST Coins</button>
             </div>
 
             <div class="section-title" style="margin-top:4px;">🎁 Mystery Box</div>
@@ -140,9 +144,9 @@
                     </div>
                 </div>
                 <div class="box-odds" id="box-odds-display">
-                    <div class="odds-row"><span class="odds-label">🟢 +10 Game Coins</span><span class="odds-chance">35%</span></div>
-                    <div class="odds-row"><span class="odds-label">🟢 +20 Game Coins</span><span class="odds-chance">30%</span></div>
-                    <div class="odds-row"><span class="odds-label">🟢 +40 Game Coins</span><span class="odds-chance">15%</span></div>
+                    <div class="odds-row"><span class="odds-label">🟢 +10 KRST Coins</span><span class="odds-chance">35%</span></div>
+                    <div class="odds-row"><span class="odds-label">🟢 +20 KRST Coins</span><span class="odds-chance">30%</span></div>
+                    <div class="odds-row"><span class="odds-label">🟢 +40 KRST Coins</span><span class="odds-chance">15%</span></div>
                     <div class="odds-row"><span class="odds-label">🔥 MegaMiner X2</span><span class="odds-chance rare">20%</span></div>
                 </div>
                 <div class="miner-stats" style="margin-bottom:10px;">
@@ -150,7 +154,7 @@
                     <div class="stat-box"><div class="stat-label">MegaMiner Max</div><div class="stat-value" id="mega-max-display">2x</div></div>
                 </div>
                 <div class="owned-count" id="owned-mega" style="color:#a78bfa;">MegaMiner X2: 0 / 2</div>
-                <button class="open-btn" id="btn-box" onclick="openBox()">Open for 40 Game Coins</button>
+                <button class="open-btn" id="btn-box" onclick="openBox()">Open for 40 KRST Coins</button>
             </div>
         </div>
 
@@ -207,9 +211,9 @@
             const t3a = g.box_odds_tier3_amount != null ? g.box_odds_tier3_amount : 40;
             const megaChance = 100 - (t1c + t2c + t3c);
             document.getElementById('box-odds-display').innerHTML = `
-                <div class="odds-row"><span class="odds-label">🟢 +${t1a} Game Coins</span><span class="odds-chance">${t1c}%</span></div>
-                <div class="odds-row"><span class="odds-label">🟢 +${t2a} Game Coins</span><span class="odds-chance">${t2c}%</span></div>
-                <div class="odds-row"><span class="odds-label">🟢 +${t3a} Game Coins</span><span class="odds-chance">${t3c}%</span></div>
+                <div class="odds-row"><span class="odds-label">🟢 +${t1a} KRST Coins</span><span class="odds-chance">${t1c}%</span></div>
+                <div class="odds-row"><span class="odds-label">🟢 +${t2a} KRST Coins</span><span class="odds-chance">${t2c}%</span></div>
+                <div class="odds-row"><span class="odds-label">🟢 +${t3a} KRST Coins</span><span class="odds-chance">${t3c}%</span></div>
                 <div class="odds-row"><span class="odds-label">🔥 MegaMiner X2 (+${MEGA_POWER.toFixed(2)} GH/S)</span><span class="odds-chance rare">${megaChance}%</span></div>
             `;
 
@@ -224,6 +228,7 @@
                     const data = snap.exists() ? snap.data() : {};
                     document.getElementById('balance').innerText     = parseFloat(data.coins || 0).toFixed(4);
                     document.getElementById('ltc-balance').innerText = parseFloat(data.ltc || 0).toFixed(4);
+                    document.getElementById('sol-balance').innerText = parseFloat(data.sol || 0).toFixed(4);
 
                     if (data.game_coins != null) {
                         gameCoins = data.game_coins;
@@ -276,11 +281,11 @@
                 btn.className = 'buy-btn maxed';
                 btn.disabled = true;
             } else if (gameCoins < NANO_PRICE) {
-                btn.innerText = 'Not Enough Game Coins';
+                btn.innerText = 'Not Enough KRST Coins';
                 btn.className = 'buy-btn';
                 btn.disabled = true;
             } else {
-                btn.innerText = 'Buy for ' + NANO_PRICE + ' Game Coins';
+                btn.innerText = 'Buy for ' + NANO_PRICE + ' KRST Coins';
                 btn.className = 'buy-btn';
                 btn.disabled = false;
             }
@@ -294,10 +299,10 @@
                 btn.innerText = 'MAX REACHED';
                 btn.disabled = true;
             } else if (gameCoins < BOX_PRICE) {
-                btn.innerText = 'Not Enough Game Coins';
+                btn.innerText = 'Not Enough KRST Coins';
                 btn.disabled = true;
             } else {
-                btn.innerText = 'Open for ' + BOX_PRICE + ' Game Coins';
+                btn.innerText = 'Open for ' + BOX_PRICE + ' KRST Coins';
                 btn.disabled = false;
             }
         }
@@ -380,7 +385,7 @@
                 let icon, title, sub;
                 if (prize.type === 'coins') {
                     icon = '🟢';
-                    title = `+${prize.amount} Game Coins`;
+                    title = `+${prize.amount} KRST Coins`;
                     sub = prize.amount >= BOX_PRICE ? 'You got your money back!' : (prize.amount >= BOX_PRICE / 2 ? 'Not bad!' : 'Better luck next time!');
                 } else {
                     icon = '🔥';
