@@ -62,7 +62,7 @@ const MAX_POOL_REWARD_CEILING = 7; // absolute hard ceiling regardless of admin'
 const CLAIM_STREAK_CAP_DAYS = 30; // +1%/day, capped at +30%
 
 // Referrals.
-const REFERRAL_GAME_COINS = 50; // paid to the referrer when the invited user makes their first claim
+const REFERRAL_GAME_COINS = 0.25; // paid to the referrer when the invited user makes their first claim
 const REF_CODE_LENGTH     = 8;
 const REF_CODE_ALPHABET   = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 
