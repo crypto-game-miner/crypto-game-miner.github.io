@@ -141,19 +141,21 @@
 
             <div id="tab-swap" class="tab-content">
                 <h3 style="color:#facc15; margin-bottom:4px; font-size:14px;">Swap Coins</h3>
-                <p style="font-size:10px; color:#8b949e; margin:0 0 12px;">Convert between USDT, LTC, and SOL Coins based on their real-dollar value. <span id="swap-fee-note">5%</span> fee applies.</p>
+                <p style="font-size:10px; color:#8b949e; margin:0 0 12px;">Convert between USDT, LTC, SOL, and KRST Coins based on their real-dollar value. <span id="swap-fee-note">5%</span> fee applies.</p>
 
                 <div class="swap-pair-row">
                     <select class="swap-coin-select" id="swap-from-select" onchange="onSwapCoinChange()">
                         <option value="usdt">USDT</option>
                         <option value="ltc">LTC</option>
                         <option value="sol">SOL</option>
+                        <option value="krst">KRST</option>
                     </select>
                     <button class="swap-flip-btn" onclick="flipSwap()">⇄</button>
                     <select class="swap-coin-select" id="swap-to-select" onchange="onSwapCoinChange()">
                         <option value="ltc">LTC</option>
                         <option value="usdt">USDT</option>
                         <option value="sol">SOL</option>
+                        <option value="krst">KRST</option>
                     </select>
                 </div>
 
@@ -407,31 +409,34 @@
         const USDT_COIN_TO_REAL_USD = 0.000001;
         const LTC_COIN_TO_LTC = 0.00000001;
         const SOL_COIN_TO_SOL = 0.00000001; // Bitcoin-satoshi-style 8 decimals, not native lamport
-        let cachedPrices = null; // { ltc, sol }
+        const KRST_COIN_TO_POL = 0.001; // 1 KRST Coin = 0.001 POL
+        let cachedPrices = null; // { ltc, sol, pol }
 
-        function coinLabel(coin) { return coin === 'usdt' ? 'USDT' : coin === 'ltc' ? 'LTC' : 'SOL'; }
-        function coinBalance(coin) { return coin === 'usdt' ? coins : coin === 'ltc' ? ltcCoins : solCoins; }
+        function coinLabel(coin) { return coin === 'usdt' ? 'USDT' : coin === 'ltc' ? 'LTC' : coin === 'sol' ? 'SOL' : 'KRST'; }
+        function coinBalance(coin) { return coin === 'usdt' ? coins : coin === 'ltc' ? ltcCoins : coin === 'sol' ? solCoins : gameCoins; }
         function coinUsdValue(coin, amount) {
             if (!cachedPrices) return null;
             if (coin === 'usdt') return amount * USDT_COIN_TO_REAL_USD;
             if (coin === 'ltc')  return amount * LTC_COIN_TO_LTC * cachedPrices.ltc;
+            if (coin === 'krst') return amount * KRST_COIN_TO_POL * cachedPrices.pol;
             return amount * SOL_COIN_TO_SOL * cachedPrices.sol;
         }
         function usdValuePerUnit(coin) {
             if (!cachedPrices) return null;
             if (coin === 'usdt') return USDT_COIN_TO_REAL_USD;
             if (coin === 'ltc')  return LTC_COIN_TO_LTC * cachedPrices.ltc;
+            if (coin === 'krst') return KRST_COIN_TO_POL * cachedPrices.pol;
             return SOL_COIN_TO_SOL * cachedPrices.sol;
         }
 
         async function refreshPrices() {
             try {
-                const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin,solana&vs_currencies=usd');
+                const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin,solana,polygon-ecosystem-token&vs_currencies=usd');
                 const data = await resp.json();
-                const ltc = data?.litecoin?.usd, sol = data?.solana?.usd;
-                cachedPrices = (ltc && sol) ? { ltc, sol } : null;
+                const ltc = data?.litecoin?.usd, sol = data?.solana?.usd, pol = data?.['polygon-ecosystem-token']?.usd;
+                cachedPrices = (ltc && sol) ? { ltc, sol, pol } : null;
                 document.getElementById('swap-price-note').innerText = cachedPrices
-                    ? `LTC: $${ltc.toLocaleString()} · SOL: $${sol.toLocaleString()} (live, CoinGecko)`
+                    ? `LTC: $${ltc.toLocaleString()} · SOL: $${sol.toLocaleString()} · POL: $${pol ? pol.toLocaleString() : '?'} (live, CoinGecko)`
                     : `⚠️ Couldn't fetch live prices — try again shortly`;
                 previewSwap();
             } catch(e) {
@@ -447,7 +452,7 @@
             const toSel   = document.getElementById('swap-to-select');
             // Prevent selecting the same coin on both sides — bump "to" forward.
             if (fromSel.value === toSel.value) {
-                const opts = ['usdt', 'ltc', 'sol'].filter(c => c !== fromSel.value);
+                const opts = ['usdt', 'ltc', 'sol', 'krst'].filter(c => c !== fromSel.value);
                 toSel.value = opts[0];
             }
             document.getElementById('swap-input-label').innerText = coinLabel(fromSel.value) + ' Coins To Swap';
@@ -474,7 +479,7 @@
             const feeLabel  = document.getElementById('swap-preview-fee');
             const outLabel  = document.getElementById('swap-preview-out');
 
-            if (!amt || amt <= 0 || !cachedPrices) {
+            if (!amt || amt <= 0 || !cachedPrices || ((fromCoin === 'krst' || toCoin === 'krst') && !cachedPrices.pol)) {
                 inLabel.innerText = '0'; feeLabel.innerText = '0'; outLabel.innerText = '0';
                 return;
             }
