@@ -223,7 +223,7 @@
             previewSwap();
         });
 
-        let coins    = 0;
+         let coins    = 0;
         let gameCoins = 0;
         let ltcCoins = 0;
         let solCoins = 0;
@@ -436,7 +436,7 @@
                 const ltc = data?.litecoin?.usd, sol = data?.solana?.usd, pol = data?.['polygon-ecosystem-token']?.usd;
                 cachedPrices = (ltc && sol) ? { ltc, sol, pol } : null;
                 document.getElementById('swap-price-note').innerText = cachedPrices
-                    ? `LTC: $${ltc.toLocaleString()} · SOL: $${sol.toLocaleString()} · POL: $${pol ? pol.toLocaleString() : '?'} (live, CoinGecko)`
+                    ? `LTC: $${ltc.toLocaleString()} · SOL: $${sol.toLocaleString()} · KRST: $${pol ? (pol * KRST_COIN_TO_POL).toLocaleString(undefined, { maximumFractionDigits: 8 }) : '?'} (live, CoinGecko)`
                     : `⚠️ Couldn't fetch live prices — try again shortly`;
                 previewSwap();
             } catch(e) {
