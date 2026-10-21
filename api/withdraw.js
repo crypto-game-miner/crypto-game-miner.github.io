@@ -2,7 +2,7 @@
 // Handles two actions on the same endpoint (merged to stay under Vercel's
 // serverless function count limit, same pattern as api/claim.js):
 //   - no action / action==='withdraw' (default): sends real crypto via FaucetPay
-//   - action: 'swap': converts between any two of USDT/LTC/SOL Coins based
+//   - action: 'swap': converts between any two of USDT/LTC/SOL/KRST Coins based
 //     on their real-dollar value, minus an admin-adjustable fee
 //     (stats/global.swap_fee_pct)
 //
@@ -16,6 +16,10 @@
 // the same 8-decimal satoshi-style unit as every other currency (1 unit =
 // 0.00000001 SOL), NOT raw 9-decimal lamports. So amount sent to FaucetPay
 // = points, same as LTC — no extra scaling needed.
+//
+// KRST Coins (stored in users.game_coins) are swap-only: 1 KRST Coin =
+// 0.001 POL, priced from the live POL/USD rate (CoinGecko id
+// polygon-ecosystem-token).
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -31,9 +35,10 @@ const DEFAULT_DAILY_LIMIT_SOL  = 5000000;
 const USDT_COIN_TO_REAL_USD = 0.000001;
 const LTC_COIN_TO_LTC = 0.00000001;
 const SOL_COIN_TO_SOL = 0.00000001; // Bitcoin-satoshi-style 8 decimals, not native lamport (9 decimals)
+const KRST_COIN_TO_POL = 0.001; // 1 KRST Coin = 0.001 POL
 const DEFAULT_SWAP_FEE_PCT = 5;
 
-const BALANCE_FIELD = { usdt: 'coins', ltc: 'ltc', sol: 'sol' };
+const BALANCE_FIELD = { usdt: 'coins', ltc: 'ltc', sol: 'sol', krst: 'game_coins' };
 
 function initFirebase() {
   if (!getApps().length) {
@@ -48,26 +53,29 @@ function initFirebase() {
   return getFirestore();
 }
 
-// Fetches both LTC and SOL prices in one call — needed regardless of which
-// pair is being swapped, since either leg might be ltc or sol.
+// Fetches LTC, SOL and POL prices in one call — needed regardless of which
+// pair is being swapped, since either leg might be ltc, sol or krst.
 async function fetchPricesUsd() {
-  const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin,solana&vs_currencies=usd');
+  const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin,solana,polygon-ecosystem-token&vs_currencies=usd');
   const data = await resp.json();
   const ltc = data?.litecoin?.usd;
   const sol = data?.solana?.usd;
+  const pol = data?.['polygon-ecosystem-token']?.usd;
   if (!ltc || !isFinite(ltc) || !sol || !isFinite(sol)) throw new Error('Could not fetch live prices');
-  return { ltc, sol };
+  return { ltc, sol, pol };
 }
 
 function coinUsdValue(coin, amount, prices) {
   if (coin === 'usdt') return amount * USDT_COIN_TO_REAL_USD;
   if (coin === 'ltc')  return amount * LTC_COIN_TO_LTC * prices.ltc;
+  if (coin === 'krst') return amount * KRST_COIN_TO_POL * prices.pol;
   return amount * SOL_COIN_TO_SOL * prices.sol; // sol
 }
 
 function usdValuePerUnit(coin, prices) {
   if (coin === 'usdt') return USDT_COIN_TO_REAL_USD;
   if (coin === 'ltc')  return LTC_COIN_TO_LTC * prices.ltc;
+  if (coin === 'krst') return KRST_COIN_TO_POL * prices.pol;
   return SOL_COIN_TO_SOL * prices.sol; // sol
 }
 
@@ -226,13 +234,13 @@ async function refundUser(db, userRef, balanceField, points) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// SWAP — converts between any two of usdt/ltc/sol at real-dollar value,
+// SWAP — converts between any two of usdt/ltc/sol/krst at real-dollar value,
 // minus an admin-adjustable fee.
 // ─────────────────────────────────────────────────────────────────
 async function handleSwap(req, res, body) {
   const { uid, fromCoin, toCoin, amount } = body;
   if (!uid) return res.status(400).json({ success: false, error: 'Missing uid' });
-  if (!['usdt', 'ltc', 'sol'].includes(fromCoin) || !['usdt', 'ltc', 'sol'].includes(toCoin)) {
+  if (!['usdt', 'ltc', 'sol', 'krst'].includes(fromCoin) || !['usdt', 'ltc', 'sol', 'krst'].includes(toCoin)) {
     return res.status(400).json({ success: false, error: 'Invalid coin' });
   }
   if (fromCoin === toCoin) {
@@ -251,6 +259,10 @@ async function handleSwap(req, res, body) {
   try {
     prices = await fetchPricesUsd();
   } catch (e) {
+    return res.status(502).json({ success: false, error: 'Could not fetch live prices. Try again shortly.' });
+  }
+
+  if ((fromCoin === 'krst' || toCoin === 'krst') && (!prices.pol || !isFinite(prices.pol))) {
     return res.status(502).json({ success: false, error: 'Could not fetch live prices. Try again shortly.' });
   }
 
@@ -273,7 +285,10 @@ async function handleSwap(req, res, body) {
 
       const usdValue = coinUsdValue(fromCoin, amountIn, prices);
       const usdValueAfterFee = usdValue * (1 - feePct / 100);
-      const amountOut = usdValueAfterFee / usdValuePerUnit(toCoin, prices);
+      let amountOut = usdValueAfterFee / usdValuePerUnit(toCoin, prices);
+
+      // KRST (game_coins) is kept as a whole number
+      if (toCoin === 'krst') amountOut = Math.floor(amountOut);
 
       if (!isFinite(amountOut) || amountOut <= 0) {
         throw { code: 'TOO_SMALL', message: 'Amount too small to swap after fee.' };
